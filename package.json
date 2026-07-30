@@ -1,0 +1,13 @@
+{
+  "name": "mosaic-portal",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Mosaic Portal — staff portal unifying Mosaic's tools behind one shell, one visual language, one login.",
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}
