@@ -549,34 +549,46 @@ Deno.serve(async (req) => {
       return json({ ok: true, dry_run: true, key: { campusId, date, gatheringType }, ...card });
     }
 
-    // Upsert-post: one card per (campus_id, alert_date).
-    const { data: existing } = await admin
+    // One card per (campus_id, alert_date). A submission inserts several rows at
+    // once, so this function can be invoked concurrently. Claim atomically: try to
+    // insert a PENDING row — exactly one caller wins (unique constraint) and posts;
+    // everyone else waits for the ts and edits the existing card.
+    const claim = await admin
       .from("numbers_alert_cards")
-      .select("id, slack_message_ts")
-      .eq("campus_id", campusId)
-      .eq("alert_date", date)
+      .insert({ campus_id: campusId, alert_date: date, slack_channel: SLACK_CHANNEL, slack_message_ts: "PENDING" })
+      .select("id")
       .maybeSingle();
 
-    if (existing?.slack_message_ts) {
-      await slackCall("chat.update", {
-        channel: SLACK_CHANNEL, ts: existing.slack_message_ts,
-        text: card.fallback, blocks: card.blocks,
+    if (!claim.error && claim.data) {
+      const res = await slackCall("chat.postMessage", {
+        channel: SLACK_CHANNEL, text: card.fallback, blocks: card.blocks,
       });
-      await admin.from("numbers_alert_cards").update({ updated_at: new Date().toISOString() }).eq("id", existing.id);
-      return json({ ok: true, action: "updated", ts: existing.slack_message_ts });
+      await admin.from("numbers_alert_cards")
+        .update({ slack_message_ts: res.ts, updated_at: new Date().toISOString() })
+        .eq("id", claim.data.id);
+      return json({ ok: true, action: "posted", ts: res.ts });
     }
 
-    const res = await slackCall("chat.postMessage", {
-      channel: SLACK_CHANNEL, text: card.fallback, blocks: card.blocks,
-    });
-    // Insert tracking row; on unique-violation race, fall back to updating.
-    const { error: insErr } = await admin.from("numbers_alert_cards").insert({
-      campus_id: campusId, alert_date: date, slack_channel: SLACK_CHANNEL, slack_message_ts: res.ts,
-    });
-    if (insErr) {
-      return json({ ok: true, action: "posted_race", ts: res.ts, note: insErr.message });
+    // Not the claimer: a row already exists (established card, or a sibling call is
+    // still posting). Wait briefly for a real ts, then edit that message.
+    if (claim.error && claim.error.code !== "23505") throw claim.error;
+
+    let ts: string | null = null;
+    for (let i = 0; i < 15; i++) {
+      const { data } = await admin.from("numbers_alert_cards")
+        .select("slack_message_ts").eq("campus_id", campusId).eq("alert_date", date).maybeSingle();
+      if (data?.slack_message_ts && data.slack_message_ts !== "PENDING") { ts = data.slack_message_ts; break; }
+      await new Promise((r) => setTimeout(r, 300));
     }
-    return json({ ok: true, action: "posted", ts: res.ts });
+    if (!ts) return json({ ok: false, error: "card still pending after wait" }, 202);
+
+    await slackCall("chat.update", {
+      channel: SLACK_CHANNEL, ts, text: card.fallback, blocks: card.blocks,
+    });
+    await admin.from("numbers_alert_cards")
+      .update({ updated_at: new Date().toISOString() })
+      .eq("campus_id", campusId).eq("alert_date", date);
+    return json({ ok: true, action: "updated", ts });
   } catch (e) {
     return json({ ok: false, error: (e as Error).message }, 500);
   }
