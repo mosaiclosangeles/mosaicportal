@@ -1430,6 +1430,19 @@ const mosaicAuthStorage={
   }
 };
 const sb=(typeof supabase!=="undefined")?supabase.createClient(SUPABASE_URL,SUPABASE_ANON,{auth:{storage:mosaicAuthStorage}}):null;
+/* Supabase only writes to storage when the session changes, so anyone who
+   signed in before the shared cookie existed still has their session in
+   localStorage only — and the embedded apps, which read the cookie, would
+   show their own login. Copy it across on load so one sign-in really is one
+   sign-in. */
+function primeSharedSession(session){
+  if(!AUTH_COOKIE_OK||!session)return;
+  const ref=SUPABASE_URL.replace(/^https?:\/\//,'').split('.')[0];
+  const key='sb-'+ref+'-auth-token';
+  if(_cookieGet(key))return;
+  let raw=null;try{raw=localStorage.getItem(key);}catch(e){}
+  try{mosaicAuthStorage.setItem(key,raw||JSON.stringify(session));}catch(e){}
+}
 const ME={email:null,role:null,name:null};
 /* Metrics roles → prototype role presets (which sections the rail shows).
    The Settings role switcher still works on top of this default. */
@@ -1616,6 +1629,7 @@ const PATH_SECTION={"/":"home","/home":"home","/calendar":"calendar","/comms":"c
 async function enterPortal(){
   const {data:{user}}=await sb.auth.getUser();
   if(!user)return;
+  try{const {data:s}=await sb.auth.getSession();primeSharedSession(s&&s.session);}catch(e){}
   ME.email=user.email;
   const {data:prof}=await sb.from("profiles").select("role,display_name,full_name,campus_id,avatar_url,app_access,campus_ids").eq("id",user.id).single();
   if(prof){ME.role=prof.role;ME.name=prof.display_name||prof.full_name;ME.campus_id=prof.campus_id;ME.avatar_url=prof.avatar_url;ME.app_access=prof.app_access;ME.campus_ids=prof.campus_ids;}
@@ -1637,7 +1651,7 @@ async function enterPortal(){
   if(recovering)gateMode("recover");
   if(inviting)gateNote("Welcome to the Mosaic Portal! Choose a password to finish setting up your account.","ok");
   sb.auth.onAuthStateChange(event=>{if(event==="PASSWORD_RECOVERY")gateMode("recover");});
-  sb.auth.getSession().then(({data})=>{if(data.session&&!recovering)enterPortal();});
+  sb.auth.getSession().then(({data})=>{if(data.session){primeSharedSession(data.session);if(!recovering)enterPortal();}});
 })();
 </script>
 </body>
