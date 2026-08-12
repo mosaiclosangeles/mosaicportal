@@ -1,0 +1,302 @@
+/* ==========================================================================
+   Mosaic Design Tokens · v1 · July 2026
+   One stylesheet, three apps: Portal, Planning Board, Comms Dashboard.
+
+   HOW TO USE
+   1. Drop this file into each app and link it BEFORE the app's own CSS.
+   2. Replace hardcoded colours, fonts and radii in the app with these vars.
+   3. Every class here is prefixed `m-` so it will not collide with existing
+      styles. Retrofit incrementally — a page at a time is fine.
+
+   THE ONE RULE
+   Hue encodes TYPE. Fill encodes STATUS. Colour never encodes navigation,
+   scope, or priority. Scope uses weight and size; priority uses position.
+   ========================================================================== */
+
+:root{
+  /* ---------- neutrals ---------- */
+  --m-surface:#ffffff;        /* content background */
+  --m-rail:#f3f3f2;           /* left navigation panel */
+  --m-rail-active:#e6e6e4;    /* selected nav row */
+  --m-fill:#f2f2f1;           /* segmented controls, tracks, hover */
+  --m-hairline:#e6e6e5;       /* panel borders */
+  --m-separator:#f0f0f0;      /* list row dividers */
+  --m-grid:#d9d9d6;           /* calendar and table grid lines — deliberately darker */
+  --m-text:#000000;
+  --m-text-2:#8a8a8a;         /* labels, metadata */
+  --m-text-3:#b5b5b3;         /* counts, placeholders */
+
+  /* ---------- type colours (the only three on a calendar) ---------- */
+  --m-event:#4f7fd1;   --m-event-t:#e8f0fa;   --m-event-d:#2c4c85;   --m-event-s:#3f6cba;
+  --m-comms:#e8a33d;   --m-comms-t:#fdf3e3;   --m-comms-d:#8a5a12;   --m-comms-s:#b8791b;
+  --m-other:#9a9a92;   --m-other-t:#f0f0ed;   --m-other-d:#55554f;   --m-other-s:#6e6e67;
+
+  /* ---------- semantic ---------- */
+  --m-ok:#6ac5a7;      --m-ok-t:#e6f6f1;      --m-ok-d:#2f7a63;
+  --m-warn:#de6a45;    --m-warn-t:#fceee7;    --m-warn-d:#8f3c22;
+  --m-crit:#cf4b53;    --m-crit-t:#fbebec;    --m-crit-d:#8f2c32;
+
+  /* ---------- full palette (Asana) — for categories, goals, campaigns ---------- */
+  --m-red:#cf4b53;      --m-red-t:#fbebec;      --m-red-d:#8f2c32;      --m-red-s:#a63238;
+  --m-orange:#de6a45;   --m-orange-t:#fceee7;   --m-orange-d:#8f3c22;   --m-orange-s:#a8482a;
+  --m-amber:#e8a33d;    --m-amber-t:#fdf3e3;    --m-amber-d:#8a5a12;    --m-amber-s:#b8791b;
+  --m-lime:#a9c957;     --m-lime-t:#f2f7e5;     --m-lime-d:#5d7326;     --m-lime-s:#6f8a2f;
+  --m-green:#6ac5a7;    --m-green-t:#e6f6f1;    --m-green-d:#2f7a63;    --m-green-s:#2f8a70;
+  --m-blue:#4f7fd1;     --m-blue-t:#e8f0fa;     --m-blue-d:#2c4c85;     --m-blue-s:#3f6cba;
+  --m-indigo:#6f6ede;   --m-indigo-t:#ecebfc;   --m-indigo-d:#3f3e9c;   --m-indigo-s:#4f4ec4;
+  --m-purple:#9a63d4;   --m-purple-t:#f0e9fb;   --m-purple-d:#5f3691;   --m-purple-s:#7a44b4;
+  --m-magenta:#ca5391;  --m-magenta-t:#f9eaf1;  --m-magenta-d:#8c2f5e;  --m-magenta-s:#a63a72;
+  --m-neutral:#9a9a92;  --m-neutral-t:#f0f0ed;  --m-neutral-d:#55554f;  --m-neutral-s:#6e6e67;
+
+  /* ---------- type ---------- */
+  --m-font:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --m-tracking:-0.011em;      /* body */
+  --m-tracking-lg:-0.03em;    /* page titles */
+
+  /* ---------- shape ---------- */
+  --m-r-ctrl:7px;   /* chips, segmented control, nav rows */
+  --m-r-btn:8px;    /* buttons */
+  --m-r-card:10px;  /* cards, banners */
+  --m-r-frame:12px; /* outer panels */
+  --m-r-chip:4px;   /* calendar event chips */
+
+  /* ---------- spacing (4px base) ---------- */
+  --m-s1:4px; --m-s2:8px; --m-s3:12px; --m-s4:16px; --m-s5:20px; --m-s6:26px; --m-s7:32px;
+}
+
+/* ==========================================================================
+   BASE
+   ========================================================================== */
+.m-app{font-family:var(--m-font);letter-spacing:var(--m-tracking);color:var(--m-text);
+  font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased}
+
+.m-h1{font-size:30px;font-weight:600;letter-spacing:var(--m-tracking-lg);line-height:1.1;margin:0}
+.m-h2{font-size:16px;font-weight:600;letter-spacing:-0.015em;margin:0 0 var(--m-s2)}
+.m-sub{font-size:14px;color:var(--m-text-2);margin-top:5px}
+.m-eyebrow{font-size:10.5px;letter-spacing:.07em;color:var(--m-text-2);margin:0 0 var(--m-s2)}
+.m-meta{font-size:12px;color:var(--m-text-2)}
+.m-stat{font-size:26px;font-weight:600;letter-spacing:-0.02em;line-height:1.05}
+
+/* ==========================================================================
+   BUTTONS
+   ========================================================================== */
+.m-btn{font:inherit;letter-spacing:inherit;font-size:13px;font-weight:500;padding:9px 16px;
+  border-radius:var(--m-r-btn);border:0;cursor:pointer;background:var(--m-event);color:#fff}
+.m-btn:hover{filter:brightness(.94)}
+.m-btn--ghost{background:transparent;color:var(--m-text);border:1px solid var(--m-hairline);font-weight:400;padding:8px 14px}
+.m-btn--ghost:hover{background:var(--m-fill);filter:none}
+
+/* ==========================================================================
+   CHIPS / FILTERS
+   ========================================================================== */
+.m-chip{font-size:12px;padding:5px 10px;border-radius:var(--m-r-ctrl);border:1px solid var(--m-hairline);
+  background:var(--m-surface);color:#5c5c5c;cursor:pointer;display:inline-flex;align-items:center;gap:7px}
+.m-chip:hover{background:#fafafa}
+.m-chip.is-on{background:var(--m-fill);border-color:#dedede;color:var(--m-text);font-weight:500}
+.m-chip.is-off{opacity:.45}
+.m-swatch{width:7px;height:7px;border-radius:2px;flex:none}
+
+/* ==========================================================================
+   SEGMENTED CONTROL
+   ========================================================================== */
+.m-seg{display:inline-flex;background:var(--m-fill);border-radius:var(--m-r-ctrl);padding:2px}
+.m-seg button{font:inherit;font-size:12px;padding:5px 11px;border:0;background:none;border-radius:6px;
+  color:#5c5c5c;cursor:pointer}
+.m-seg button.is-on{background:var(--m-surface);color:var(--m-text);font-weight:500;box-shadow:0 0 0 1px var(--m-hairline)}
+
+/* ==========================================================================
+   NAVIGATION
+   ========================================================================== */
+.m-nav{display:flex;flex-direction:column;gap:1px}
+.m-nav-group{font-size:9.5px;letter-spacing:.09em;color:#a3a3a0;padding:14px 9px 4px}
+.m-nav-item{display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:var(--m-r-ctrl);
+  font-size:13.5px;color:#5c5c5c;background:none;border:0;width:100%;text-align:left;cursor:pointer}
+.m-nav-item:hover{background:#eaeae8}
+.m-nav-item.is-on{background:var(--m-rail-active);color:var(--m-text);font-weight:500}
+.m-nav-tile{width:26px;height:26px;border-radius:var(--m-r-ctrl);display:flex;align-items:center;
+  justify-content:center;flex:none}
+.m-nav-tile svg{width:15px;height:15px}
+.m-badge{font-size:9px;font-weight:500;letter-spacing:.06em;color:#4a4a4a;background:#e2e2e0;
+  border-radius:4px;padding:2px 5px;margin-left:auto}
+.m-count{margin-left:auto;font-size:12px;color:var(--m-text-3)}
+
+/* ==========================================================================
+   CARDS AND ROWS
+   ========================================================================== */
+.m-card{border:1px solid var(--m-hairline);border-radius:var(--m-r-card);padding:13px 15px;background:var(--m-surface)}
+.m-card--tinted{border-color:transparent}   /* pair with a -t background */
+
+.m-row{display:flex;align-items:flex-start;gap:10px;padding:9px 0;
+  border-bottom:1px solid var(--m-separator);font-size:14px;text-align:left;width:100%}
+.m-row:last-child{border-bottom:0}
+.m-row-when{font-size:13px;color:var(--m-text-2);min-width:48px;flex:none;padding-top:1px}
+.m-row-text{flex:1;min-width:0;display:block}
+.m-row-name{display:block}
+.m-row-meta{display:block;font-size:12px;color:var(--m-text-2);margin-top:3px}
+/* NB: the name and meta must be block. Inline spans run them together on one line. */
+
+.m-kv{display:flex;justify-content:space-between;gap:14px;font-size:13.5px;padding:8px 0;
+  border-bottom:1px solid var(--m-separator)}
+.m-kv-k{color:var(--m-text-2);flex:none}
+
+/* ==========================================================================
+   STATUS — five treatments, applied on top of a TYPE hue
+   Set --h (hue), --t (tint), --d (deep) per element, then add a state class.
+   ========================================================================== */
+.m-item{font-size:11px;line-height:1.28;padding:3px 6px;border-radius:var(--m-r-chip);
+  border-left:2.5px solid var(--h);background:var(--t);color:var(--d);
+  display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.m-item--draft{background:#fcfcfb;color:var(--d);opacity:.8}                    /* not started, in progress */
+.m-item--scheduled{background:var(--t);color:var(--d)}                          /* scheduled, approved, on track */
+.m-item--done{background:var(--s);border-left-color:var(--s);color:#fff}        /* sent, complete */
+.m-item--attention{background:var(--m-surface);color:var(--d);
+  border-top:1px dashed var(--h);border-right:1px dashed var(--h);border-bottom:1px dashed var(--h)}
+.m-item--critical{background:var(--m-crit-t);color:var(--m-crit-d);border-left-color:var(--m-crit)}
+
+.m-tag{font-size:10.5px;padding:2px 8px;border-radius:5px;background:var(--m-fill);
+  color:#4a4a4a;display:inline-block;white-space:nowrap}
+.m-tag--ok{background:var(--m-ok-t);color:var(--m-ok-d)}
+.m-tag--warn{background:var(--m-warn-t);color:var(--m-warn-d)}
+.m-tag--crit{background:var(--m-crit-t);color:var(--m-crit-d)}
+
+/* ==========================================================================
+   PROGRESS + PACE
+   ========================================================================== */
+.m-track{height:6px;border-radius:3px;background:var(--m-fill);position:relative}
+.m-track-fill{position:absolute;left:0;top:0;bottom:0;border-radius:3px;background:var(--m-event)}
+.m-track-pace{position:absolute;top:-3px;width:1.5px;height:12px;background:var(--m-text)}
+/* The pace marker is what makes a percentage meaningful. Always include it
+   on anything measured against a time period. */
+
+/* ==========================================================================
+   CALENDAR
+   ========================================================================== */
+.m-cal-head{display:grid;grid-template-columns:repeat(7,minmax(0,1fr))}
+.m-cal-head > div{font-size:11.5px;color:var(--m-text-2);padding:0 0 7px 4px}
+.m-cal-body{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));border-top:1px solid var(--m-grid)}
+.m-cal-cell{border-left:1px solid var(--m-grid);padding:5px 4px 8px;min-height:120px}
+.m-cal-cell:first-child{border-left:0}
+.m-cal-cell--sunday{background:#fcfcfc}
+.m-cal-num{font-size:11.5px;color:var(--m-text-2);margin-bottom:4px}
+.m-cal-today{background:var(--m-text);color:#fff;border-radius:50%;width:19px;height:19px;
+  display:inline-flex;align-items:center;justify-content:center;font-size:10.5px}
+.m-cal-more{font-size:10px;color:var(--m-text-3);padding-left:5px;background:none;border:0;cursor:pointer}
+/* Month view truncates and offers "+N more". Do not try to fit everything in a cell. */
+
+.m-cal-bar{font-size:10px;padding:2px 7px;border-radius:var(--m-r-chip);margin:0 3px 4px;
+  background:var(--t);color:var(--d);overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+/* Multi-day campaigns span cells as ONE bar. Square off the ends that continue
+   outside the visible window so a cut-off bar is not mistaken for a finished one. */
+.m-cal-bar--continues-left{border-top-left-radius:0;border-bottom-left-radius:0}
+.m-cal-bar--continues-right{border-top-right-radius:0;border-bottom-right-radius:0}
+
+/* ==========================================================================
+   TIMELINE
+   ========================================================================== */
+.m-tl-row{display:flex;align-items:center;border-top:1px solid var(--m-grid);min-height:38px}
+.m-tl-label{width:118px;flex:none;font-size:12.5px;padding-right:10px}
+.m-tl-track{flex:1;position:relative;height:38px}
+.m-tl-bar{position:absolute;top:9px;height:20px;border-radius:5px;font-size:10.5px;padding:0 7px;
+  display:flex;align-items:center;white-space:nowrap;overflow:hidden;color:#fff}
+.m-tl-now{position:absolute;top:0;bottom:0;width:1px;background:var(--m-text);opacity:.35}
+/* Scope (Level 1/2/3) is expressed with label weight, never colour. */
+.m-tl-label--l1{font-weight:500}
+.m-tl-label--l2{font-weight:400}
+.m-tl-label--l3{font-weight:400;color:var(--m-text-2)}
+
+/* ==========================================================================
+   BANNERS AND EMPTY STATES
+   ========================================================================== */
+.m-banner{border:1px solid var(--m-hairline);background:#fafafa;border-radius:var(--m-r-card);
+  padding:12px 14px;font-size:13px;color:#5c5c5c;display:flex;gap:10px;align-items:flex-start}
+.m-empty{font-size:13px;color:var(--m-text-2);background:var(--m-fill);
+  border-radius:var(--m-r-card);padding:12px 14px}
+/* Empty states say what is missing and how to fix it. Never render a blank panel. */
+
+/* ==========================================================================
+   DETAIL VIEW PATTERNS
+   Three ways to order a detail view. Pick one per audience, do not mix.
+     by CATEGORY  — reference. Boxes: description, details, related, numbers.
+     by TIME      — run-up. One dated stream. Shows dependencies.
+     by URGENCY   — triage. Blockers first, everything else collapsed.
+   ========================================================================== */
+
+/* ---------- countdown header ---------- */
+.m-countdown{text-align:right;flex:none}
+.m-countdown-n{font-size:34px;font-weight:600;letter-spacing:-.03em;line-height:1;color:var(--m-event)}
+.m-countdown-l{font-size:11.5px;color:var(--m-text-2);margin-top:3px}
+
+/* ---------- inline detail chips (replaces a key/value table when space is tight) ---------- */
+.m-chipset{display:flex;flex-wrap:wrap;gap:5px}
+.m-chipset span{font-size:11px;padding:3px 9px;border-radius:6px;background:var(--m-fill);color:#4a4a4a}
+
+/* ---------- readiness strip ---------- */
+.m-readiness{display:flex;gap:3px;height:5px}
+.m-readiness i{flex:1;border-radius:2px;background:#eceae7}
+.m-readiness i.is-done{background:var(--m-event-s)}
+.m-readiness i.is-blocked{background:var(--m-crit)}
+/* One segment per item of work. Reads as "how much of this is handled"
+   at a glance, without a percentage anybody has to interpret. */
+
+/* ---------- run-up timeline (ordered by TIME) ---------- */
+.m-runway{display:grid;grid-template-columns:54px 16px minmax(0,1fr);align-items:start}
+.m-runway-date{font-size:11.5px;color:var(--m-text-2);padding:11px 11px 0 0;text-align:right}
+.m-runway-date.is-today{color:var(--m-event);font-weight:500}
+.m-runway-spine{position:relative;height:100%;min-height:42px}
+.m-runway-line{position:absolute;left:7px;top:0;bottom:0;width:1px;background:var(--m-hairline)}
+.m-runway-node{position:absolute;left:2.5px;top:14px;width:10px;height:10px;border-radius:50%;
+  background:var(--m-surface);border:2px solid #c9c9c6}
+.m-runway-node--type{border-color:var(--h)}          /* set --h to the type hue */
+.m-runway-node--critical{background:var(--m-crit);border-color:var(--m-crit)}
+.m-runway-body{padding:9px 0 9px 4px;border-bottom:1px solid var(--m-separator);display:flex;gap:10px}
+.m-runway-body > div{flex:1;min-width:0}
+/* The terminal node is the event itself — larger, filled, and the line stops there. */
+.m-runway-node--terminal{left:0;width:15px;height:15px;background:var(--m-event);border-color:var(--m-event)}
+.m-runway-line--stub{bottom:auto;height:16px}
+.m-runway-terminal{background:var(--m-event-t);border-radius:9px;padding:12px 14px;margin:11px 0 0 4px}
+.m-runway-terminal-h{font-size:14px;font-weight:600;color:var(--m-event-d)}
+.m-runway-terminal-p{font-size:12px;color:var(--m-event-d);opacity:.8;margin-top:4px}
+
+/* ---------- blocker cards (ordered by URGENCY) ---------- */
+.m-blocker{border-radius:var(--m-r-card);padding:13px 15px;display:flex;gap:12px;
+  align-items:flex-start;margin-bottom:var(--m-s2);background:var(--m-crit-t)}
+.m-blocker-h{font-size:14px;font-weight:500;color:var(--m-crit-d)}
+.m-blocker-p{font-size:12.5px;color:var(--m-crit-d);opacity:.85;margin-top:3px}
+.m-blocker--warn{background:var(--m-warn-t)}
+.m-blocker--warn .m-blocker-h,.m-blocker--warn .m-blocker-p{color:var(--m-warn-d)}
+.m-blocker-action{font:inherit;font-size:12px;font-weight:500;padding:6px 12px;border-radius:var(--m-r-ctrl);
+  background:var(--m-surface);border:1px solid var(--m-grid);flex:none;cursor:pointer;color:inherit}
+/* A blocker names the person and what it holds up. "Waiting" alone is not a blocker. */
+
+.m-verdict{font-size:10.5px;font-weight:500;letter-spacing:.04em;padding:3px 9px;
+  border-radius:5px;flex:none;background:var(--m-crit-t);color:var(--m-crit-d)}
+.m-verdict--ok{background:var(--m-ok-t);color:var(--m-ok-d)}
+.m-verdict--warn{background:var(--m-warn-t);color:var(--m-warn-d)}
+
+/* ---------- accordion sections ---------- */
+.m-accordion{display:flex;align-items:center;gap:10px;padding:13px 2px;
+  border-bottom:1px solid var(--m-hairline);font-size:14px;width:100%;background:none;
+  border-left:0;border-right:0;border-top:0;text-align:left;cursor:pointer}
+.m-accordion-label{font-weight:500}
+.m-accordion-count{margin-left:auto;font-size:12px;color:var(--m-text-2)}
+.m-accordion-chev{color:var(--m-text-3);font-size:15px}
+.m-accordion-panel{padding:4px 2px 14px;border-bottom:1px solid var(--m-hairline)}
+/* The count in a collapsed header must carry the useful part: "5 · 1 waiting",
+   not just "5". Otherwise nobody knows whether it is worth expanding. */
+
+
+.m-app :focus-visible{outline:2px solid var(--m-event);outline-offset:2px;border-radius:4px}
+
+/* ==========================================================================
+   RESPONSIVE — the rail becomes a bottom bar, the week becomes a list
+   ========================================================================== */
+@media (max-width:760px){
+  .m-rail{position:fixed;bottom:0;left:0;right:0;top:auto;width:100%;height:auto;
+    flex-direction:row;border-right:0;border-top:1px solid var(--m-hairline);
+    padding:6px 4px;z-index:3;overflow-x:auto}
+  .m-nav{flex-direction:row;gap:2px;width:100%}
+  .m-nav-item{flex-direction:column;gap:3px;font-size:10px;padding:6px 4px;justify-content:center;text-align:center}
+  .m-nav-group,.m-badge,.m-count{display:none}
+  .m-h1{font-size:24px}
+}

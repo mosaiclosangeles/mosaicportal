@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mosaic Design System — style guide</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --surface:#fff; --rail:#f3f3f2; --rail-active:#e6e6e4; --fill:#f2f2f1;
+  --hairline:#e6e6e5; --separator:#f0f0f0; --grid:#d9d9d6;
+  --text:#000; --text2:#8a8a8a; --text3:#b5b5b3;
+  --event:#4f7fd1; --event-t:#e8f0fa; --event-d:#2c4c85; --event-s:#3f6cba;
+  --comms:#e8a33d; --comms-t:#fdf3e3; --comms-d:#8a5a12; --comms-s:#b8791b;
+  --other:#9a9a92; --other-t:#f0f0ed; --other-d:#55554f; --other-s:#6e6e67;
+  --ok:#6ac5a7; --ok-t:#e6f6f1; --ok-d:#2f7a63;
+  --warn:#de6a45; --warn-t:#fceee7; --warn-d:#8f3c22;
+  --crit:#cf4b53; --crit-t:#fbebec; --crit-d:#8f2c32;
+}
+*{box-sizing:border-box}
+body{margin:0;padding:48px 24px 80px;background:#fafaf9;font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;
+  letter-spacing:-.011em;color:#000;font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+.wrap{max-width:880px;margin:0 auto}
+.doc-title{font-size:36px;font-weight:600;letter-spacing:-.035em;line-height:1.1;margin:0}
+.doc-sub{font-size:15px;color:var(--text2);margin-top:8px;max-width:60ch}
+section{background:#fff;border:1px solid var(--hairline);border-radius:12px;padding:26px 28px;margin-top:20px}
+h2{font-size:19px;font-weight:600;letter-spacing:-.02em;margin:0 0 6px}
+h3{font-size:13px;font-weight:600;margin:26px 0 10px;letter-spacing:-.01em}
+h3:first-of-type{margin-top:18px}
+.lead{font-size:13.5px;color:var(--text2);margin:0 0 4px;max-width:64ch}
+.rule{background:#fbfbfa;border-left:3px solid var(--event);border-radius:0 8px 8px 0;
+  padding:12px 15px;font-size:13.5px;margin:14px 0}
+.rule b{font-weight:500}
+table{width:100%;border-collapse:collapse;font-size:13px;margin-top:10px}
+th{text-align:left;font-size:10.5px;letter-spacing:.07em;color:var(--text2);font-weight:500;
+  padding:0 10px 7px 0;border-bottom:1px solid var(--hairline)}
+td{padding:8px 10px 8px 0;border-bottom:1px solid var(--separator);vertical-align:top}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;
+  background:var(--fill);padding:1px 5px;border-radius:4px}
+pre{background:#fbfbfa;border:1px solid var(--hairline);border-radius:8px;padding:14px 16px;
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;line-height:1.6;
+  overflow-x:auto;margin:12px 0 0}
+.sw-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:10px;margin-top:12px}
+.sw{border-radius:8px;overflow:hidden;border:1px solid var(--hairline)}
+.sw-chip{height:44px}
+.sw-meta{padding:6px 8px;font-size:10.5px;color:var(--text2);background:#fff}
+.sw-meta b{display:block;color:#000;font-weight:500;font-size:11.5px}
+.demo{border:1px solid var(--hairline);border-radius:10px;padding:18px;background:#fff;margin-top:12px}
+.flexy{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.btn{font:inherit;font-size:13px;font-weight:500;padding:9px 16px;border-radius:8px;border:0;
+  background:var(--event);color:#fff;cursor:pointer}
+.btn.ghost{background:transparent;color:#000;border:1px solid var(--hairline);font-weight:400;padding:8px 14px}
+.chip{font-size:12px;padding:5px 10px;border-radius:7px;border:1px solid var(--hairline);
+  background:#fff;color:#5c5c5c;display:inline-flex;align-items:center;gap:7px}
+.chip.on{background:var(--fill);border-color:#dedede;color:#000;font-weight:500}
+.chip.off{opacity:.45}
+.sq{width:7px;height:7px;border-radius:2px;flex:none}
+.seg{display:inline-flex;background:var(--fill);border-radius:7px;padding:2px}
+.seg span{font-size:12px;padding:5px 11px;border-radius:6px;color:#5c5c5c}
+.seg span.on{background:#fff;color:#000;font-weight:500;box-shadow:0 0 0 1px var(--hairline)}
+.item{font-size:11px;line-height:1.28;padding:3px 6px;border-radius:4px;border-left:2.5px solid;
+  display:inline-block;min-width:118px;margin:0 6px 6px 0}
+.tag{font-size:10.5px;padding:2px 8px;border-radius:5px;background:var(--fill);color:#4a4a4a;display:inline-block}
+.track{height:6px;border-radius:3px;background:var(--fill);position:relative;margin-top:12px}
+.track i{position:absolute;left:0;top:0;bottom:0;border-radius:3px;background:var(--event)}
+.track b{position:absolute;top:-3px;width:1.5px;height:12px;background:#000}
+.rowdemo{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid var(--separator)}
+.rowdemo:last-child{border-bottom:0}
+.rowdemo .when{font-size:13px;color:var(--text2);min-width:48px;flex:none;padding-top:1px}
+.rowdemo .txt{flex:1;min-width:0}
+.rowdemo .nm{display:block}
+.rowdemo .mt{display:block;font-size:12px;color:var(--text2);margin-top:3px}
+.cal{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-top:1px solid var(--grid);margin-top:12px}
+.cal > div{border-left:1px solid var(--grid);padding:5px 4px 8px;min-height:82px}
+.cal > div:first-child{border-left:0}
+.cal .n{font-size:11.5px;color:var(--text2);margin-bottom:4px}
+.type-head{display:flex;align-items:center;gap:9px;font-size:13.5px;margin-bottom:4px}
+.tile{width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;flex:none;
+  font-size:12px;font-weight:600}
+.dont{border-left-color:var(--crit)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media(max-width:720px){.two{grid-template-columns:1fr}body{padding:28px 14px 60px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="doc-title">Mosaic Design System</div>
+<div class="doc-sub">One visual language across the Portal, the Planning Board, and the Comms Dashboard. Tokens live in <code>mosaic-tokens.css</code> — link that file in each app before its own stylesheet, then replace hardcoded values as you go.</div>
+
+<section>
+  <h2>The one rule</h2>
+  <p class="lead">If you remember nothing else from this document, remember this.</p>
+  <div class="rule"><b>Hue encodes type. Fill encodes status.</b> Colour never encodes navigation, scope, or priority. Scope uses weight and size. Priority uses position.</div>
+  <p class="lead">This is why the three apps currently look unrelated: each invented its own colour meaning. Once hue means the same thing everywhere, a purple chip in the comms dashboard and a purple chip in the portal are the same kind of object, and the apps read as one product even before the layouts match.</p>
+</section>
+
+<section>
+  <h2>Type colours</h2>
+  <p class="lead">Three, and only three, on any calendar. They sit far apart on the colour wheel on purpose — earlier drafts used blue, purple and slate, which were nearly indistinguishable at chip size.</p>
+
+  <div class="sw-grid">
+    <div class="sw"><div class="sw-chip" style="background:#4f7fd1"></div><div class="sw-meta"><b>Events</b>#4f7fd1</div></div>
+    <div class="sw"><div class="sw-chip" style="background:#e8f0fa"></div><div class="sw-meta"><b>tint</b>#e8f0fa</div></div>
+    <div class="sw"><div class="sw-chip" style="background:#3f6cba"></div><div class="sw-meta"><b>solid</b>#3f6cba</div></div>
+    <div class="sw"><div class="sw-chip" style="background:#2c4c85"></div><div class="sw-meta"><b>deep text</b>#2c4c85</div></div>
+  </div>
+  <div class="sw-grid">
+    <div class="sw"><div class="sw-chip" style="background:#e8a33d"></div><div class="sw-meta"><b>Comms</b>#e8a33d</div></div>
+    <div class="sw"><div class="sw-chip" style="background:#fdf3e3"></div><div class="sw-meta"><b>tint</b>#fdf3e3</div></div>
+    <div class="sw"><div class="sw-chip" style="background:#b8791b"></div><div class="sw-meta"><b>solid</b>#b8791b</div></div>
+    <div class="sw"><div class="sw-chip" style="background:#8a5a12"></div><div class="sw-meta"><b>deep text</b>#8a5a12</div></div>
+  </div>
+  <div class="sw-grid">
+    <div class="sw"><div class="sw-chip" style="background:#9a9a92"></div><div class="sw-meta"><b>Other</b>#9a9a92</div></div>
+    <div class="sw"><div class="sw-chip" style="background:#f0f0ed"></div><div class="sw-meta"><b>tint</b>#f0f0ed</div></div>
+    <div class="sw"><div class="sw-chip" style="background:#6e6e67"></div><div class="sw-meta"><b>solid</b>#6e6e67</div></div>
+    <div class="sw"><div class="sw-chip" style="background:#55554f"></div><div class="sw-meta"><b>deep text</b>#55554f</div></div>
+  </div>
+
+  <div class="rule">Each type needs <b>four</b> values, not one. The mid-tone hue is for borders and dots; the tint is for scheduled states; the solid is for done states, because the mid-tone fails contrast under white text at 10–11px; the deep is for text on tint.</div>
+</section>
+
+<section>
+  <h2>Status treatments</h2>
+  <p class="lead">Five states, applied on top of whichever type hue the item carries. Shown here on the comms amber — the same treatments apply to every hue.</p>
+  <div class="demo">
+    <span class="item" style="border-left-color:#e8a33d;background:#fcfcfb;color:#8a5a12;opacity:.8">Drafting</span>
+    <span class="item" style="border-left-color:#e8a33d;background:#fdf3e3;color:#8a5a12">Scheduled</span>
+    <span class="item" style="border-left-color:#b8791b;background:#b8791b;color:#fff">Sent</span>
+    <span class="item" style="border-left-color:#e8a33d;background:#fff;color:#8a5a12;border-top:1px dashed #e8a33d;border-right:1px dashed #e8a33d;border-bottom:1px dashed #e8a33d">Waiting on someone</span>
+    <span class="item" style="border-left-color:#cf4b53;background:#fbebec;color:#8f2c32">Off track</span>
+  </div>
+  <div class="rule">The dashed outline means <b>a person is blocking this</b>. It is the most useful signal on any of these screens, because it is the only state a human can clear. Reserve it for that and nothing else.</div>
+</section>
+
+<section>
+  <h2>Mapping your existing vocabularies</h2>
+  <p class="lead">Neither app has to change its data. Both keep their own status names — the mapping happens at render time.</p>
+
+  <h3>Comms Dashboard · 7 statuses → 5 treatments</h3>
+  <table>
+    <tr><th>Current status</th><th>Treatment</th></tr>
+    <tr><td>Incomplete</td><td>Drafting</td></tr>
+    <tr><td>In progress</td><td>Drafting</td></tr>
+    <tr><td>Proposed</td><td>Drafting</td></tr>
+    <tr><td>Waiting for approval</td><td><b>Waiting</b> — dashed</td></tr>
+    <tr><td>Approved</td><td>Scheduled</td></tr>
+    <tr><td>Scheduled</td><td>Scheduled</td></tr>
+    <tr><td>Sent</td><td>Done — solid</td></tr>
+  </table>
+
+  <h3>Planning Board · 4 statuses → 5 treatments</h3>
+  <table>
+    <tr><th>Current status</th><th>Treatment</th></tr>
+    <tr><td>Not started</td><td>Drafting</td></tr>
+    <tr><td>On track</td><td>Scheduled</td></tr>
+    <tr><td>At risk</td><td><b>Waiting</b> — dashed</td></tr>
+    <tr><td>Off track</td><td><b>Off track</b> — red</td></tr>
+    <tr><td>Complete</td><td>Done — solid</td></tr>
+  </table>
+
+  <h3>Planning Board · scope and phase</h3>
+  <table>
+    <tr><th>Attribute</th><th>Encoding</th><th>Not</th></tr>
+    <tr><td>Level 1 / 2 / 3</td><td>Label weight and bar height</td><td>Colour</td></tr>
+    <tr><td>Building / Pre-launch / Execution / Close</td><td>Plain text label</td><td>Colour</td></tr>
+    <tr><td>Campus</td><td>Filter, plus a text label</td><td>Colour, or split rows</td></tr>
+    <tr><td>Owner</td><td>Name, or initials in a neutral circle</td><td>Per-person colours</td></tr>
+  </table>
+  <div class="rule">Scope, phase, campus and owner all want to be colours and none of them can be. There are only so many distinguishable hues, and type has already spent three of them. Everything else uses weight, position, or words.</div>
+</section>
+
+<section>
+  <h2>Neutrals</h2>
+  <p class="lead">Light and very slightly warm — blue is the lowest channel in every one, which is what keeps them from reading cold.</p>
+  <table>
+    <tr><th>Token</th><th>Hex</th><th>Use</th></tr>
+    <tr><td><code>--m-surface</code></td><td>#ffffff</td><td>Content background</td></tr>
+    <tr><td><code>--m-rail</code></td><td>#f3f3f2</td><td>Left navigation panel</td></tr>
+    <tr><td><code>--m-rail-active</code></td><td>#e6e6e4</td><td>Selected nav row</td></tr>
+    <tr><td><code>--m-fill</code></td><td>#f2f2f1</td><td>Segmented controls, tracks, hover</td></tr>
+    <tr><td><code>--m-hairline</code></td><td>#e6e6e5</td><td>Panel borders, card borders</td></tr>
+    <tr><td><code>--m-separator</code></td><td>#f0f0f0</td><td>List row dividers</td></tr>
+    <tr><td><code>--m-grid</code></td><td>#d9d9d6</td><td>Calendar and table grid lines</td></tr>
+    <tr><td><code>--m-text</code></td><td>#000000</td><td>Headings, values, row text</td></tr>
+    <tr><td><code>--m-text-2</code></td><td>#8a8a8a</td><td>Labels, metadata</td></tr>
+    <tr><td><code>--m-text-3</code></td><td>#b5b5b3</td><td>Counts, placeholders</td></tr>
+  </table>
+  <div class="rule">Grid lines are a <b>separate, darker token</b> from list separators. Calendar structure needs to be visible; list rows do not, and darkening those makes a list look like a spreadsheet.</div>
+</section>
+
+<section>
+  <h2>Typography</h2>
+  <p class="lead">Inter, three weights. Negative tracking throughout — <code>-0.011em</code> on body, <code>-0.03em</code> on large titles.</p>
+  <table>
+    <tr><th>Role</th><th>Size</th><th>Weight</th><th>Sample</th></tr>
+    <tr><td>Page title</td><td>30px</td><td>600</td><td><span style="font-size:22px;font-weight:600;letter-spacing:-.03em">Calendar</span></td></tr>
+    <tr><td>Section title</td><td>16px</td><td>600</td><td><span style="font-size:16px;font-weight:600;letter-spacing:-.015em">This week</span></td></tr>
+    <tr><td>Stat value</td><td>26px</td><td>600</td><td><span style="font-size:24px;font-weight:600;letter-spacing:-.02em">412</span></td></tr>
+    <tr><td>Body / row</td><td>14px</td><td>400</td><td>Send Metcalf email for approval</td></tr>
+    <tr><td>Label / meta</td><td>12px</td><td>400</td><td><span style="font-size:12px;color:var(--text2)">Waiting on Carlos</span></td></tr>
+    <tr><td>Eyebrow</td><td>10.5px</td><td>400</td><td><span style="font-size:10.5px;letter-spacing:.07em;color:var(--text2)">DESCRIPTION</span></td></tr>
+    <tr><td>Badge</td><td>10px</td><td>500</td><td><span class="tag" style="letter-spacing:.06em">BETA</span></td></tr>
+  </table>
+  <div class="rule">Nothing below 10px, and nothing at 11px or under in a mid-tone colour. Small text plus low contrast is where all three apps currently lose legibility.</div>
+</section>
+
+<section>
+  <h2>Components</h2>
+
+  <h3>Buttons</h3>
+  <div class="demo flexy">
+    <button class="btn">New event</button>
+    <button class="btn ghost">Open board</button>
+    <button class="btn ghost">Today</button>
+  </div>
+
+  <h3>Filter chips</h3>
+  <div class="demo flexy">
+    <span class="chip on"><span class="sq" style="background:#4f7fd1"></span>Events</span>
+    <span class="chip on"><span class="sq" style="background:#e8a33d"></span>Comms</span>
+    <span class="chip off"><span class="sq" style="background:#9a9a92"></span>Other</span>
+    <span class="chip">All</span>
+  </div>
+
+  <h3>Segmented control</h3>
+  <div class="demo flexy">
+    <span class="seg"><span class="on">Week</span><span>Month</span></span>
+    <span class="seg"><span class="on">Timeline</span><span>Board</span><span>List</span></span>
+  </div>
+
+  <h3>Navigation rows</h3>
+  <div class="demo" style="max-width:230px;background:#f3f3f2">
+    <div style="font-size:9.5px;letter-spacing:.09em;color:#a3a3a0;padding:0 9px 4px">WORK</div>
+    <div class="type-head" style="padding:7px 8px;border-radius:7px;background:#e6e6e4;font-weight:500">
+      <span class="tile" style="background:#fdf3e3;color:#e8a33d">C</span>Communication</div>
+    <div class="type-head" style="padding:7px 8px;color:#5c5c5c">
+      <span class="tile" style="background:#fceee7;color:#de6a45">P</span>Planning
+      <span class="tag" style="margin-left:auto;font-size:9px;letter-spacing:.06em">BETA</span></div>
+  </div>
+
+  <h3>List rows</h3>
+  <div class="demo">
+    <div class="rowdemo"><span class="when">Aug 6</span><span class="txt"><span class="nm">Announcement email</span><span class="mt">Flodesk · all subscribers</span></span><span class="tag" style="background:#fbebec;color:#8f2c32">Waiting</span></div>
+    <div class="rowdemo"><span class="when">Aug 18</span><span class="txt"><span class="nm">Promo text</span><span class="mt">Clearstream</span></span><span class="tag">Drafting</span></div>
+  </div>
+  <div class="rule">The name and meta must be <b>block</b> elements. Inline spans run them together on one line — this was a real bug in the first prototype and it is the most likely thing to go wrong when retrofitting.</div>
+
+  <h3>Progress with pace marker</h3>
+  <div class="demo">
+    <div style="font-size:12px;color:var(--text2)">Next steps · 87 of 150</div>
+    <div class="track"><i style="width:58%"></i><b style="left:58%"></b></div>
+    <div style="font-size:11.5px;color:var(--ok-d);margin-top:8px">Exactly on pace</div>
+    <div style="font-size:12px;color:var(--text2);margin-top:18px">Facilities — LA · $40,900 of $54,000</div>
+    <div class="track"><i style="width:76%;background:var(--warn)"></i><b style="left:58%"></b></div>
+    <div style="font-size:11.5px;color:var(--warn-d);margin-top:8px">76% spent · ahead of pace</div>
+  </div>
+  <div class="rule">Any percentage measured against a time period needs the <b>pace marker</b>. 58% is neither good nor bad until you know how much of the year has gone.</div>
+
+  <h3>Calendar cells</h3>
+  <div class="demo">
+    <div class="cal">
+      <div style="background:#fcfcfc"><div class="n">2</div>
+        <span class="item" style="min-width:0;display:block;border-left-color:#4f7fd1;background:#e8f0fa;color:#2c4c85">Jeremiah</span>
+        <span class="item" style="min-width:0;display:block;border-left-color:#b8791b;background:#b8791b;color:#fff">Email sent</span>
+        <span style="font-size:10px;color:var(--text3);padding-left:5px">+2 more</span></div>
+      <div><div class="n">3</div><span class="item" style="min-width:0;display:block;border-left-color:#9a9a92;background:#f0f0ed;color:#55554f">Staff mtg</span></div>
+      <div><div class="n">4</div><span class="item" style="min-width:0;display:block;border-left-color:#e8a33d;background:#fdf3e3;color:#8a5a12">Text 4pm</span></div>
+      <div><div class="n"><span style="background:#000;color:#fff;border-radius:50%;width:19px;height:19px;display:inline-flex;align-items:center;justify-content:center;font-size:10.5px">6</span></div>
+        <span class="item" style="min-width:0;display:block;border-left-color:#e8a33d;background:#fff;color:#8a5a12;border-top:1px dashed #e8a33d;border-right:1px dashed #e8a33d;border-bottom:1px dashed #e8a33d">Metcalf</span></div>
+    </div>
+  </div>
+  <div class="rule">Month view <b>truncates and offers "+N more"</b>. Do not try to fit everything into a cell — that is what makes a dense month unreadable. Multi-day campaigns render as one bar spanning cells, with square ends where they continue past the visible window.</div>
+
+  <h3>Banners and empty states</h3>
+  <div class="demo">
+    <div style="border:1px solid var(--hairline);background:#fafafa;border-radius:10px;padding:12px 14px;font-size:13px;color:#5c5c5c;margin-bottom:10px">Read-only here. Creating and editing happens in the Comms dashboard, which stays the source of truth.</div>
+    <div style="font-size:13px;color:var(--text2);background:var(--fill);border-radius:10px;padding:12px 14px">No attendance recorded. <span style="color:var(--event)">Submit attendance</span></div>
+  </div>
+  <div class="rule">Empty states say what is missing <b>and how to fix it</b>. A blank panel reads as broken; a sentence with a link reads as designed — and in the attendance case, it quietly drives submissions.</div>
+</section>
+
+<section>
+  <h2>Detail views · three orderings</h2>
+  <p class="lead">Any detail view — a campaign, an event, a send, a project — can be ordered three ways. The content is identical; the ordering decides what it's for. Pick one per audience and don't mix.</p>
+
+  <table>
+    <tr><th>Ordering</th><th>Answers</th><th>Best for</th><th>Use in</th></tr>
+    <tr><td><b>By category</b></td><td>What is this?</td><td>Briefing someone, looking up a fact</td><td>Comms item detail, reference screens</td></tr>
+    <tr><td><b>By time</b></td><td>What happens between now and then?</td><td>Running a campaign</td><td>Portal event page, PM campaign detail</td></tr>
+    <tr><td><b>By urgency</b></td><td>Does anything need me?</td><td>Checking in, approving</td><td>Leadership view of the same page</td></tr>
+  </table>
+
+  <div class="rule">The important one is <b>by time</b>, and the reason is dependencies. Comms and tasks are usually two separate lists that both answer "what's left" — split apart, you can't see that a task due Aug 20 blocks a send scheduled for Aug 18. Merge them into one dated stream and the conflict is obvious. That's information a categorised layout structurally cannot show.</div>
+
+  <h3>Countdown header</h3>
+  <div class="demo" style="display:flex;justify-content:space-between;align-items:flex-start;gap:20px">
+    <div>
+      <div style="font-size:11px;letter-spacing:.06em;color:var(--text2);margin-bottom:6px">EVENTS · LEVEL 1 · PRE-LAUNCH</div>
+      <div style="font-size:22px;font-weight:600;letter-spacing:-.028em">Charles Metcalf</div>
+      <div style="font-size:13.5px;color:var(--text2);margin-top:4px">Sunday, August 23 · 9 + 11am</div>
+    </div>
+    <div style="text-align:right;flex:none">
+      <div style="font-size:30px;font-weight:600;letter-spacing:-.03em;line-height:1;color:var(--event)">24</div>
+      <div style="font-size:11.5px;color:var(--text2);margin-top:3px">days out</div>
+    </div>
+  </div>
+
+  <h3>Readiness strip</h3>
+  <div class="demo">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:9px">
+      <span style="font-size:13px;font-weight:600">Readiness</span>
+      <span style="font-size:12px;color:var(--text2)">2 of 10 done · <span style="color:var(--crit-d)">1 needs a person</span></span>
+    </div>
+    <div style="display:flex;gap:3px;height:5px">
+      <i style="flex:1;border-radius:2px;background:#3f6cba"></i>
+      <i style="flex:1;border-radius:2px;background:#3f6cba"></i>
+      <i style="flex:1;border-radius:2px;background:#cf4b53"></i>
+      <i style="flex:1;border-radius:2px;background:#eceae7"></i>
+      <i style="flex:1;border-radius:2px;background:#eceae7"></i>
+      <i style="flex:1;border-radius:2px;background:#eceae7"></i>
+      <i style="flex:1;border-radius:2px;background:#eceae7"></i>
+      <i style="flex:1;border-radius:2px;background:#eceae7"></i>
+      <i style="flex:1;border-radius:2px;background:#eceae7"></i>
+      <i style="flex:1;border-radius:2px;background:#eceae7"></i>
+    </div>
+  </div>
+  <div class="rule">One segment per item of work, not a percentage. <b>Ten segments with three coloured</b> is instantly legible; "30% ready" makes people do arithmetic to figure out what's left.</div>
+
+  <h3>Run-up timeline</h3>
+  <div class="demo">
+    <div style="display:grid;grid-template-columns:54px 16px minmax(0,1fr);align-items:start">
+      <div style="font-size:11.5px;color:var(--event);font-weight:500;padding:11px 11px 0 0;text-align:right">Today</div>
+      <div style="position:relative;min-height:42px">
+        <div style="position:absolute;left:7px;top:0;bottom:0;width:1px;background:var(--hairline)"></div>
+        <div style="position:absolute;left:2.5px;top:14px;width:10px;height:10px;border-radius:50%;background:#cf4b53;border:2px solid #cf4b53"></div>
+      </div>
+      <div style="padding:9px 0 9px 4px;border-bottom:1px solid var(--separator);display:flex;gap:10px">
+        <div style="flex:1"><div style="font-size:13.5px">Metcalf artwork</div><div style="font-size:11.5px;color:var(--crit-d);margin-top:3px">Saul · due today</div></div>
+        <span class="tag" style="background:var(--crit-t);color:var(--crit-d)">Overdue soon</span>
+      </div>
+
+      <div style="font-size:11.5px;color:var(--text2);padding:11px 11px 0 0;text-align:right">Aug 6</div>
+      <div style="position:relative;min-height:42px">
+        <div style="position:absolute;left:7px;top:0;bottom:0;width:1px;background:var(--hairline)"></div>
+        <div style="position:absolute;left:2.5px;top:14px;width:10px;height:10px;border-radius:50%;background:#fff;border:2px solid #e8a33d"></div>
+      </div>
+      <div style="padding:9px 0 9px 4px;border-bottom:1px solid var(--separator);display:flex;gap:10px">
+        <div style="flex:1"><div style="font-size:13.5px">Announcement email</div><div style="font-size:11.5px;color:var(--text2);margin-top:3px">Flodesk · all subscribers</div></div>
+        <span class="tag" style="background:#fff;color:var(--comms-d);border:1px dashed var(--comms)">Waiting · Carlos</span>
+      </div>
+
+      <div style="font-size:11.5px;color:#000;font-weight:500;padding:14px 11px 0 0;text-align:right">Aug 23</div>
+      <div style="position:relative;min-height:42px">
+        <div style="position:absolute;left:7px;top:0;height:16px;width:1px;background:var(--hairline)"></div>
+        <div style="position:absolute;left:0;top:14px;width:15px;height:15px;border-radius:50%;background:var(--event);border:2px solid var(--event)"></div>
+      </div>
+      <div style="background:var(--event-t);border-radius:9px;padding:12px 14px;margin:11px 0 0 4px">
+        <div style="font-size:14px;font-weight:600;color:var(--event-d)">Charles Metcalf · 9 + 11am</div>
+        <div style="font-size:12px;color:var(--event-d);opacity:.8;margin-top:4px">Sunday email and script go out the same morning · both not started</div>
+      </div>
+    </div>
+  </div>
+  <div class="rule">Node border colour follows the <b>type</b> hue, so you can tell a send from a task without a label. The event itself is the terminal node — filled, larger, and the spine stops there. Anything more than about three weeks out should collapse behind "+N earlier items", or a Christmas campaign becomes a very long scroll.</div>
+
+  <h3>Blocker cards</h3>
+  <div class="demo">
+    <div style="border-radius:10px;padding:13px 15px;display:flex;gap:12px;align-items:flex-start;margin-bottom:8px;background:var(--crit-t)">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:14px;font-weight:500;color:var(--crit-d)">Announcement email is waiting on Carlos</div>
+        <div style="font-size:12.5px;color:var(--crit-d);opacity:.85;margin-top:3px">Sent for approval 2 days ago · scheduled to go out Aug 6</div>
+      </div>
+      <button class="btn ghost" style="font-size:12px;padding:6px 12px;color:var(--crit-d);border-color:#e8b9bc">Nudge</button>
+    </div>
+    <div style="border-radius:10px;padding:13px 15px;display:flex;gap:12px;align-items:flex-start;background:var(--warn-t)">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:14px;font-weight:500;color:var(--warn-d)">Metcalf artwork is due today</div>
+        <div style="font-size:12.5px;color:var(--warn-d);opacity:.85;margin-top:3px">Saul · blocks the promo text on Aug 18</div>
+      </div>
+      <button class="btn ghost" style="font-size:12px;padding:6px 12px;color:var(--warn-d);border-color:#e8c4b3">Open</button>
+    </div>
+  </div>
+  <div class="rule">A blocker names <b>the person and what it holds up</b>. "Waiting for approval" is a status; "waiting on Carlos, blocks the Aug 6 send" is a blocker. Only the second one gets a card. And a card always carries an action — if there's nothing to do, it belongs in a list, not up here.</div>
+
+  <h3>Accordion sections</h3>
+  <div class="demo">
+    <div style="display:flex;align-items:center;gap:10px;padding:13px 2px;border-bottom:1px solid var(--hairline);font-size:14px">
+      <span style="font-weight:500">Comms</span><span style="margin-left:auto;font-size:12px;color:var(--text2)">5 · 1 waiting</span><span style="color:var(--text3)">⌄</span></div>
+    <div style="display:flex;align-items:center;gap:10px;padding:13px 2px;border-bottom:1px solid var(--hairline);font-size:14px">
+      <span style="font-weight:500">Subtasks</span><span style="margin-left:auto;font-size:12px;color:var(--text2)">6 · 2 done</span><span style="color:var(--text3)">›</span></div>
+    <div style="display:flex;align-items:center;gap:10px;padding:13px 2px;font-size:14px">
+      <span style="font-weight:500">Numbers</span><span style="margin-left:auto;font-size:12px;color:var(--text2)">Benchmarks · actuals after Aug 23</span><span style="color:var(--text3)">›</span></div>
+  </div>
+  <div class="rule">The count in a collapsed header must carry the useful part — <b>"5 · 1 waiting"</b>, not "5". A bare number tells nobody whether it's worth expanding, so everyone expands everything and the collapse achieves nothing.</div>
+</section>
+
+<section>
+  <h2>Full palette</h2>
+  <p class="lead">Asana's set. Use these for things that need identity but not status — goal categories, budget lines, campaigns, nav tiles. Each has a tint, a solid, and a deep variant in the token file.</p>
+  <div class="sw-grid">
+    <div class="sw"><div class="sw-chip" style="background:#9a9a92"></div><div class="sw-meta"><b>neutral</b>#9a9a92</div></div>
+    <div class="sw"><div class="sw-chip" style="background:#cf4b53"></div><div class="sw-meta"><b>red</b>#cf4b53</div></div>
+    <div class="sw"><div class="sw-chip" style="background:#de6a45"></div><div class="sw-meta"><b>orange</b>#de6a45</div></div>
+    <div class="sw"><div class="sw-chip" style="background:#e8a33d"></div><div class="sw-meta"><b>amber</b>#e8a33d</div></div>
+    <div class="sw"><div class="sw-chip" style="background:#a9c957"></div><div class="sw-meta"><b>lime</b>#a9c957</div></div>
+    <div class="sw"><div class="sw-chip" style="background:#6ac5a7"></div><div class="sw-meta"><b>green</b>#6ac5a7</div></div>
+    <div class="sw"><div class="sw-chip" style="background:#4f7fd1"></div><div class="sw-meta"><b>blue</b>#4f7fd1</div></div>
+    <div class="sw"><div class="sw-chip" style="background:#6f6ede"></div><div class="sw-meta"><b>indigo</b>#6f6ede</div></div>
+    <div class="sw"><div class="sw-chip" style="background:#9a63d4"></div><div class="sw-meta"><b>purple</b>#9a63d4</div></div>
+    <div class="sw"><div class="sw-chip" style="background:#ca5391"></div><div class="sw-meta"><b>magenta</b>#ca5391</div></div>
+  </div>
+</section>
+
+<section>
+  <h2>Shape and spacing</h2>
+  <div class="two">
+    <div>
+      <h3 style="margin-top:8px">Radii</h3>
+      <table>
+        <tr><td><code>4px</code></td><td>Calendar event chips</td></tr>
+        <tr><td><code>7px</code></td><td>Chips, segmented control, nav rows</td></tr>
+        <tr><td><code>8px</code></td><td>Buttons</td></tr>
+        <tr><td><code>10px</code></td><td>Cards, banners</td></tr>
+        <tr><td><code>12px</code></td><td>Outer panels</td></tr>
+      </table>
+    </div>
+    <div>
+      <h3 style="margin-top:8px">Spacing · 4px base</h3>
+      <table>
+        <tr><td><code>4</code> <code>8</code></td><td>Within a component</td></tr>
+        <tr><td><code>12</code> <code>16</code></td><td>Between components</td></tr>
+        <tr><td><code>20</code> <code>26</code></td><td>Between sections</td></tr>
+        <tr><td><code>32</code></td><td>Between major regions</td></tr>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Retrofitting the two existing apps</h2>
+  <p class="lead">In this order. Each step is visible on its own, so you can stop after any of them and the app still looks better rather than half-finished.</p>
+  <table>
+    <tr><th>#</th><th>Change</th><th>Why first</th></tr>
+    <tr><td>1</td><td>Link <code>mosaic-tokens.css</code>, set the font to Inter with the tracking values</td><td>A single shared typeface does more for perceived unity than everything else combined</td></tr>
+    <tr><td>2</td><td>Replace greys with the neutral tokens</td><td>Cheap, global, and stops the three apps reading as three different eras</td></tr>
+    <tr><td>3</td><td>Replace borders with <code>--m-hairline</code> and <code>--m-grid</code></td><td>Fixes the two most common complaints at once: too heavy in lists, too faint in calendars</td></tr>
+    <tr><td>4</td><td>Map statuses to the five treatments</td><td>The moment a purple chip means the same thing in both apps, they feel related</td></tr>
+    <tr><td>5</td><td>Swap chips, buttons, and segmented controls for the <code>m-</code> classes</td><td>Interaction surfaces are what people touch most</td></tr>
+    <tr><td>6</td><td>Remove colour from scope, phase, campus and owner</td><td>Frees the palette so type colour actually reads</td></tr>
+    <tr><td>7</td><td>Rebuild detail views on one of the three orderings</td><td>Last, because it is the only step that changes how the app works rather than how it looks</td></tr>
+  </table>
+
+  <h3>Which patterns each app adopts</h3>
+  <table>
+    <tr><th>App</th><th>Takes</th><th>Detail views ordered by</th></tr>
+    <tr><td><b>Portal</b></td><td>All of it — it is the reference implementation</td><td>Time, with urgency as the leadership variant</td></tr>
+    <tr><td><b>Planning Board</b></td><td>Timeline bars, scope weighting, status treatments, run-up spine, readiness strip, blocker cards</td><td>Time — a campaign detail is a run-up by definition</td></tr>
+    <tr><td><b>Comms Dashboard</b></td><td>Calendar cells, chips, status treatments, list rows, accordion sections</td><td>Category for a single send; urgency for the queue view</td></tr>
+  </table>
+  <div class="rule">The planning board gets the most out of this. It already has a timeline view — adding the run-up spine to a <b>campaign detail</b> screen means the same object reads the same way whether you meet it in the portal or in the board itself.</div>
+  <div class="rule">Do <b>not</b> start by rebuilding layouts. Type, greys, lines and status colour get you most of the way, and none of them require touching how either app works.</div>
+</section>
+
+<section>
+  <h2>Drop-in snippet</h2>
+  <p class="lead">If you only copy one thing into the other two apps, copy this.</p>
+  <pre>&lt;link rel="stylesheet" href="/css/mosaic-tokens.css"&gt;
+&lt;link rel="stylesheet" href="/css/app.css"&gt;   &lt;!-- your existing styles, second --&gt;
+
+&lt;!-- then, in the app's own CSS, stop hardcoding --&gt;
+.some-existing-class{
+  font-family: var(--m-font);
+  letter-spacing: var(--m-tracking);
+  color: var(--m-text);
+  background: var(--m-surface);
+  border: 1px solid var(--m-hairline);
+  border-radius: var(--m-r-card);
+}
+
+&lt;!-- a comms item, whatever its status name is in your data --&gt;
+&lt;span class="m-item m-item--attention"
+      style="--h:var(--m-comms); --t:var(--m-comms-t);
+             --d:var(--m-comms-d); --s:var(--m-comms-s)"&gt;
+  Metcalf announcement
+&lt;/span&gt;</pre>
+</section>
+
+<div style="font-size:12.5px;color:var(--text2);margin-top:22px;text-align:center">
+  Mosaic Design System v1 · July 2026 · pairs with <code>mosaic-tokens.css</code>
+</div>
+
+</div>
+</body>
+</html>

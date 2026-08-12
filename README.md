@@ -13,18 +13,26 @@ The staff portal for Mosaic — one front door for the tools the team already us
 ## What this repo is
 
 **One file, no build step** — `index.html`, same pattern as Metrics and the
-Planning Board. It is the portal *shell* from the 2-week plan: **one login at
-the front door + the weekly master calendar home + nav to the four apps.**
+Planning Board. It is **Loyda's portal design (July 2026 handoff package)**
+behind one login: Home + Calendar are native, the other sections link out to
+the apps that already exist. The full handoff lives in `docs/` — build spec,
+style guide, design tokens, event-card component, and Loyda's README. Read
+`docs/mosaic-portal-build-spec.md` before changing anything visual.
 
 - **Sign-in** uses the **same Supabase project and accounts as Mosaic
   Metrics** (`iknjgrltglwupxjtegfh`). Every existing Metrics user (16 today),
   their role (admin / staff / volunteer / leader), invites, and password
-  resets work here unchanged. No new user system was created.
-- The home calendar is currently the **display prototype** (hardcoded program
-  year, edits don't persist — the page says so). Wiring it to read the
-  Planning Board's live Supabase data is the next phase; the Planning Board at
-  pm.mosaic.org stays the source of truth for planning work.
-- **This repo touches nothing else.** It has its own repo and will have its own
+  resets work here unchanged. No new user system was created. (Note: the
+  build spec proposed Google Workspace sign-in instead — the Metrics-accounts
+  decision is Hannita's; revisit together if it needs to change.)
+- Roles map to the spec's presets: admin → Leadership, staff → Comms,
+  leader → Ops, volunteer → Volunteer lead. The Settings role switcher still
+  works on top of that default (prototype behavior).
+- **Calendar/Home data is still the prototype's sample data** (late July–Aug
+  2026). Wiring it to read the Planning Board + Comms live data is the next
+  phase; per the spec, the four apps stay the systems of record and the
+  portal reads and arranges only.
+- **This repo touches nothing else.** It has its own repo and its own
   Cloudflare Pages project — Metrics, Comms, and the Planning Board deploy
   independently and cannot be affected by changes here.
 

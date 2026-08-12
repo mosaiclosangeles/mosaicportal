@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mosaic Portal — event card</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --surface:#fff; --fill:#f2f2f1; --hairline:#e6e6e5; --separator:#f0f0f0; --grid:#d9d9d6;
+  --text:#000; --text2:#8a8a8a; --text3:#b5b5b3;
+  --event:#4f7fd1; --event-t:#e8f0fa; --event-d:#2c4c85; --event-s:#3f6cba;
+  --comms:#e8a33d; --comms-t:#fdf3e3; --comms-d:#8a5a12; --comms-s:#b8791b;
+  --neutral:#9a9a92; --neutral-t:#f0f0ed; --neutral-d:#55554f;
+  --ok:#6ac5a7; --ok-t:#e6f6f1; --ok-d:#2f7a63;
+  --bad:#cf4b53; --bad-t:#fbebec; --bad-d:#8f2c32;
+}
+*{box-sizing:border-box}
+body{margin:0;padding:40px 24px;background:#fafaf9;
+  font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  letter-spacing:-.011em;color:var(--text);font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased}
+.wrap{max-width:940px;margin:0 auto}
+.card{background:var(--surface);border:1px solid var(--grid);border-radius:12px;padding:24px 26px 26px}
+.back{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--text2);
+  margin-bottom:16px;text-decoration:none}
+.back svg{width:15px;height:15px}
+.tag{font-size:11px;padding:3px 9px;border-radius:6px;margin-right:5px;display:inline-block;
+  background:var(--fill);color:#4a4a4a}
+h1{font-size:26px;font-weight:600;letter-spacing:-.028em;margin:6px 0 0;line-height:1.15}
+.sub{font-size:13.5px;color:var(--text2);margin-top:5px}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:32px;margin-top:24px}
+.eyebrow{font-size:10.5px;letter-spacing:.07em;color:var(--text2);margin:0 0 9px}
+.eyebrow.sp{margin-top:26px}
+.desc{font-size:14px;line-height:1.55;color:#2c2c2a}
+.kv{display:flex;justify-content:space-between;gap:14px;font-size:13.5px;padding:8px 0;
+  border-bottom:1px solid var(--separator)}
+.kv:last-of-type{border-bottom:0}
+.kv .k{color:var(--text2);flex:none}
+.kv .v{text-align:right}
+.row{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid var(--separator)}
+.row:last-child{border-bottom:0}
+.row .when{font-size:12.5px;color:var(--text2);min-width:48px;flex:none;padding-top:1px}
+.row .txt{flex:1;min-width:0}
+.row .name{display:block;font-size:13.5px}
+.row .meta{display:block;font-size:11.5px;color:var(--text2);margin-top:3px}
+.pill{font-size:10.5px;padding:2px 8px;border-radius:5px;flex:none;white-space:nowrap;margin-top:1px}
+.tick{width:17px;height:17px;border-radius:50%;border:1.5px solid #cfcfcd;flex:none;margin-top:2px;
+  display:flex;align-items:center;justify-content:center}
+.tick.done{background:var(--event);border-color:var(--event);color:#fff}
+.tick svg{width:11px;height:11px}
+.strike{color:var(--text3);text-decoration:line-through}
+.nums{display:flex;gap:8px}
+.num{border-radius:9px;padding:11px 12px;flex:1;min-width:0}
+.num .v{font-size:20px;font-weight:600;letter-spacing:-.02em;line-height:1.05}
+.num .k{font-size:11px;color:var(--text2);margin-top:3px}
+.chart{display:flex;align-items:flex-end;gap:7px;height:80px;margin-top:8px}
+.b{flex:1;border-radius:3px 3px 0 0;background:#e4e9f2}
+.b.hi{background:var(--event)}
+.b.q{background:repeating-linear-gradient(45deg,#efefec,#efefec 3px,#fbfbf9 3px,#fbfbf9 6px);
+  border:1px dashed var(--grid);border-bottom:0}
+.labels{display:flex;gap:7px;margin-top:6px}
+.labels div{flex:1;text-align:center;font-size:10.5px;color:var(--text2)}
+.pg{height:5px;border-radius:3px;background:var(--fill);position:relative;margin:8px 0 4px}
+.pg i{position:absolute;left:0;top:0;bottom:0;border-radius:3px;background:var(--event)}
+.note{font-size:12px;color:var(--text2);margin-top:11px}
+.links{display:flex;gap:20px;flex-wrap:wrap;margin-top:26px;padding-top:17px;
+  border-top:1px solid var(--hairline);font-size:13px}
+.links a{color:var(--event);text-decoration:none;display:inline-flex;align-items:center;gap:5px}
+.links svg{width:13px;height:13px}
+@media (max-width:820px){.grid{grid-template-columns:1fr;gap:26px}body{padding:20px 14px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="card">
+
+  <a class="back" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>Calendar</a>
+
+  <div>
+    <span class="tag" style="background:var(--event-t);color:var(--event-d)">Events</span>
+    <span class="tag">Level 1</span>
+    <span class="tag">Scheduled</span>
+    <span style="font-size:12.5px;color:var(--text2);float:right;padding-top:4px">in 24 days</span>
+  </div>
+
+  <h1>Charles Metcalf</h1>
+  <div class="sub">Sunday, August 23 · 9 + 11am · NYC + LA</div>
+
+  <div class="grid">
+    <div>
+      <div class="eyebrow">DESCRIPTION</div>
+      <div class="desc">Guest speaker Sunday closing out the summer. Opening with the clip from Conference rather than a live intro, so the video cut needs to land before promo goes out. Same run of show at both campuses; LA plays the clip on a delay from the NYC feed.</div>
+
+      <div class="eyebrow sp">DETAILS</div>
+      <div class="kv"><span class="k">Speaker</span><span class="v">Charles Metcalf</span></div>
+      <div class="kv"><span class="k">Clip source</span><span class="v">Conference 2026</span></div>
+      <div class="kv"><span class="k">Series</span><span class="v">Summer guests</span></div>
+      <div class="kv"><span class="k">Owner</span><span class="v">Loyda</span></div>
+      <div class="kv"><span class="k">Creative</span><span class="v">Saul</span></div>
+      <div class="kv"><span class="k">Phase</span><span class="v">Pre-launch</span></div>
+      <div class="kv"><span class="k">Campaign</span><span class="v">Charles Metcalf</span></div>
+
+      <div class="eyebrow sp">COMMS FOR THIS EVENT · 5</div>
+      <div class="row"><span class="when">Aug 6</span>
+        <span class="txt"><span class="name">Announcement email</span><span class="meta">Flodesk · all subscribers</span></span>
+        <span class="pill" style="background:var(--bad-t);color:var(--bad-d)">Waiting</span></div>
+      <div class="row"><span class="when">Aug 18</span>
+        <span class="txt"><span class="name">Promo text</span><span class="meta">Clearstream</span></span>
+        <span class="pill" style="background:var(--fill);color:#4a4a4a">Drafting</span></div>
+      <div class="row"><span class="when">Aug 21</span>
+        <span class="txt"><span class="name">Social posts</span><span class="meta">Instagram + stories</span></span>
+        <span class="pill" style="background:var(--fill);color:#4a4a4a">Drafting</span></div>
+      <div class="row"><span class="when">Aug 23</span>
+        <span class="txt"><span class="name">Sunday email</span><span class="meta">Flodesk</span></span>
+        <span class="pill" style="background:var(--fill);color:#4a4a4a">Not started</span></div>
+      <div class="row"><span class="when">Aug 23</span>
+        <span class="txt"><span class="name">Service script</span><span class="meta">Needs Carlos approval</span></span>
+        <span class="pill" style="background:var(--fill);color:#4a4a4a">Not started</span></div>
+    </div>
+
+    <div>
+      <div class="eyebrow">NUMBERS</div>
+      <div class="nums">
+        <div class="num" style="background:var(--event-t)"><div class="v" style="color:var(--event-d)">418</div><div class="k">guest speaker avg</div></div>
+        <div class="num" style="background:var(--fill)"><div class="v">396</div><div class="k">last 6 Sundays</div></div>
+        <div class="num" style="background:var(--comms-t)"><div class="v" style="color:var(--comms-d)">450</div><div class="k">2026 goal</div></div>
+      </div>
+      <div class="note" style="margin-top:16px">Attendance · last 5 Sundays and this one</div>
+      <div class="chart">
+        <div class="b" style="height:86%"></div>
+        <div class="b" style="height:89%"></div>
+        <div class="b" style="height:84%"></div>
+        <div class="b" style="height:93%"></div>
+        <div class="b" style="height:88%"></div>
+        <div class="b q" style="height:100%"></div>
+      </div>
+      <div class="labels">
+        <div>6/28</div><div>7/5</div><div>7/12</div><div>7/19</div><div>7/26</div>
+        <div style="color:var(--event)">8/23</div>
+      </div>
+      <div class="note">Actuals appear here once attendance is submitted after the service.</div>
+
+      <div class="eyebrow sp">SUBTASKS · 2 OF 6</div>
+      <div class="pg"><i style="width:33%"></i></div>
+      <div class="row"><span class="tick done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg></span>
+        <span class="txt"><span class="name strike">Book Metcalf travel</span><span class="meta">Loyda · Jul 24</span></span></div>
+      <div class="row"><span class="tick done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg></span>
+        <span class="txt"><span class="name strike">Confirm honorarium</span><span class="meta">Carlos · Jul 28</span></span></div>
+      <div class="row"><span class="tick"></span>
+        <span class="txt"><span class="name">Metcalf artwork</span><span class="meta" style="color:var(--bad-d)">Saul · due today</span></span></div>
+      <div class="row"><span class="tick"></span>
+        <span class="txt"><span class="name">Send email for approval</span><span class="meta" style="color:var(--bad-d)">Loyda · overdue</span></span></div>
+      <div class="row"><span class="tick"></span>
+        <span class="txt"><span class="name">Conference clip cut</span><span class="meta">Loyda · Aug 20</span></span></div>
+      <div class="row"><span class="tick"></span>
+        <span class="txt"><span class="name">Slides to Creative</span><span class="meta">Saul · Aug 21</span></span></div>
+    </div>
+  </div>
+
+  <div class="links">
+    <a href="https://pm.mosaic.org" target="_blank" rel="noopener">Edit in Planning board <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M11 7H7a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-4M14 4h6v6M20 4l-8 8"/></svg></a>
+    <a href="https://comms.mosaic.org" target="_blank" rel="noopener">Edit comms <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M11 7H7a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-4M14 4h6v6M20 4l-8 8"/></svg></a>
+    <a href="https://metrics.mosaic.org" target="_blank" rel="noopener">Submit attendance <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M11 7H7a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-4M14 4h6v6M20 4l-8 8"/></svg></a>
+  </div>
+
+</div>
+</div>
+</body>
+</html>
