@@ -30,8 +30,12 @@
 .gate-note.ok{background:#e6f6f1;color:#2f7a63}
 .gate-note.warn{background:#fdf3e3;color:#8a5a12}
 
-/* ---- embedded apps ---- */
-.app-embed{width:100%;height:calc(100vh - 132px);border:1px solid #e6e6e5;border-radius:10px;background:#fff;display:block}
+/* ---- embedded apps (full-bleed: the app starts immediately, no header) ---- */
+.embed-wrap{margin:-24px -28px -60px;position:relative;height:100vh}
+.embed-wrap iframe{width:100%;height:100%;border:0;display:block;background:#fff}
+.embed-open{position:absolute;right:14px;bottom:14px;display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#8a8a8a;background:rgba(255,255,255,.92);border:1px solid #e6e6e5;border-radius:999px;padding:6px 12px;text-decoration:none;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.embed-open:hover{color:#000}
+@media(max-width:760px){.embed-wrap{margin:-18px -16px -96px;height:calc(100vh - 58px)}}
 
 /* ---- account menu (rail foot) ---- */
 .rail-foot{cursor:pointer;border-radius:8px}
@@ -47,6 +51,21 @@
 .um-item svg{width:15px;height:15px;color:#5c5c5c;flex:none}
 .um-item .hint{color:#8a8a8a;font-size:11px;margin-left:auto}
 .um-sep{height:1px;background:#f0f0f0;margin:6px 0}
+
+/* ---- native Admin page ---- */
+.pa-bar{display:flex;gap:10px;align-items:center;margin:0 0 14px}
+.pa-bar input,.pa-bar select{padding:8px 11px;border:1px solid #e6e6e5;border-radius:7px;font-family:inherit;letter-spacing:inherit;font-size:13px;background:#fff}
+.pa-bar input{width:230px}
+.pa-card{border:1px solid #e6e6e5;border-radius:10px;overflow:hidden}
+.pa-table{width:100%;border-collapse:collapse;font-size:14px}
+.pa-table th{text-align:left;font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:#8a8a8a;font-weight:500;padding:12px 16px;background:#fafaf9}
+.pa-table td{padding:9px 16px;border-top:1px solid #f0f0f0}
+.pa-table select{padding:6px 9px;border:1px solid #e6e6e5;border-radius:7px;font-family:inherit;letter-spacing:inherit;font-size:12.5px;background:#fff;cursor:pointer}
+.pa-eye{border:none;background:none;cursor:pointer;padding:2px;margin-right:8px;vertical-align:middle;color:#5c5c5c}
+.pa-eye svg{width:14px;height:14px}
+.pa-eye:hover{color:#000}
+.pa-lbl{display:block;font-size:12px;color:#8a8a8a;margin-bottom:5px}
+.pa-in{width:100%;box-sizing:border-box;padding:9px 11px;border:1px solid #e6e6e5;border-radius:7px;font-family:inherit;letter-spacing:inherit;font-size:14px;background:#fff}
 
 :root{
   --surface:#ffffff; --rail:#f3f3f2; --rail-active:#e6e6e4; --fill:#f2f2f1;
@@ -286,7 +305,7 @@ select{font:inherit;font-size:13px;padding:7px 10px;border:1px solid var(--hairl
   <div class="gate-card">
     <div class="gate-brand"><div class="mark"></div><div class="name">Mosaic Portal</div></div>
     <h1>Welcome</h1>
-    <p class="gsub">Sign in with your Mosaic Metrics account.</p>
+    <p class="gsub">Sign in with your Mosaic account.</p>
     <div id="g-email-row">
       <label for="gEmail">Email</label>
       <input id="gEmail" type="email" autocomplete="email" placeholder="you@mosaic.org">
@@ -469,7 +488,7 @@ const SECTIONS = [
 const PALETTE = ['--neutral','--red','--milestone','--amber','--lime','--session','--gathering','--indigo','--comms','--magenta'];
 const ROLES = {
   comms:{name:'Comms / staff',sections:['home','calendar','comms','planning','numbers','goals','settings']},
-  leadership:{name:'Leadership',sections:['home','calendar','comms','planning','numbers','goals','budgets','giving','settings']},
+  leadership:{name:'Leadership',sections:['home','calendar','comms','planning','numbers','goals','budgets','giving','settings','admin']},
   ops:{name:'Ops / event management',sections:['home','calendar','planning','settings']},
   volunteer:{name:'Volunteer lead',sections:['home','calendar','settings']}
 };
@@ -678,9 +697,136 @@ function pageEmbed(id){
   const sec=SECTIONS.find(x=>x.id===id);
   let src=sec.url;
   if(id==='numbers')src+=(src.includes('?')?'&':'?')+'embed=portal';
-  return '<div class="page-head"><div><h1>'+sec.label+'</h1><div class="sub">'+src.replace(/^https:\/\//,'').replace(/[/?].*$/,'')+'</div></div>'+
-    '<a href="'+sec.url+'" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--text2);text-decoration:none;border:1px solid var(--hairline);border-radius:7px;padding:7px 12px">Open in new tab '+ic('ext','width:13px;height:13px')+'</a></div>'+
-    '<iframe class="app-embed" src="'+src+'" title="'+esc(sec.label)+'" allow="clipboard-write"></iframe>';
+  return '<div class="embed-wrap"><iframe src="'+src+'" title="'+esc(sec.label)+'" allow="clipboard-write"></iframe>'+
+    '<a class="embed-open" href="'+sec.url+'" target="_blank" rel="noopener" title="Open '+esc(sec.label)+' in its own tab">'+ic('ext','width:12px;height:12px')+'open</a></div>';
+}
+
+/* ---- Admin: user management for the whole app (same profiles the four
+   apps share). Reads/writes the Metrics Supabase with the signed-in
+   admin's own session — RLS enforces that only admins can. ---- */
+const ADMIN={profs:null,campuses:null,err:null,q:'',role:'all',loading:false};
+const ROLE_LIST=['admin','staff','leader','volunteer'];
+function adminName(p){const n=p.display_name||p.full_name||'—';return n.includes('@')?prettyNameFromEmail(n):n;}
+async function loadAdmin(){
+  if(ADMIN.loading)return;ADMIN.loading=true;
+  const [r1,r2]=await Promise.all([
+    sb.from('profiles').select('id,display_name,full_name,role,campus_id'),
+    sb.from('campuses').select('id,name,parent_campus_id')
+  ]);
+  ADMIN.err=(r1.error&&r1.error.message)||(r2.error&&r2.error.message)||null;
+  ADMIN.profs=r1.data||[];
+  ADMIN.campuses=(r2.data||[]).filter(c=>!c.parent_campus_id).sort((a,b)=>a.name.localeCompare(b.name));
+  ADMIN.loading=false;
+  if(S.section==='admin')render();
+}
+function campusName(id){const c=(ADMIN.campuses||[]).find(x=>x.id===id);return c?c.name:'—';}
+function pageAdmin(){
+  if(ME.role!=='admin')return '<div class="page-head"><div><h1>Admin</h1></div></div><div class="empty">Only admins can open this.</div>';
+  const head='<div class="page-head"><div><h1>Admin</h1><div class="sub">User management · every app, one account list</div></div>'+
+    '<button class="btn-primary" data-newuser="1">New user</button></div>';
+  if(!ADMIN.profs&&!ADMIN.err){loadAdmin();return head+'<div class="empty">Loading users…</div>';}
+  if(ADMIN.err)return head+'<div class="banner">'+ic('info')+'<div>Couldn\'t load users — '+esc(ADMIN.err)+'</div></div>';
+  const rank={admin:0,staff:1,leader:2,volunteer:3};
+  let rows=ADMIN.profs.slice().sort((a,b)=>(rank[a.role]??9)-(rank[b.role]??9)||adminName(a).localeCompare(adminName(b)));
+  const q=ADMIN.q.trim().toLowerCase();
+  if(ADMIN.role!=='all')rows=rows.filter(p=>p.role===ADMIN.role);
+  if(q)rows=rows.filter(p=>adminName(p).toLowerCase().includes(q)||(p.full_name||'').toLowerCase().includes(q));
+  const roleSel=p=>'<select class="pa-role" data-id="'+esc(p.id)+'">'+ROLE_LIST.map(r=>'<option value="'+r+'"'+(r===p.role?' selected':'')+'>'+cap(r)+'</option>').join('')+'</select>';
+  const campusSel=p=>p.role==='admin'?'<span style="color:var(--text2)">All campuses</span>'
+    :'<select class="pa-campus" data-id="'+esc(p.id)+'"><option value="">Select a campus</option>'+
+      ADMIN.campuses.map(c=>'<option value="'+esc(c.id)+'"'+(c.id===p.campus_id?' selected':'')+'>'+esc(c.name)+'</option>').join('')+'</select>';
+  return head+
+    '<div class="pa-bar"><input id="paSearch" type="text" placeholder="Search by name…" value="'+esc(ADMIN.q)+'">'+
+    '<select id="paRole"><option value="all"'+(ADMIN.role==='all'?' selected':'')+'>All roles</option>'+
+      ROLE_LIST.map(r=>'<option value="'+r+'"'+(ADMIN.role===r?' selected':'')+'>'+cap(r)+'</option>').join('')+'</select>'+
+    '<span style="margin-left:auto;font-size:12.5px;color:var(--text2)">'+rows.length+' of '+ADMIN.profs.length+' users</span></div>'+
+    '<div id="paNote" class="banner" style="display:none"></div>'+
+    '<div class="pa-card"><table class="pa-table"><thead><tr><th>Name</th><th>Role</th><th>Campus</th></tr></thead><tbody>'+
+    (rows.length?rows.map(p=>'<tr>'+
+      '<td><button class="pa-eye" data-user="'+esc(p.id)+'" title="View profile">'+ic('info')+'</button><span style="font-weight:500">'+esc(adminName(p))+'</span>'+
+      (ME.email&&p.full_name===ME.email?' <span style="color:var(--text2);font-size:11.5px">(you)</span>':'')+'</td>'+
+      '<td>'+roleSel(p)+'</td><td>'+campusSel(p)+'</td></tr>').join('')
+      :'<tr><td colspan="3" style="color:var(--text2)">No users match.</td></tr>')+
+    '</tbody></table></div>'+
+    '<p style="font-size:12.5px;color:var(--text2);margin-top:14px;max-width:620px;line-height:1.5">Changing a role or campus here applies everywhere the Mosaic account is used — the portal, Metrics, and anything added later. Campus applies to staff, leaders and volunteers; admins see all campuses.</p>';
+}
+function paNote(msg,err){const n=document.getElementById('paNote');if(!n)return;n.style.display='flex';n.style.borderColor=err?'var(--red)':'var(--hairline)';n.innerHTML=ic('info')+'<div>'+esc(msg)+'</div>';clearTimeout(paNote._t);paNote._t=setTimeout(()=>{const x=document.getElementById('paNote');if(x)x.style.display='none';},4500);}
+async function paSaveRole(id,next){
+  const p=ADMIN.profs.find(x=>x.id===id);if(!p||p.role===next)return true;
+  const who=adminName(p);
+  if(p.role==='admin'&&next!=='admin'&&ADMIN.profs.filter(x=>x.role==='admin').length<=1){alert("You can't change the last admin's role — promote someone else to Admin first.");return false;}
+  const self=(p.full_name===ME.email);
+  let msg='Change '+who+"'s role from “"+p.role+'” to “'+next+'”?';
+  if(next==='admin')msg='Make '+who+' an Admin?\n\nAdmins can view and edit every campus and manage all users.';
+  if(self&&next!=='admin')msg="Heads up — you're changing YOUR OWN role to “"+next+"”.\n\nYou'll lose admin access immediately and the page will reload. Continue?";
+  if(!confirm(msg))return false;
+  const {error}=await sb.from('profiles').update({role:next}).eq('id',id);
+  if(error){alert("Couldn't update role: "+(error.message||'please try again.'));return false;}
+  p.role=next;
+  if(self&&next!=='admin'){location.reload();return true;}
+  return 'Updated '+who+' to '+cap(next)+'.';
+}
+async function paSaveCampus(id,next){
+  const p=ADMIN.profs.find(x=>x.id===id);if(!p||(p.campus_id||'')===(next||''))return true;
+  const {error}=await sb.from('profiles').update({campus_id:next||null}).eq('id',id);
+  if(error){alert("Couldn't update campus: "+(error.message||'please try again.'));return false;}
+  p.campus_id=next||null;
+  return 'Set '+adminName(p)+"'s campus to "+(next?campusName(next):'No campus')+'.';
+}
+async function paUserDrawer(id){
+  openDrawer('<div class="empty">Loading…</div>');
+  const {data,error}=await sb.rpc('admin_get_user',{target:id});
+  const u=Array.isArray(data)?data[0]:data;
+  if(error||!u){document.getElementById('drawerBody').innerHTML='<div class="empty">Couldn\'t load this profile — '+esc((error&&error.message)||'not found')+'</div>';return;}
+  const p=ADMIN.profs.find(x=>x.id===id)||{};
+  const nm=adminName(Object.assign({},u,p));
+  const fdt=ts=>{if(!ts)return '—';const d=new Date(ts);return isNaN(d)?'—':d.toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'});};
+  document.getElementById('drawerBody').innerHTML=
+    '<h2 style="margin-top:0">'+esc(nm)+'</h2><div class="sub">'+esc(u.email||'')+'</div>'+
+    '<div class="kv"><span>Role</span><span>'+esc(cap(p.role||u.role||''))+'</span></div>'+
+    '<div class="kv"><span>Campus</span><span>'+esc((p.role||u.role)==='admin'?'All campuses':campusName(p.campus_id||u.campus_id))+'</span></div>'+
+    '<div class="kv"><span>Joined</span><span>'+esc(fdt(u.created_at))+'</span></div>'+
+    '<div class="kv" style="border-bottom:0"><span>Last active</span><span>'+esc(u.last_sign_in_at?fdt(u.last_sign_in_at):'Never signed in')+'</span></div>'+
+    '<button class="btn-primary" id="paReset" style="margin-top:18px">Email a password reset link</button>'+
+    '<div id="paResetNote" style="font-size:12.5px;color:var(--text2);margin-top:10px"></div>';
+  document.getElementById('paReset').addEventListener('click',async()=>{
+    const n=document.getElementById('paResetNote');
+    const {error:e2}=await sb.auth.resetPasswordForEmail(u.email,{redirectTo:location.origin+'/'});
+    n.textContent=e2?("Couldn't send — "+(e2.message||'try again.')):('Reset link sent to '+u.email+'.');
+  });
+}
+function paInviteDrawer(){
+  openDrawer('<h2 style="margin-top:0">Invite a new user</h2><div class="sub">They\'ll get an email to set their own password.</div>'+
+    '<div style="display:flex;flex-direction:column;gap:12px;margin-top:16px">'+
+    '<div><label class="pa-lbl">Full name</label><input id="nuName" class="pa-in" type="text" placeholder="Jane Doe"></div>'+
+    '<div><label class="pa-lbl">Email</label><input id="nuEmail" class="pa-in" type="email" placeholder="jane@mosaic.org"></div>'+
+    '<div><label class="pa-lbl">Role</label><select id="nuRole" class="pa-in"><option value="leader" selected>Leader</option><option value="staff">Staff</option><option value="volunteer">Volunteer</option><option value="admin">Admin</option></select></div>'+
+    '<div id="nuCampusWrap"><label class="pa-lbl">Campus</label><select id="nuCampus" class="pa-in"><option value="">Select a campus</option>'+
+      (ADMIN.campuses||[]).map(c=>'<option value="'+esc(c.id)+'">'+esc(c.name)+'</option>').join('')+'</select></div></div>'+
+    '<button class="btn-primary" id="nuSend" style="margin-top:18px">Send invite</button>'+
+    '<div id="nuNote" style="font-size:12.5px;color:var(--text2);margin-top:10px"></div>');
+  const roleSel=document.getElementById('nuRole'),wrap=document.getElementById('nuCampusWrap');
+  const sync=()=>{wrap.style.display=roleSel.value==='admin'?'none':'';};
+  roleSel.addEventListener('change',sync);sync();
+  document.getElementById('nuSend').addEventListener('click',async()=>{
+    const name=document.getElementById('nuName').value.trim(),email=document.getElementById('nuEmail').value.trim();
+    const role=roleSel.value,campus_id=role==='admin'?null:(document.getElementById('nuCampus').value||null);
+    const note=document.getElementById('nuNote');
+    if(!name){note.textContent='Please enter a name.';return;}
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){note.textContent='Please enter a valid email.';return;}
+    const btn=document.getElementById('nuSend');btn.disabled=true;btn.textContent='Sending…';
+    let errMsg=null,ok=false;
+    try{
+      const {data,error}=await sb.functions.invoke('invite-user',{body:{email,name,role,campus_id,redirect_to:location.origin+'/'}});
+      if(error){errMsg=error.message||'please try again.';try{const b=await error.context.json();if(b&&b.error)errMsg=b.error;}catch(_){}}
+      else if(data&&data.error){errMsg=data.error;}
+      else ok=true;
+    }catch(ex){errMsg=String((ex&&ex.message)||ex);}
+    btn.disabled=false;btn.textContent='Send invite';
+    if(!ok){note.textContent="Couldn't send invite — "+errMsg;return;}
+    note.textContent='Invite sent to '+email+'.';
+    ADMIN.profs=null;setTimeout(()=>{closeDrawer();if(S.section==='admin')render();},900);
+  });
 }
 
 function money(n){return '$'+n.toLocaleString('en-US');}
@@ -922,7 +1068,7 @@ function newDrawer(){
 }
 
 /* ============================ render ============================ */
-const SECTION_PATH={home:'/',calendar:'/calendar',comms:'/comms',planning:'/pm',numbers:'/metrics',goals:'/goals',budgets:'/budgets',giving:'/giving',settings:'/settings'};
+const SECTION_PATH={home:'/',calendar:'/calendar',comms:'/comms',planning:'/pm',numbers:'/metrics',goals:'/goals',budgets:'/budgets',giving:'/giving',settings:'/settings',admin:'/admin'};
 function render(){
   renderNav();
   if(S.section!=='event'&&SECTION_PATH[S.section]&&location.pathname!==SECTION_PATH[S.section]){
@@ -938,8 +1084,13 @@ function render(){
     : S.section==='goals'?pageEmbed('goals')
     : S.section==='budgets'?pageBudgets()
     : S.section==='giving'?pageGiving()
+    : S.section==='admin'?pageAdmin()
     : pageSettings();
   window.scrollTo(0,0);
+  const ps=document.getElementById('paSearch');
+  if(ps)ps.addEventListener('input',()=>{ADMIN.q=ps.value;render();const el=document.getElementById('paSearch');if(el){el.focus();el.setSelectionRange(el.value.length,el.value.length);}});
+  const pr=document.getElementById('paRole');
+  if(pr)pr.addEventListener('change',()=>{ADMIN.role=pr.value;render();});
   const rs=document.getElementById('roleSel');
   if(rs) rs.addEventListener('change',e=>{S.role=e.target.value;
     if(!ROLES[S.role].sections.includes(S.section))S.section='home'; render();});
@@ -947,7 +1098,7 @@ function render(){
 
 /* ============================ events ============================ */
 document.addEventListener('click',e=>{
-  const t=e.target.closest('[data-go],[data-view],[data-nav],[data-filter],[data-ev],[data-day],[data-task],[data-new],[data-pick],[data-everyone],[data-tl],[data-back],[data-logout],[data-preview],[data-profile]');
+  const t=e.target.closest('[data-go],[data-view],[data-nav],[data-filter],[data-ev],[data-day],[data-task],[data-new],[data-pick],[data-everyone],[data-tl],[data-back],[data-logout],[data-preview],[data-profile],[data-newuser],[data-user]');
   if(!t) return;
   if(t.dataset.logout){ (sb?sb.auth.signOut():Promise.resolve()).then(()=>location.reload()); return; }
   if(t.dataset.preview){
@@ -967,7 +1118,9 @@ document.addEventListener('click',e=>{
   }
   if(t.dataset.everyone){ S.forEveryone=!S.forEveryone; render(); return; }
   if(t.dataset.tl!==undefined){ const n=Number(t.dataset.tl); S.tlShift = n===0?0:S.tlShift+n; render(); return; }
-  if(t.dataset.go){ if(ROLES[S.role].sections.includes(t.dataset.go)){S.section=t.dataset.go; closeDrawer(); render();} return; }
+  if(t.dataset.go){ if(ROLES[S.role].sections.includes(t.dataset.go)){S.section=t.dataset.go; closeDrawer(); if(typeof umClose==="function")umClose(); render();} return; }
+  if(t.dataset.newuser){ paInviteDrawer(); return; }
+  if(t.dataset.user){ paUserDrawer(t.dataset.user); return; }
   if(t.dataset.view){ S.view=t.dataset.view; render(); return; }
   if(t.dataset.nav!==undefined){
     const n=Number(t.dataset.nav);
@@ -1110,7 +1263,7 @@ function umHtml(){
   return '<div class="um-head"><div class="um-name">'+esc(ME.name||"")+'</div><div class="um-mail">'+esc(ME.email||"")+'</div>'+
     '<span class="um-role">'+(isAdmin?"Admin · all campuses":esc(cap(ME.role||"")))+(ME.preview?" · viewing as staff":"")+"</span></div>"+
     '<button class="um-item" data-profile="1">'+ic("info")+'Profile</button>'+
-    (isAdmin?'<a class="um-item" href="https://metrics.mosaic.org" target="_blank" rel="noopener">'+ic("settings")+'Admin <span class="hint">Metrics '+ic("ext","width:11px;height:11px")+'</span></a>'+
+    (isAdmin?'<button class="um-item" data-go="admin">'+ic("settings")+'Admin</button>'+
       '<button class="um-item" data-preview="1">'+ic("target")+(ME.preview?"Exit staff view":"View as staff")+"</button>":"")+
     '<div class="um-sep"></div><button class="um-item" data-logout="1">'+ic("x")+'Log Out</button>';
 }
@@ -1136,8 +1289,15 @@ document.querySelector(".rail-foot").addEventListener("click",e=>{
 document.addEventListener("click",e=>{
   if(umPop.classList.contains("open")&&!umPop.contains(e.target)&&!e.target.closest(".rail-foot"))umClose();
 });
+/* Admin table inline edits (delegated: the table re-renders) */
+document.addEventListener("change",async e=>{
+  const rs=e.target.closest("select.pa-role");
+  if(rs){const r=await paSaveRole(rs.dataset.id,rs.value);if(S.section==="admin")render();if(typeof r==="string")paNote(r);return;}
+  const cs=e.target.closest("select.pa-campus");
+  if(cs){const r=await paSaveCampus(cs.dataset.id,cs.value);if(S.section==="admin")render();if(typeof r==="string")paNote(r);return;}
+});
 let BOOTED=false;
-const PATH_SECTION={"/":"home","/home":"home","/calendar":"calendar","/comms":"comms","/pm":"planning","/planning":"planning","/metrics":"numbers","/numbers":"numbers","/goals":"goals","/budgets":"budgets","/giving":"giving","/settings":"settings"};
+const PATH_SECTION={"/":"home","/home":"home","/calendar":"calendar","/comms":"comms","/pm":"planning","/planning":"planning","/metrics":"numbers","/numbers":"numbers","/goals":"goals","/budgets":"budgets","/giving":"giving","/settings":"settings","/admin":"admin"};
 async function enterPortal(){
   const {data:{user}}=await sb.auth.getUser();
   if(!user)return;
