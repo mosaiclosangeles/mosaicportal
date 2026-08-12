@@ -105,7 +105,8 @@ button{font:inherit;letter-spacing:inherit;color:inherit;background:none;border:
 .brand{display:flex;align-items:center;gap:9px;padding:0 6px 16px}
 .brand-mark{width:18px;height:18px;border-radius:5px;background:#000;flex:none}
 .brand-name{font-size:13.5px;font-weight:500}
-.nav{display:flex;flex-direction:column;gap:1px}
+.nav{display:flex;flex-direction:column;gap:1px;flex:1;min-height:0}
+.nav [data-go="settings"]{margin-top:auto}
 .nav button{display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:var(--r-ctrl);
   font-size:13.5px;color:#5c5c5c;text-align:left;width:100%}
 .nav button:hover{background:#eaeae8}
@@ -288,6 +289,7 @@ select{font:inherit;font-size:13px;padding:7px 10px;border:1px solid var(--hairl
     padding:6px 4px;z-index:3;overflow-x:auto}
   .brand,.rail-foot{display:none}
   .nav{flex-direction:row;gap:2px;width:100%}
+  .nav [data-go="settings"]{margin-top:0;margin-left:auto}
   .nav button{flex-direction:column;gap:3px;font-size:10px;padding:6px 4px;justify-content:center;text-align:center}
   .nav .badge,.nav .count{display:none}
   .main{padding:18px 16px 96px}
@@ -407,7 +409,7 @@ const CE_STATUS={sent:'done',approved:'done',complete:'done',scheduled:'schedule
 function mapLive(pis,ces){
   EVENTS=[];CAMPAIGNS=[];ATTN=[];CLOSEOUT=0;
   pis.forEach(r=>{
-    if(r.deleted)return;
+    if(r.deleted||!r.date)return;   // undated items live on the board, not a calendar
     const title=r.title||(r.is_sunday?'Sunday Gathering':'(untitled)');
     const past=D(r.date)<TODAY;
     const base={type:'event',title,campus:r.campus,level:r.level,phase:r.phase_now,speaker:r.speaker,
@@ -696,7 +698,7 @@ function monthGrid(){
 function pageEmbed(id){
   const sec=SECTIONS.find(x=>x.id===id);
   let src=sec.url;
-  if(id==='numbers')src+=(src.includes('?')?'&':'?')+'embed=portal';
+  if(id==='numbers'||id==='comms'||id==='planning')src+=(src.includes('?')?'&':'?')+'embed=portal';
   return '<div class="embed-wrap"><iframe src="'+src+'" title="'+esc(sec.label)+'" allow="clipboard-write"></iframe>'+
     '<a class="embed-open" href="'+sec.url+'" target="_blank" rel="noopener" title="Open '+esc(sec.label)+' in its own tab">'+ic('ext','width:12px;height:12px')+'open</a></div>';
 }
