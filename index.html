@@ -66,6 +66,20 @@
 .pa-eye:hover{color:#000}
 .pa-lbl{display:block;font-size:12px;color:#8a8a8a;margin-bottom:5px}
 .pa-in{width:100%;box-sizing:border-box;padding:9px 11px;border:1px solid #e6e6e5;border-radius:7px;font-family:inherit;letter-spacing:inherit;font-size:14px;background:#fff}
+.pa-tabs{display:inline-flex;gap:2px;background:#f2f2f1;border-radius:9px;padding:3px;margin:0 0 18px}
+.pa-tabs button{border:0;background:none;font-family:inherit;letter-spacing:inherit;font-size:12.5px;padding:6px 13px;border-radius:6px;color:#5c5c5c;cursor:pointer}
+.pa-tabs button.on{background:#fff;color:#000;font-weight:500;box-shadow:0 0 0 1px #e6e6e5}
+.rp-desc{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:10px;margin-bottom:18px}
+.rp-card{border:1px solid #e6e6e5;border-radius:10px;padding:14px}
+.rp-card .rp-role{font-size:11.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;margin-bottom:6px}
+.rp-card p{margin:0;font-size:12.5px;color:#5c5c5c;line-height:1.5}
+.rp-table{width:100%;border-collapse:collapse;font-size:13.5px}
+.rp-table th{text-align:left;font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;font-weight:500;padding:12px 16px;background:#fafaf9;white-space:nowrap}
+.rp-table td{padding:9px 16px;border-top:1px solid #f0f0f0}
+.rp-table tr.rp-sec td{background:#fafaf9;font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:#8a8a8a;font-weight:500;padding:9px 16px}
+.rp-yes{color:#0c6e4e;font-weight:600}
+.rp-no{color:#b5b5b3}
+.rp-all,.rp-lim{font-size:11.5px;padding:2px 8px;border-radius:999px;background:#f2f2f1;color:#4a4a4a}
 
 :root{
   --surface:#ffffff; --rail:#f3f3f2; --rail-active:#e6e6e4; --fill:#f2f2f1;
@@ -706,7 +720,7 @@ function pageEmbed(id){
 /* ---- Admin: user management for the whole app (same profiles the four
    apps share). Reads/writes the Metrics Supabase with the signed-in
    admin's own session — RLS enforces that only admins can. ---- */
-const ADMIN={profs:null,campuses:null,err:null,q:'',role:'all',loading:false};
+const ADMIN={profs:null,campuses:null,err:null,q:'',role:'all',loading:false,tab:'users'};
 const ROLE_LIST=['admin','staff','leader','volunteer'];
 function adminName(p){const n=p.display_name||p.full_name||'—';return n.includes('@')?prettyNameFromEmail(n):n;}
 async function loadAdmin(){
@@ -722,10 +736,68 @@ async function loadAdmin(){
   if(S.section==='admin')render();
 }
 function campusName(id){const c=(ADMIN.campuses||[]).find(x=>x.id===id);return c?c.name:'—';}
+/* Roles & permissions — Paola's reference matrix from the Metrics admin,
+   adapted to the portal: what each role can reach across the whole app,
+   not just Metrics. Reference only; the rules themselves are enforced by
+   the role presets here and by RLS in Supabase. */
+const RP_ROLES=[
+  {name:'Admin',color:'var(--amber-d)',desc:'Full access across every campus and every section — sees all of the portal, manages users, roles and campuses, and is the only role that can open Budgets and Giving.'},
+  {name:'Staff',color:'var(--gathering-d)',desc:"Campus team member. Full working portal for their own campus — calendar, comms, planning and metrics — and can submit and edit that campus's numbers. Can't manage users or see other campuses."},
+  {name:'Leader',color:'var(--text2)',desc:"Lightweight view of their own campus — home, calendar and planning, plus submitting their campus's numbers. This is the default for new accounts."},
+  {name:'Volunteer',color:'var(--session-d)',desc:'The lightest role — home and calendar for their own campus, view-only. No submitting, editing or managing. Great for on-the-ground helpers.'}
+];
+const RP_SECTIONS=[
+  {title:'Portal sections',rows:[
+    ['Home','yes','yes','yes','yes'],
+    ['Calendar','yes','yes','yes','yes'],
+    ['Communication','yes','yes','no','no'],
+    ['Planning','yes','yes','yes','no'],
+    ['Metrics','yes','yes','yes','no'],
+    ['Goals','yes','yes','no','no'],
+    ['Budgets','yes','no','no','no'],
+    ['Giving','yes','no','no','no']
+  ]},
+  {title:'Data & scope',rows:[
+    ['Campuses they can see','all','own','own','own'],
+    ['Switch between campuses','yes','no','no','no']
+  ]},
+  {title:'Attendance (Metrics)',rows:[
+    ['View attendance','all','own','own','own'],
+    ['Submit attendance','yes','own','own','no'],
+    ['Edit entries','yes','own','own','no'],
+    ['Delete / restore entries','yes','no','no','no']
+  ]},
+  {title:'Administration',rows:[
+    ['User management','yes','no','no','no'],
+    ['Change roles','yes','no','no','no'],
+    ['Manage campuses','yes','no','no','no'],
+    ['Edit own name & password','yes','yes','yes','yes']
+  ]}
+];
+function rpCell(v){
+  if(v==='yes')return '<span class="rp-yes">✓</span>';
+  if(v==='no')return '<span class="rp-no">—</span>';
+  if(v==='all')return '<span class="rp-all">All campuses</span>';
+  if(v==='own')return '<span class="rp-lim">Own campus</span>';
+  return esc(v);
+}
+function pageAdminRoles(){
+  return '<div class="rp-desc">'+RP_ROLES.map(r=>'<div class="rp-card"><div class="rp-role" style="color:'+r.color+'">'+esc(r.name)+'</div><p>'+esc(r.desc)+'</p></div>').join('')+'</div>'+
+    '<div class="pa-card" style="overflow-x:auto"><table class="rp-table"><thead><tr><th>Permission</th>'+
+    RP_ROLES.map(r=>'<th style="color:'+r.color+'">'+esc(r.name)+'</th>').join('')+'</tr></thead><tbody>'+
+    RP_SECTIONS.map(sec=>'<tr class="rp-sec"><td colspan="5">'+esc(sec.title)+'</td></tr>'+
+      sec.rows.map(row=>'<tr><td>'+esc(row[0])+'</td>'+row.slice(1).map(v=>'<td>'+rpCell(v)+'</td>').join('')+'</tr>').join('')
+    ).join('')+'</tbody></table></div>'+
+    '<p style="font-size:12.5px;color:var(--text2);margin-top:14px;max-width:640px;line-height:1.5">A reference, not a control panel — change someone\'s access by changing their role on the Users tab. Section visibility is enforced by the portal; campus scope and who can edit what are enforced by the database itself, so the rules hold no matter which app you\'re in.</p>';
+}
 function pageAdmin(){
   if(ME.role!=='admin')return '<div class="page-head"><div><h1>Admin</h1></div></div><div class="empty">Only admins can open this.</div>';
+  const tabs='<div class="pa-tabs"><button data-adtab="users" class="'+(ADMIN.tab!=='roles'?'on':'')+'">Users</button>'+
+    '<button data-adtab="roles" class="'+(ADMIN.tab==='roles'?'on':'')+'">Roles & permissions</button></div>';
+  if(ADMIN.tab==='roles')
+    return '<div class="page-head"><div><h1>Admin</h1><div class="sub">What each role can reach across the portal</div></div></div>'+tabs+pageAdminRoles();
   const head='<div class="page-head"><div><h1>Admin</h1><div class="sub">User management · every app, one account list</div></div>'+
-    '<button class="btn-primary" data-newuser="1">New user</button></div>';
+    '<button class="btn-primary" data-newuser="1">New user</button></div>'+tabs;
   if(!ADMIN.profs&&!ADMIN.err){loadAdmin();return head+'<div class="empty">Loading users…</div>';}
   if(ADMIN.err)return head+'<div class="banner">'+ic('info')+'<div>Couldn\'t load users — '+esc(ADMIN.err)+'</div></div>';
   const rank={admin:0,staff:1,leader:2,volunteer:3};
@@ -1100,7 +1172,7 @@ function render(){
 
 /* ============================ events ============================ */
 document.addEventListener('click',e=>{
-  const t=e.target.closest('[data-go],[data-view],[data-nav],[data-filter],[data-ev],[data-day],[data-task],[data-new],[data-pick],[data-everyone],[data-tl],[data-back],[data-logout],[data-preview],[data-profile],[data-newuser],[data-user]');
+  const t=e.target.closest('[data-go],[data-view],[data-nav],[data-filter],[data-ev],[data-day],[data-task],[data-new],[data-pick],[data-everyone],[data-tl],[data-back],[data-logout],[data-preview],[data-profile],[data-newuser],[data-user],[data-adtab]');
   if(!t) return;
   if(t.dataset.logout){ (sb?sb.auth.signOut():Promise.resolve()).then(()=>location.reload()); return; }
   if(t.dataset.preview){
@@ -1121,6 +1193,7 @@ document.addEventListener('click',e=>{
   if(t.dataset.everyone){ S.forEveryone=!S.forEveryone; render(); return; }
   if(t.dataset.tl!==undefined){ const n=Number(t.dataset.tl); S.tlShift = n===0?0:S.tlShift+n; render(); return; }
   if(t.dataset.go){ if(ROLES[S.role].sections.includes(t.dataset.go)){S.section=t.dataset.go; closeDrawer(); if(typeof umClose==="function")umClose(); render();} return; }
+  if(t.dataset.adtab){ ADMIN.tab=t.dataset.adtab; render(); return; }
   if(t.dataset.newuser){ paInviteDrawer(); return; }
   if(t.dataset.user){ paUserDrawer(t.dataset.user); return; }
   if(t.dataset.view){ S.view=t.dataset.view; render(); return; }
@@ -1269,17 +1342,37 @@ function umHtml(){
       '<button class="um-item" data-preview="1">'+ic("target")+(ME.preview?"Exit staff view":"View as staff")+"</button>":"")+
     '<div class="um-sep"></div><button class="um-item" data-logout="1">'+ic("x")+'Log Out</button>';
 }
-function profileDrawer(){
-  openDrawer('<h2 style="margin-top:0">Profile</h2><div class="sub">'+esc(ME.name||"")+' · '+esc(ME.email||"")+"</div>"+
-    '<div style="margin-top:20px"><label style="display:block;font-size:12px;color:var(--text2);margin-bottom:5px">New password</label>'+
-    '<input id="pfPass" type="password" autocomplete="new-password" style="width:100%;box-sizing:border-box;padding:9px 11px;border:1px solid var(--hairline);border-radius:7px;font-family:inherit;font-size:14px"></div>'+
-    '<button class="btn-primary" id="pfSave" style="margin-top:14px">Update password</button>'+
-    '<div id="pfNote" style="font-size:12.5px;margin-top:10px;color:var(--text2)"></div>');
-  document.getElementById("pfSave").addEventListener("click",async()=>{
-    const p=document.getElementById("pfPass").value,n=document.getElementById("pfNote");
-    if(p.length<8){n.textContent="Password needs at least 8 characters.";return;}
-    const {error}=await sb.auth.updateUser({password:p});
-    n.textContent=error?error.message:"Password updated.";
+/* Profile — same shape as the Metrics profile page: your account details,
+   an editable name, and a password reset by email. Role and campus are set
+   by an administrator, so they're shown, not editable. */
+async function profileDrawer(){
+  if(!ADMIN.campuses)await loadAdmin().catch(()=>{});
+  const roleLab=ME.role==='admin'?'Admin':cap(ME.role||'');
+  const campusLab=ME.role==='admin'?'All campuses':(ME.campus_id?campusName(ME.campus_id):'—');
+  openDrawer('<div class="eyebrow" style="letter-spacing:.13em;text-transform:uppercase;color:var(--text2);font-size:11px;font-weight:700;margin-bottom:6px">Account</div>'+
+    '<h2 style="margin:0 0 18px">Profile</h2>'+
+    '<div class="kv"><span>Name</span><span><input id="pfName" class="pa-in" style="width:170px;padding:6px 9px;font-size:13px;text-align:right" value="'+esc(ME.name||'')+'"></span></div>'+
+    '<div class="kv"><span>Email</span><span>'+esc(ME.email||'')+'</span></div>'+
+    '<div class="kv"><span>Role</span><span>'+esc(roleLab)+'</span></div>'+
+    '<div class="kv" style="border-bottom:0"><span>Campus</span><span>'+esc(campusLab)+'</span></div>'+
+    '<button class="btn-primary" id="pfSaveName" style="margin-top:14px">Save name</button>'+
+    '<p style="font-size:12.5px;color:var(--text2);margin:12px 0 22px;line-height:1.5">Your name is yours to edit. Role and campus are set by an administrator.</p>'+
+    '<div class="eyebrow" style="letter-spacing:.13em;text-transform:uppercase;color:var(--text2);font-size:11px;font-weight:700;margin-bottom:6px">Password</div>'+
+    '<p style="font-size:13px;color:var(--text2);margin:0 0 12px">We\'ll email you a secure link to set a new password.</p>'+
+    '<button class="btn-primary" id="pfReset">Email me a reset link</button>'+
+    '<div id="pfNote" style="font-size:12.5px;margin-top:12px;color:var(--text2)"></div>');
+  document.getElementById('pfSaveName').addEventListener('click',async()=>{
+    const v=document.getElementById('pfName').value.trim(),n=document.getElementById('pfNote');
+    if(!v){n.textContent='Please enter a name.';return;}
+    const {data:{user}}=await sb.auth.getUser();
+    const {error}=await sb.from('profiles').update({display_name:v}).eq('id',user.id);
+    if(error){n.textContent="Couldn't save — "+(error.message||'try again.');return;}
+    ME.name=v;ADMIN.profs=null;n.textContent='Name updated.';render();
+  });
+  document.getElementById('pfReset').addEventListener('click',async()=>{
+    const n=document.getElementById('pfNote');
+    const {error}=await sb.auth.resetPasswordForEmail(ME.email,{redirectTo:location.origin+'/'});
+    n.textContent=error?("Couldn't send — "+(error.message||'try again.')):('Reset link sent to '+ME.email+'.');
   });
 }
 document.querySelector(".rail-foot").addEventListener("click",e=>{
@@ -1304,8 +1397,8 @@ async function enterPortal(){
   const {data:{user}}=await sb.auth.getUser();
   if(!user)return;
   ME.email=user.email;
-  const {data:prof}=await sb.from("profiles").select("role,display_name,full_name").eq("id",user.id).single();
-  if(prof){ME.role=prof.role;ME.name=prof.display_name||prof.full_name;}
+  const {data:prof}=await sb.from("profiles").select("role,display_name,full_name,campus_id").eq("id",user.id).single();
+  if(prof){ME.role=prof.role;ME.name=prof.display_name||prof.full_name;ME.campus_id=prof.campus_id;}
   if(!ME.name||ME.name.includes("@"))ME.name=prettyNameFromEmail(ME.email);
   if(ROLE_PRESET[ME.role])S.role=ROLE_PRESET[ME.role];
   const want=PATH_SECTION[location.pathname.replace(/\/+$/,"")||"/"];
