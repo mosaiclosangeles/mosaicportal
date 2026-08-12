@@ -461,16 +461,16 @@ const SECTIONS = [
   {group:'MEASURE'},
   {id:'numbers',label:'Metrics',icon:'chart',h:'var(--session)',t:'var(--session-t)',url:'https://metrics.mosaic.org'},
   {id:'goals',label:'Goals',icon:'target',beta:true,h:'var(--magenta)',t:'var(--magenta-t)',url:'https://mosaic-hub.replit.app/'},
-  {id:'budgets',label:'Budgets',icon:'wallet',beta:true,h:'var(--indigo)',t:'var(--indigo-t)'},
+  {id:'budgets',label:'Budgets',icon:'wallet',beta:true,restricted:true,h:'var(--indigo)',t:'var(--indigo-t)'},
   {id:'giving',label:'Giving',icon:'heart',beta:true,restricted:true,h:'var(--lime)',t:'var(--lime-t)'},
   {group:''},
   {id:'settings',label:'Settings',icon:'settings',h:'var(--slate)',t:'var(--slate-t)'}
 ];
 const PALETTE = ['--neutral','--red','--milestone','--amber','--lime','--session','--gathering','--indigo','--comms','--magenta'];
 const ROLES = {
-  comms:{name:'Comms (Loyda)',sections:['home','calendar','comms','planning','numbers','goals','budgets','settings']},
-  leadership:{name:'Leadership (Carlos)',sections:['home','calendar','comms','planning','numbers','goals','budgets','giving','settings']},
-  ops:{name:'Ops / event management',sections:['home','calendar','planning','budgets','settings']},
+  comms:{name:'Comms / staff',sections:['home','calendar','comms','planning','numbers','goals','settings']},
+  leadership:{name:'Leadership',sections:['home','calendar','comms','planning','numbers','goals','budgets','giving','settings']},
+  ops:{name:'Ops / event management',sections:['home','calendar','planning','settings']},
   volunteer:{name:'Volunteer lead',sections:['home','calendar','settings']}
 };
 const BUDGETS=[
