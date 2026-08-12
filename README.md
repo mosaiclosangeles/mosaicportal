@@ -4,7 +4,7 @@ The staff portal for Mosaic — one front door for the tools the team already us
 
 | App | Live link | Repo / backend |
 |---|---|---|
-| **Portal home** (this repo) | _pending Cloudflare Pages setup_ | `mosaicportal` · auth via the Mosaic Metrics Supabase |
+| **Portal home** (this repo) | [portal.mosaic.org](https://portal.mosaic.org) | `mosaicportal` · auth via the Mosaic Metrics Supabase |
 | Metrics | [metrics.mosaic.org](https://metrics.mosaic.org) | `mosaic-metrics` · Supabase `Mosaic Metrics` (`iknjgrltglwupxjtegfh`) |
 | Comms | [comms.mosaic.org](https://comms.mosaic.org) | `mosaic-comm` · Supabase `mosaic-comm` (`yrviwbqhjcrlxgozrgay`) |
 | Planning Board | [pm.mosaic.org](https://pm.mosaic.org) | `mosaicprojectmanagement` · Supabase `mosaic-comm` |
@@ -29,6 +29,8 @@ the front door + the weekly master calendar home + nav to the four apps.**
   independently and cannot be affected by changes here.
 
 ## Going live (one-time setup)
+
+_Done — live since Aug 12, 2026._ For reference:
 
 1. Cloudflare dashboard → **Workers & Pages → Create → Pages → Connect to
    Git** → pick `mosaiclosangeles/mosaicportal`.
