@@ -894,7 +894,43 @@ document.getElementById("colorBy").addEventListener("change",e=>{COLORBY=e.targe
 /* ---------- sign-in gate — same Supabase project + accounts as Mosaic Metrics ---------- */
 const SUPABASE_URL="https://iknjgrltglwupxjtegfh.supabase.co";
 const SUPABASE_ANON="sb_publishable_XUAFMzykMPBN2dBZJ0Z9jw__2MGNGIK";
-const sb=(typeof supabase!=="undefined")?supabase.createClient(SUPABASE_URL,SUPABASE_ANON):null;
+/* Shared sign-in across *.mosaic.org: the session lives in a cookie on
+   .mosaic.org (chunked — cookies max out near 4KB) so portal/metrics/etc.
+   share one sign-in. Off mosaic.org (local dev, *.pages.dev previews) this
+   falls back to localStorage, which is also kept in sync as a bridge so an
+   existing signed-in browser isn't logged out by the switch. */
+const AUTH_COOKIE_OK=/\.mosaic\.org$/.test(location.hostname);
+const AUTH_CHUNK=3000;
+function _cookieAll(){const all={};document.cookie.split(/;\s*/).forEach(p=>{const i=p.indexOf("=");if(i>0)all[p.slice(0,i)]=p.slice(i+1);});return all;}
+function _cookieGet(name){
+  const all=_cookieAll();
+  let raw=all[name];
+  if(raw===undefined){raw="";let i=0;while(all[name+"."+i]!==undefined){raw+=all[name+"."+i];i++;}}
+  if(!raw)return null;
+  try{return decodeURIComponent(raw);}catch(e){return null;}
+}
+function _cookieSetRaw(k,v,maxAge){document.cookie=k+"="+v+";domain=.mosaic.org;path=/;max-age="+maxAge+";secure;samesite=lax";}
+function _cookieClear(name){_cookieSetRaw(name,"",0);for(let i=0;i<20;i++)_cookieSetRaw(name+"."+i,"",0);}
+const mosaicAuthStorage={
+  getItem(key){
+    if(AUTH_COOKIE_OK){const v=_cookieGet(key);if(v)return v;}
+    try{return localStorage.getItem(key);}catch(e){return null;}
+  },
+  setItem(key,value){
+    if(AUTH_COOKIE_OK){
+      _cookieClear(key);
+      const enc=encodeURIComponent(value);
+      if(enc.length<=AUTH_CHUNK)_cookieSetRaw(key,enc,31536000);
+      else for(let i=0;i*AUTH_CHUNK<enc.length;i++)_cookieSetRaw(key+"."+i,enc.slice(i*AUTH_CHUNK,(i+1)*AUTH_CHUNK),31536000);
+    }
+    try{localStorage.setItem(key,value);}catch(e){}
+  },
+  removeItem(key){
+    if(AUTH_COOKIE_OK)_cookieClear(key);
+    try{localStorage.removeItem(key);}catch(e){}
+  }
+};
+const sb=(typeof supabase!=="undefined")?supabase.createClient(SUPABASE_URL,SUPABASE_ANON,{auth:{storage:mosaicAuthStorage}}):null;
 const $g=id=>document.getElementById(id);
 let ME={email:null,role:null,name:null};
 function gateNote(msg,kind){const n=$g("gateNote");n.textContent=msg;n.className="gate-note show "+(kind||"err");}
