@@ -30,6 +30,24 @@
 .gate-note.ok{background:#e6f6f1;color:#2f7a63}
 .gate-note.warn{background:#fdf3e3;color:#8a5a12}
 
+/* ---- embedded apps ---- */
+.app-embed{width:100%;height:calc(100vh - 132px);border:1px solid #e6e6e5;border-radius:10px;background:#fff;display:block}
+
+/* ---- account menu (rail foot) ---- */
+.rail-foot{cursor:pointer;border-radius:8px}
+.rail-foot:hover{background:#e6e6e4}
+.um-pop{position:fixed;left:14px;bottom:64px;width:250px;background:#fff;border:1px solid #e6e6e5;border-radius:12px;box-shadow:0 12px 32px rgba(0,0,0,.12);padding:8px;z-index:900;display:none;font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;letter-spacing:-.011em}
+.um-pop.open{display:block}
+.um-head{padding:10px 10px 10px;border-bottom:1px solid #f0f0f0;margin-bottom:6px}
+.um-name{font-weight:600;font-size:13.5px;color:#000}
+.um-mail{font-size:12px;color:#8a8a8a;margin-top:1px}
+.um-role{display:inline-block;margin-top:8px;font-size:10.5px;padding:3px 8px;border-radius:999px;background:#f2f2f1;color:#4a4a4a;font-weight:500}
+.um-item{display:flex;align-items:center;gap:9px;width:100%;border:none;background:none;font-family:inherit;letter-spacing:inherit;font-size:13px;color:#000;padding:8px 10px;border-radius:7px;cursor:pointer;text-align:left;text-decoration:none;box-sizing:border-box}
+.um-item:hover{background:#f2f2f1}
+.um-item svg{width:15px;height:15px;color:#5c5c5c;flex:none}
+.um-item .hint{color:#8a8a8a;font-size:11px;margin-left:auto}
+.um-sep{height:1px;background:#f0f0f0;margin:6px 0}
+
 :root{
   --surface:#ffffff; --rail:#f3f3f2; --rail-active:#e6e6e4; --fill:#f2f2f1;
   --hairline:#e6e6e5; --separator:#f0f0f0; --grid:#d9d9d6;
@@ -351,78 +369,81 @@ const TYPES = {
   other: {label:'Other', hue:'var(--neutral)',  tint:'var(--neutral-t)',  deep:'var(--neutral-d)',  solid:'var(--neutral-s)'}
 };
 // status: done | scheduled | waiting | drafting
-const EVENTS = [
-  // July
-  {id:'g0726',date:'2026-07-26',type:'event',status:'done',title:'9 + 11am gatherings',detail:'Carlos preaching',campus:'NYC + LA',level:'Level 1',phase:'Close',owner:'Loyda',speaker:'Carlos Pimentel',series:'Summer',
-   desc:'Standard summer Sunday. Attendance held steady against the six-week average despite the holiday weekend.'},
-  {id:'c0726a',date:'2026-07-26',type:'comms',status:'done',title:'Sunday email',detail:'4,061 recipients · Flodesk'},
-  {id:'c0726b',date:'2026-07-26',type:'comms',status:'done',title:'Service script',detail:'Approved by Carlos'},
-  {id:'s0729',date:'2026-07-29',type:'event',status:'done',title:'Summer session',detail:'7pm · NYC'},
-    {id:'g0801',date:'2026-08-01',type:'event',status:'scheduled',title:'Houses gather',detail:'Small groups across both campuses'},
-  // week of Aug 2
-  {id:'g0802',date:'2026-08-02',type:'event',status:'scheduled',title:'9 + 11am gatherings',detail:'Jeremiah guest speaker',campus:'NYC + LA',campaign:'Jeremiah',level:'Level 1',phase:'Execution',owner:'Loyda',creative:'Saul',speaker:'Jeremiah',series:'Summer guests',
-   desc:'First of the two summer guest Sundays. Jeremiah is speaking live at both services with no video element, so the only creative dependency is the announcement slide.'},
-  {id:'c0802a',date:'2026-08-02',type:'comms',status:'scheduled',title:'Sunday email — Jeremiah',detail:'4,118 recipients · Flodesk',campaign:'Jeremiah'},
-  {id:'c0802b',date:'2026-08-02',type:'comms',status:'scheduled',title:'Service script',detail:'Approved by Carlos',campaign:'Jeremiah'},
-  {id:'c0804',date:'2026-08-04',type:'comms',status:'scheduled',title:'Text — session reminder',detail:'4pm · Clearstream'},
-  {id:'s0805',date:'2026-08-05',type:'event',status:'scheduled',title:'Summer session',detail:'7pm · NYC'},
-  {id:'c0806',date:'2026-08-06',type:'comms',status:'waiting',title:'Metcalf announcement',detail:'Waiting on Carlos',campaign:'Charles Metcalf'},
-  {id:'c0807',date:'2026-08-07',type:'comms',status:'drafting',title:'Social — summer sessions',detail:'Instagram + stories'},
-  {id:'g0808',date:'2026-08-08',type:'event',status:'scheduled',title:'Houses gather',detail:'Small groups'},
-  // week of Aug 9
-  {id:'g0809',date:'2026-08-09',type:'event',status:'scheduled',title:'9 + 11am gatherings',detail:'Carlos preaching',campus:'NYC + LA'},
-  {id:'c0809',date:'2026-08-09',type:'comms',status:'drafting',title:'Sunday email',detail:'Not started'},
-  {id:'c0811',date:'2026-08-11',type:'comms',status:'drafting',title:'Text — session reminder',detail:'Clearstream'},
-  {id:'s0812',date:'2026-08-12',type:'event',status:'scheduled',title:'Summer session',detail:'7pm · NYC'},
-    {id:'g0815',date:'2026-08-15',type:'event',status:'scheduled',title:'Houses gather',detail:'Small groups'},
-  // week of Aug 16
-  {id:'g0816',date:'2026-08-16',type:'event',status:'scheduled',title:'9 + 11am gatherings',detail:'Carlos preaching',campus:'NYC + LA'},
-  {id:'c0816',date:'2026-08-16',type:'comms',status:'drafting',title:'Sunday email',detail:'Not started'},
-  {id:'s0819',date:'2026-08-19',type:'event',status:'scheduled',title:'Summer session',detail:'7pm · NYC'},
-  {id:'c0818',date:'2026-08-18',type:'comms',status:'drafting',title:'Text — Metcalf promo',detail:'Clearstream',campaign:'Charles Metcalf'},
-    {id:'c0821',date:'2026-08-21',type:'comms',status:'drafting',title:'Social — Metcalf',detail:'Instagram + stories',campaign:'Charles Metcalf'},
-  {id:'g0822',date:'2026-08-22',type:'event',status:'scheduled',title:'Houses gather',detail:'Small groups'},
-  // week of Aug 23
-  {id:'g0823',date:'2026-08-23',type:'event',status:'scheduled',title:'Charles Metcalf',detail:'Guest speaker · 9 + 11am',campus:'NYC + LA',campaign:'Charles Metcalf',level:'Level 1',phase:'Pre-launch',owner:'Loyda',creative:'Saul',speaker:'Charles Metcalf',series:'Summer guests',clip:'Conference 2026',
-   desc:'Guest speaker Sunday closing out the summer. Opening with the clip from Conference rather than a live intro, so the video cut needs to land before promo goes out. Same run of show at both campuses; LA plays the clip on a delay from the NYC feed.'},
-  {id:'c0823a',date:'2026-08-23',type:'comms',status:'drafting',title:'Sunday email — Metcalf',detail:'Not started',campaign:'Charles Metcalf'},
-  {id:'c0823b',date:'2026-08-23',type:'comms',status:'drafting',title:'Service script',detail:'Not started',campaign:'Charles Metcalf'},
-  {id:'s0826',date:'2026-08-26',type:'event',status:'scheduled',title:'Summer session',detail:'7pm · final of series'},
-  {id:'g0829',date:'2026-08-29',type:'event',status:'scheduled',title:'Houses gather',detail:'Small groups'},
-  {id:'g0830',date:'2026-08-30',type:'event',status:'scheduled',title:'9 + 11am gatherings',detail:'Carlos preaching',campus:'NYC + LA'},
-  {id:'o0730',date:'2026-07-30',type:'other',status:'scheduled',title:'Comms sync',detail:'9am · Outlook',src:'outlook'},
-  {id:'o0803a',date:'2026-08-03',type:'other',status:'scheduled',title:'Staff meeting',detail:'10am · Outlook',src:'outlook'},
-  {id:'o0803b',date:'2026-08-03',type:'other',status:'scheduled',title:"Saul's birthday",detail:'From CCB',src:'ccb'},
-  {id:'o0805',date:'2026-08-05',type:'other',status:'scheduled',title:'1:1 with Carlos',detail:'2pm · Outlook',src:'outlook'},
-  {id:'o0806',date:'2026-08-06',type:'other',status:'scheduled',title:'Creative review',detail:'11am · Outlook',src:'outlook'},
-  {id:'o0810',date:'2026-08-10',type:'other',status:'scheduled',title:'Staff meeting',detail:'10am · Outlook',src:'outlook'},
-  {id:'o0817',date:'2026-08-17',type:'other',status:'scheduled',title:'Staff meeting',detail:'10am · Outlook',src:'outlook'},
-  {id:'o0824',date:'2026-08-24',type:'other',status:'scheduled',title:'Staff meeting',detail:'10am · Outlook',src:'outlook'}
-];
-const CAMPAIGNS = [
-  {title:'Metcalf promotion',start:'2026-08-03',end:'2026-08-23',type:'comms'},
-  {title:'Fall Launch — building',start:'2026-08-14',end:'2026-10-04',type:'event'},
-  {title:'Summer Sessions series',start:'2026-07-01',end:'2026-08-26',type:'event'}
-];
-const METRICS = { // only past Sundays have numbers
-  '2026-06-28':{a:388,k:54,n:5}, '2026-07-05':{a:401,k:61,n:8},
-  '2026-07-12':{a:376,k:52,n:4}, '2026-07-19':{a:420,k:66,n:11},
-  '2026-07-26':{a:395,k:58,n:6}
-};
-let TASKS = [
-  {id:'t1',title:'Send Metcalf email for approval',due:'2026-08-01',owner:'Loyda',parent:'Charles Metcalf',campaign:'Charles Metcalf',done:false,blocked:true},
-  {id:'t2',title:'Upload Jeremiah clip',due:'2026-08-02',owner:'Loyda',parent:'Jeremiah',campaign:'Jeremiah',done:false},
-  {id:'t3',title:'Confirm Houses hosts',due:'2026-08-08',owner:'Loyda',parent:'Houses',done:false},
-  {id:'t4',title:'Metcalf artwork',due:'2026-07-30',owner:'Saul',parent:'Charles Metcalf',campaign:'Charles Metcalf',done:false},
-  {id:'t5',title:'Fall kickoff plan approved',due:'2026-08-06',owner:'Carlos',parent:'Fall Launch',done:false},
-  {id:'t6',title:'Fall launch assets',due:'2026-08-14',owner:'Saul',parent:'Fall Launch',done:false},
-  {id:'t7',title:'Conference clip cut',due:'2026-08-20',owner:'Loyda',parent:'Charles Metcalf',campaign:'Charles Metcalf',done:false},
-  {id:'t9',title:'Slides to Creative',due:'2026-08-21',owner:'Saul',parent:'Charles Metcalf',campaign:'Charles Metcalf',done:false},
-  {id:'t8',title:'Book Metcalf travel',due:'2026-07-24',owner:'Loyda',parent:'Charles Metcalf',campaign:'Charles Metcalf',done:true},
-  {id:'t10',title:'Confirm honorarium',due:'2026-07-28',owner:'Carlos',parent:'Charles Metcalf',campaign:'Charles Metcalf',done:true},
-  {id:'t11',title:'Announcement slide',due:'2026-07-29',owner:'Saul',parent:'Jeremiah',campaign:'Jeremiah',done:true}
-];
-const GUEST_AVG=418, YEAR_GOAL=450;
+/* ---- live data ----------------------------------------------------------
+   EVENTS / CAMPAIGNS come from the planning board's queryable mirror
+   (planning_items) and the comms calendar (comm_events) in the mosaic-comm
+   Supabase — read-only, with the public key both apps already expose.
+   METRICS comes from the Mosaic Metrics view v_service_totals using the
+   signed-in person's own session. The four apps stay the systems of record;
+   the portal reads and arranges. */
+let EVENTS=[], CAMPAIGNS=[], METRICS={}, TASKS=[], ATTN=[], CLOSEOUT=0, DATA_ERR=null;
+const PM_URL='https://yrviwbqhjcrlxgozrgay.supabase.co';
+const PM_KEY='sb_publishable_3o7Avv4DEhHW7i_k5DrH6Q_tYFLrgwg';
+async function pmGet(q){
+  const r=await fetch(PM_URL+'/rest/v1/'+q,{headers:{apikey:PM_KEY,Authorization:'Bearer '+PM_KEY}});
+  if(!r.ok)throw new Error('planning read failed ('+r.status+')');
+  return r.json();
+}
+const CE_STATUS={sent:'done',approved:'done',complete:'done',scheduled:'scheduled',waiting:'waiting','waiting for approval':'waiting',proposed:'drafting','in progress':'drafting',incomplete:'drafting'};
+function mapLive(pis,ces){
+  EVENTS=[];CAMPAIGNS=[];ATTN=[];CLOSEOUT=0;
+  pis.forEach(r=>{
+    if(r.deleted)return;
+    const title=r.title||(r.is_sunday?'Sunday Gathering':'(untitled)');
+    const past=D(r.date)<TODAY;
+    const base={type:'event',title,campus:r.campus,level:r.level,phase:r.phase_now,speaker:r.speaker,
+      series:r.is_series?title:undefined,owner:(r.owners||[]).join(', '),desc:r.description,
+      detail:(r.speaker?r.speaker+(r.is_sunday?' speaking':''):(r.type||''))+(r.campus&&r.campus!=='LA'?' · '+r.campus:'')};
+    if(r.recur==='weekly'&&r.date_end){
+      let d=D(r.date),i=0;
+      while(d<=D(r.date_end)&&i<60){
+        EVENTS.push(Object.assign({},base,{id:'pm:'+r.id+':'+key(d),date:key(d),status:(r.status==='Complete'||d<TODAY)?'done':'scheduled'}));
+        d=addDays(d,7);i++;
+      }
+      return;
+    }
+    if(r.date_end&&r.date_end!==r.date){CAMPAIGNS.push({title,start:r.date,end:r.date_end,type:'event'});return;}
+    const id='pm:'+r.id;
+    EVENTS.push(Object.assign({},base,{id,date:r.date,status:(r.status==='Complete'||past)?'done':'scheduled'}));
+    if(past&&!r.parent_id&&r.status&&r.status!=='Complete')CLOSEOUT++;
+    if(r.is_sunday&&!r.speaker&&!past&&D(r.date)<=addDays(TODAY,42))
+      ATTN.push({evId:id,title:'No speaker yet — '+title,date:r.date,meta:(r.campus||'')+' · '+((r.owners||[])[0]||'')});
+    if(r.needs_review&&!past)
+      ATTN.push({evId:id,title:'Flagged to review — '+title,date:r.date,meta:(r.campus||'')+' · '+((r.owners||[])[0]||'')});
+  });
+  ATTN.sort((a,b)=>D(a.date)-D(b.date));
+  ces.forEach(r=>{
+    if(r.archived||!r.event_date)return;
+    EVENTS.push({id:'ce:'+r.id,date:r.event_date,type:'comms',
+      status:CE_STATUS[String(r.status||'').toLowerCase()]||'drafting',
+      title:r.title||(r.type||'Comm'),
+      detail:(r.subtitle||r.type||'')+(r.sender?' · '+r.sender:'')});
+  });
+  EVENTS.sort((a,b)=>D(a.date)-D(b.date));
+}
+async function loadLive(){
+  DATA_ERR=null;
+  try{
+    const [pis,ces]=await Promise.all([
+      pmGet('planning_items?select=*&deleted=eq.false'),
+      pmGet('comm_events?select=id,event_date,type,title,subtitle,status,sender,archived&archived=eq.false')
+    ]);
+    mapLive(pis,ces);
+  }catch(e){DATA_ERR="Couldn't load live planning data — "+e.message+". Showing an empty calendar; the planning board itself is unaffected.";}
+  try{
+    if(sb){
+      let {data,error}=await sb.from('v_service_totals').select('date,gathering_type,in_person_total,online_views,baptisms').order('date',{ascending:false}).limit(80);
+      if(!error&&data&&data.length){
+        const sun=data.filter(r=>String(r.gathering_type||'sunday').toLowerCase().includes('sun'));
+        const rows=sun.length?sun:data;
+        const byDate={};
+        rows.forEach(r=>{const k=r.date;byDate[k]=byDate[k]||{a:0,k:0,n:0};byDate[k].a+=(r.in_person_total||0);byDate[k].k+=(r.online_views||0);byDate[k].n+=(r.baptisms||0);});
+        METRICS={};Object.keys(byDate).sort().slice(-6).forEach(k=>METRICS[k]=byDate[k]);
+      }
+    }
+  }catch(e){/* metrics card stays empty */}
+}
+function weekNum(d){const t=addDays(weekStartOf(d),4);const y0=new Date(t.getFullYear(),0,1);return Math.ceil(((t-y0)/86400000+1)/7);}
 const GOALS = [
   {k:'Sunday attendance average',v:412,t:450,hue:'var(--gathering)'},
   {k:'Next steps',v:87,t:150,hue:'var(--session)'},
@@ -435,10 +456,10 @@ const SECTIONS = [
   {id:'home',label:'Home',icon:'home',h:'var(--slate)',t:'var(--slate-t)'},
   {id:'calendar',label:'Calendar',icon:'calendar',h:'var(--gathering)',t:'var(--gathering-t)'},
   {group:'WORK'},
-  {id:'comms',label:'Communication',icon:'mail',count:6,h:'var(--amber)',t:'var(--amber-t)',url:'https://comms.mosaic.org'},
-  {id:'planning',label:'Planning',icon:'board',count:12,h:'var(--milestone)',t:'var(--milestone-t)',url:'https://pm.mosaic.org'},
+  {id:'comms',label:'Communication',icon:'mail',h:'var(--amber)',t:'var(--amber-t)',url:'https://comms.mosaic.org'},
+  {id:'planning',label:'Planning',icon:'board',h:'var(--milestone)',t:'var(--milestone-t)',url:'https://pm.mosaic.org'},
   {group:'MEASURE'},
-  {id:'numbers',label:'Numbers',icon:'chart',beta:true,h:'var(--session)',t:'var(--session-t)',url:'https://metrics.mosaic.org'},
+  {id:'numbers',label:'Metrics',icon:'chart',h:'var(--session)',t:'var(--session-t)',url:'https://metrics.mosaic.org'},
   {id:'goals',label:'Goals',icon:'target',beta:true,h:'var(--magenta)',t:'var(--magenta-t)',url:'https://mosaic-hub.replit.app/'},
   {id:'budgets',label:'Budgets',icon:'wallet',beta:true,h:'var(--indigo)',t:'var(--indigo-t)'},
   {id:'giving',label:'Giving',icon:'heart',beta:true,restricted:true,h:'var(--lime)',t:'var(--lime-t)'},
@@ -531,25 +552,33 @@ function renderNav(){
 
 /* ============================ pages ============================ */
 function pageHome(){
-  const ls=lastSunday(), m=metricFor(ls);
-  const prev=Object.keys(METRICS).slice(0,4).map(k=>METRICS[k].a);
-  const avg=Math.round(prev.reduce((a,b)=>a+b,0)/prev.length);
-  const delta=m?Math.round(((m.a-avg)/avg)*1000)/10:0;
-  const tw=dueThisWeek(), ds=dueSoon();
-  const upcoming=EVENTS.filter(e=>D(e.date)>=TODAY && e.type==='event').slice(0,4);
-  return '<div class="page-head"><div><h1>Home</h1><div class="sub">'+pretty(TODAY)+' · week 31</div></div>'+
-   '<button class="btn-primary" data-new="1">New event</button></div>'+
+  const ks=Object.keys(METRICS).sort();
+  const lastK=ks[ks.length-1], m=lastK?METRICS[lastK]:null;
+  const prev=ks.slice(0,-1).map(k=>METRICS[k].a);
+  const avg=prev.length?Math.round(prev.reduce((a,b)=>a+b,0)/prev.length):0;
+  const delta=(m&&avg)?Math.round(((m.a-avg)/avg)*1000)/10:0;
+  const ws=weekStartOf(TODAY), we=addDays(ws,6);
+  const twEvents=EVENTS.filter(e=>{const d=D(e.date);return d>=ws&&d<=we&&e.type==='event';});
+  const twComms=EVENTS.filter(e=>{const d=D(e.date);return d>=ws&&d<=we&&e.type==='comms';});
+  const upcoming=EVENTS.filter(e=>D(e.date)>=TODAY && e.type==='event').slice(0,5);
+  const attn=ATTN.slice(0,6);
+  return '<div class="page-head"><div><h1>Home</h1><div class="sub">'+pretty(TODAY)+' · week '+weekNum(TODAY)+'</div></div>'+
+   '<a class="btn-primary" href="https://pm.mosaic.org" target="_blank" rel="noopener" style="text-decoration:none">New event</a></div>'+
+   (DATA_ERR?'<div class="banner">'+ic('info')+'<div>'+esc(DATA_ERR)+'</div></div>':'')+
    '<div class="cards">'+
-     card('This week',tw.length,tw.filter(t=>D(t.due)<=addDays(weekStartOf(S.anchor),0)).length+' by Sunday','calendar','--session')+
-     card('Waiting',waiting(),'on Carlos','comms','--magenta')+
-     card('Due soon',ds.length,'next '+fmt(D(ds[0].due)),'planning','--milestone')+
-     card('Attendance',m?m.a:'—',(delta>=0?'+':'')+delta+'% vs avg','numbers','--gathering')+
+     card('This week',twEvents.length,twComms.length+' comms alongside','calendar','--session')+
+     card('Waiting',attn.length,'speakers + flagged items','calendar','--magenta')+
+     card('To close out',CLOSEOUT,'passed date, still open','planning','--milestone')+
+     card('Attendance',m?m.a:'—',m?((delta>=0?'+':'')+delta+'% vs recent avg'):'no data yet','numbers','--gathering')+
    '</div>'+
-   '<div class="cols"><div><h2>This week</h2>'+
-     (tw.length?tw.map(t=>taskRow(t)).join(''):'<div class="empty">Nothing due this week.</div>')+
+   '<div class="cols"><div><h2>Worth a look</h2>'+
+     (attn.length?attn.map(t=>'<button class="row" data-ev="'+t.evId+'"><span class="when">'+fmt(D(t.date))+'</span>'+
+       '<span class="txt"><span class="name">'+esc(t.title)+'</span><span class="meta">'+esc(t.meta||'')+'</span></span></button>').join('')
+       :'<div class="empty">Nothing waiting on anyone right now.</div>')+
    '</div><div><h2>Coming up</h2>'+
-     upcoming.map(e=>'<button class="row" data-ev="'+e.id+'"><span class="when">'+fmt(D(e.date))+'</span>'+
-       '<span class="txt"><span class="name">'+esc(e.title)+'</span><span class="meta">'+esc(e.detail||'')+'</span></span></button>').join('')+
+     (upcoming.length?upcoming.map(e=>'<button class="row" data-ev="'+e.id+'"><span class="when">'+fmt(D(e.date))+'</span>'+
+       '<span class="txt"><span class="name">'+esc(e.title)+'</span><span class="meta">'+esc(e.detail||'')+'</span></span></button>').join('')
+       :'<div class="empty">No upcoming events loaded.</div>')+
    '</div></div>';
 }
 function card(k,v,n,go,c){
@@ -567,7 +596,7 @@ function taskRow(t){
 function pageCalendar(){
   const ws=weekStartOf(S.anchor);
   const head='<div class="page-head"><div><h1>Calendar</h1><div class="sub">'+
-    (S.view==='week'? fmt(ws)+' – '+fmt(addDays(ws,6))+', 2026 · week 31'
+    (S.view==='week'? fmt(ws)+' – '+fmt(addDays(ws,6))+', '+addDays(ws,6).getFullYear()+' · week '+weekNum(ws)
                     : MON[S.month.getMonth()]+' '+S.month.getFullYear())+
     '</div></div><div style="display:flex;gap:8px;align-items:center">'+
     '<span class="seg"><button data-view="week" class="'+(S.view==='week'?'on':'')+'">Week</button>'+
@@ -576,7 +605,7 @@ function pageCalendar(){
     '<button class="btn-ghost" data-nav="0">Today</button>'+
     '<button class="btn-ghost" data-nav="1" aria-label="Next">'+ic('right','width:15px;height:15px')+'</button>'+
     '<button class="btn-primary" data-new="1">New</button></div></div>'+ filterBar();
-  return head + (S.view==='week' ? weekGrid(ws) : monthGrid()) + legend();
+  return head + (DATA_ERR?'<div class="banner">'+ic('info')+'<div>'+esc(DATA_ERR)+'</div></div>':'') + (S.view==='week' ? weekGrid(ws) : monthGrid()) + legend();
 }
 function filterBar(){
   return '<div class="filters">'+Object.keys(TYPES).map(k=>
@@ -642,93 +671,16 @@ function monthGrid(){
   return h;
 }
 
-function pagePlanning(){
-  const t0=new Date(2026,6+S.tlShift,1);
-  const t1=new Date(2026,6+S.tlShift+4,0);            // 4-month window
-  const span=(t1-t0)/86400000;
-  const pct=dt=>((D(dt)-t0)/86400000/span*100);
-  const nowPct=((TODAY-t0)/86400000/span*100);
-  const months=[0,1,2,3].map(i=>{
-    const m=new Date(t0.getFullYear(),t0.getMonth()+i,1);
-    const days=new Date(m.getFullYear(),m.getMonth()+1,0).getDate();
-    return {label:MON[m.getMonth()].slice(0,3)+(m.getMonth()===0?" '"+String(m.getFullYear()).slice(2):''),w:days/span*100};
-  });
-  const rows=[
-    {n:'Charles Metcalf',m:'L1 · Loyda',s:'2026-08-03',e:'2026-08-23',c:'var(--gathering)',l:'Metcalf'},
-    {n:'Summer Sessions',m:'L2 · weekly',s:'2026-07-01',e:'2026-08-26',c:'var(--session)',l:'Sessions · Wed'},
-    {n:'Fall Launch',m:'L1 · Saul',s:'2026-08-14',e:'2026-10-04',c:'var(--milestone)',l:'Building → pre-launch'},
-    {n:'Fall Kickoff',m:'L1 · event',s:'2026-09-13',e:'2026-09-13',c:'var(--indigo)',l:''},
-    {n:'Christmas Eve',m:'L1 · not started',s:'2026-10-01',e:'2026-12-24',c:'var(--slate)',l:'Planning'},
-    {n:'Houses relaunch',m:'L2 · not started',s:'2026-09-06',e:'2026-09-27',c:'var(--lime)',l:'Sign-ups'}
-  ];
-  const vis=r=>D(r.e)>=t0 && D(r.s)<=t1;
-  return '<div class="page-head"><div><h1>Planning</h1><div class="sub">All scopes · all campuses</div></div>'+
-    '<div style="display:flex;gap:8px;align-items:center">'+
-    '<button class="btn-ghost" data-tl="-1" aria-label="Earlier">'+ic('left','width:15px;height:15px')+'</button>'+
-    '<button class="btn-ghost" data-tl="0">Today</button>'+
-    '<button class="btn-ghost" data-tl="1" aria-label="Later">'+ic('right','width:15px;height:15px')+'</button>'+
-    '<a class="btn-ghost" href="https://pm.mosaic.org" target="_blank" rel="noopener">Open board</a></div></div>'+
-    '<div class="tl-scale">'+months.map(m=>'<div style="flex:0 0 '+m.w.toFixed(2)+'%">'+m.label+'</div>').join('')+'</div>'+
-    rows.map(r=>{
-      const s=Math.max(0,pct(r.s)), e=Math.min(100,pct(r.e));
-      const off = D(r.s)<t0, ofe = D(r.e)>t1;
-      if(!vis(r)) return '<div class="tl-row"><div class="tl-label">'+r.n+'<div class="meta">'+r.m+'</div></div>'+
-        '<div class="tl-track"><div class="tl-now" style="left:'+nowPct.toFixed(1)+'%"></div></div></div>';
-      return '<div class="tl-row"><div class="tl-label">'+r.n+'<div class="meta">'+r.m+'</div></div>'+
-      '<div class="tl-track"><div class="tl-now" style="left:'+nowPct.toFixed(1)+'%"></div>'+
-      '<div class="tl-bar" style="left:'+s.toFixed(1)+'%;width:'+Math.max(1.8,e-s).toFixed(1)+'%;background:'+r.c+';color:#fff'+
-      (off?';border-top-left-radius:0;border-bottom-left-radius:0':'')+
-      (ofe?';border-top-right-radius:0;border-bottom-right-radius:0':'')+'">'+esc(r.l)+'</div></div></div>';
-    }).join('')+
-    '<div class="legend"><span>Vertical line = today</span><span>Square bar ends continue outside this window</span>'+
-    '<span style="margin-left:auto">Level 1 by default — drill in for 2 and 3</span></div>'+
-    '<h2 style="margin-top:28px">Upcoming tasks and steps</h2>'+
-    TASKS.filter(t=>!t.done).sort((a,b)=>D(a.due)-D(b.due)).map(t=>taskRow(t)).join('');
-}
-
-function pageNumbers(){
-  const ks=Object.keys(METRICS), vals=ks.map(k=>METRICS[k].a), max=Math.max(...vals);
-  const last=METRICS[ks[ks.length-1]];
-  return '<div class="page-head"><div><h1>Numbers</h1><div class="sub">Attendance · both campuses · synced 6:00am</div></div>'+
-    '<a class="btn-ghost" href="https://metrics.mosaic.org" target="_blank" rel="noopener">Open Metrics</a></div>'+
-    '<div class="banner">'+ic('info')+'<div>This section reads a nightly cached summary. Submitting attendance and viewing campus or kids breakdowns happens in the Metrics app.</div></div>'+
-    '<div class="mini" style="margin-bottom:22px">'+
-      '<div><div class="v">'+last.a+'</div><div class="k">attendance</div></div>'+
-      '<div><div class="v">'+last.k+'</div><div class="k">kids + youth</div></div>'+
-      '<div><div class="v">'+last.n+'</div><div class="k">next steps</div></div></div>'+
-    '<h2>Last 5 Sundays</h2>'+
-    '<div class="bars-chart">'+ks.map((k,i)=>'<div class="bar-v'+(i===ks.length-1?' hi':'')+'" style="height:'+Math.round(METRICS[k].a/max*100)+'%"></div>').join('')+'</div>'+
-    '<div class="bar-labels">'+ks.map(k=>{const d=D(k);return '<div>'+(d.getMonth()+1)+'/'+d.getDate()+'</div>';}).join('')+'</div>'+
-    '<div class="note">Future Sundays have no attendance recorded until it is submitted.</div>';
-}
-
-function pageGoals(){
-  const elapsed=Math.round((TODAY-new Date(2026,0,1))/86400000/365*100);
-  return '<div class="page-head"><div><h1>Goals</h1><div class="sub">'+elapsed+'% of the year elapsed</div></div>'+
-    '<a class="btn-ghost" href="https://mosaic-hub.replit.app/" target="_blank" rel="noopener">Open goal tracker</a></div>'+
-    '<div class="banner">'+ic('info')+'<div><strong style="font-weight:500">Sample data.</strong> These goals are placeholders — the real ones need to come from the goal tracker. If your goals are qualitative rather than numeric, this section needs a different shape.</div></div>'+
-    '<div class="cards" style="grid-template-columns:repeat(2,minmax(0,1fr));margin-bottom:0">'+
-    GOALS.map(g=>{
-      const p=Math.round(g.v/g.t*100), on=p>=elapsed;
-      return '<div class="goal"><div class="k">'+g.k+'</div>'+
-        '<div class="v">'+g.v+' <span class="of">of '+g.t+'</span></div>'+
-        '<div class="track"><div class="fill" style="width:'+Math.min(100,p)+'%;background:'+g.hue+'"></div>'+
-        '<div class="pace" style="left:'+elapsed+'%"></div></div>'+
-        '<span class="pill" style="background:'+(on?'var(--session-t)':'var(--milestone-t)')+';color:'+(on?'var(--session-d)':'var(--milestone-d)')+'">'+
-        (on?'On pace':(elapsed-p)+'% behind pace')+'</span></div>';
-    }).join('')+'</div>'+
-    '<div class="note">The vertical marker shows where each goal should be by '+fmt(TODAY)+'.</div>';
-}
-
-function pageComms(){
-  const rows=EVENTS.filter(e=>e.type==='comms').sort((a,b)=>D(a.date)-D(b.date));
-  return '<div class="page-head"><div><h1>Communication</h1><div class="sub">All sends · August 2026</div></div>'+
-    '<a class="btn-ghost" href="https://comms.mosaic.org" target="_blank" rel="noopener">Open Comms dashboard</a></div>'+
-    '<div class="banner">'+ic('info')+'<div>Read-only in v1. Creating and editing sends happens in the Comms dashboard, which stays the source of truth.</div></div>'+
-    rows.map(e=>'<button class="row" data-ev="'+e.id+'"><span class="when">'+fmt(D(e.date))+'</span>'+
-      '<span class="txt"><span class="name">'+esc(e.title)+'</span><span class="meta">'+esc(e.detail||'')+'</span></span>'+
-      '<span class="tag" style="background:'+(e.status==='done'?'var(--session-t)':e.status==='waiting'?'var(--red-t)':'var(--fill)')+
-      ';color:'+(e.status==='done'?'var(--session-d)':e.status==='waiting'?'var(--red-d)':'#4a4a4a')+'">'+STATUS_LABEL[e.status]+'</span></button>').join('');
+/* Sections that embed one of the existing apps. The app stays the system of
+   record; the portal just gives it a room. Metrics gets ?embed=portal so it
+   hides its own account menu — those controls live in the portal now. */
+function pageEmbed(id){
+  const sec=SECTIONS.find(x=>x.id===id);
+  let src=sec.url;
+  if(id==='numbers')src+=(src.includes('?')?'&':'?')+'embed=portal';
+  return '<div class="page-head"><div><h1>'+sec.label+'</h1><div class="sub">'+src.replace(/^https:\/\//,'').replace(/[/?].*$/,'')+'</div></div>'+
+    '<a href="'+sec.url+'" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--text2);text-decoration:none;border:1px solid var(--hairline);border-radius:7px;padding:7px 12px">Open in new tab '+ic('ext','width:13px;height:13px')+'</a></div>'+
+    '<iframe class="app-embed" src="'+src+'" title="'+esc(sec.label)+'" allow="clipboard-write"></iframe>';
 }
 
 function money(n){return '$'+n.toLocaleString('en-US');}
@@ -817,9 +769,9 @@ function pageEvent(){
                     .sort((a,b)=>D(a.date)-D(b.date));
   const subs=TASKS.filter(x=>(camp&&x.campaign===camp)||(!camp&&x.parent===e.title));
   const doneN=subs.filter(x=>x.done).length;
-  const ks=Object.keys(METRICS), vals=ks.map(k=>METRICS[k].a);
-  const avg6=Math.round(vals.reduce((a,b)=>a+b,0)/vals.length);
-  const mx=Math.max(...vals,YEAR_GOAL);
+  const ks=Object.keys(METRICS).sort(), vals=ks.map(k=>METRICS[k].a);
+  const avg6=vals.length?Math.round(vals.reduce((a,b)=>a+b,0)/vals.length):0;
+  const mx=Math.max.apply(null,vals.concat([1]));
 
   let h='<button class="back" data-back="1">'+ic('left')+'Back</button>'+
     '<div style="margin-bottom:6px">'+
@@ -855,21 +807,21 @@ function pageEvent(){
 
   h+='</div><div>';
 
-  if(isSunday){
+  if(isSunday&&!ks.length){
+    h+='<div class="eyebrow">NUMBERS</div><div class="empty">No attendance data available yet.</div>';
+  } else if(isSunday){
     h+='<div class="eyebrow">NUMBERS</div>';
     if(m){
       const dl=Math.round(((m.a-avg6)/avg6)*1000)/10;
       h+='<div style="display:flex;gap:8px">'+
         '<div class="nm2" style="background:var(--gathering-t)"><div class="v" style="color:var(--gathering-d)">'+m.a+'</div><div class="k">attendance</div></div>'+
-        '<div class="nm2" style="background:var(--fill)"><div class="v">'+m.k+'</div><div class="k">kids + youth</div></div>'+
-        '<div class="nm2" style="background:var(--fill)"><div class="v">'+m.n+'</div><div class="k">next steps</div></div></div>'+
+        '<div class="nm2" style="background:var(--fill)"><div class="v">'+m.k+'</div><div class="k">online views</div></div>'+
+        '<div class="nm2" style="background:var(--fill)"><div class="v">'+m.n+'</div><div class="k">baptisms</div></div></div>'+
         '<div style="font-size:12.5px;color:'+(dl>=0?'var(--session-d)':'var(--red-d)')+';margin-top:10px">'+
         (dl>=0?'+':'')+dl+'% against the six-week average of '+avg6+'</div>';
     } else {
       h+='<div style="display:flex;gap:8px">'+
-        '<div class="nm2" style="background:var(--gathering-t)"><div class="v" style="color:var(--gathering-d)">'+GUEST_AVG+'</div><div class="k">guest speaker avg</div></div>'+
-        '<div class="nm2" style="background:var(--fill)"><div class="v">'+avg6+'</div><div class="k">last 6 Sundays</div></div>'+
-        '<div class="nm2" style="background:var(--amber-t)"><div class="v" style="color:var(--amber-d)">'+YEAR_GOAL+'</div><div class="k">2026 goal</div></div></div>';
+        '<div class="nm2" style="background:var(--fill)"><div class="v">'+avg6+'</div><div class="k">recent Sunday avg</div></div></div>';
     }
     h+='<div style="font-size:12px;color:var(--text2);margin:16px 0 7px">Attendance · last 5 Sundays'+(m?'':' and this one')+'</div>'+
       '<div class="bars-chart" style="height:76px">'+
@@ -970,16 +922,20 @@ function newDrawer(){
 }
 
 /* ============================ render ============================ */
+const SECTION_PATH={home:'/',calendar:'/calendar',comms:'/comms',planning:'/pm',numbers:'/metrics',goals:'/goals',budgets:'/budgets',giving:'/giving',settings:'/settings'};
 function render(){
   renderNav();
+  if(S.section!=='event'&&SECTION_PATH[S.section]&&location.pathname!==SECTION_PATH[S.section]){
+    try{history.replaceState(null,'',SECTION_PATH[S.section]);}catch(e){}
+  }
   const m=document.getElementById('main');
   m.innerHTML = S.section==='event'?pageEvent()
     : S.section==='home'?pageHome()
     : S.section==='calendar'?pageCalendar()
-    : S.section==='comms'?pageComms()
-    : S.section==='planning'?pagePlanning()
-    : S.section==='numbers'?pageNumbers()
-    : S.section==='goals'?pageGoals()
+    : S.section==='comms'?pageEmbed('comms')
+    : S.section==='planning'?pageEmbed('planning')
+    : S.section==='numbers'?pageEmbed('numbers')
+    : S.section==='goals'?pageEmbed('goals')
     : S.section==='budgets'?pageBudgets()
     : S.section==='giving'?pageGiving()
     : pageSettings();
@@ -991,9 +947,16 @@ function render(){
 
 /* ============================ events ============================ */
 document.addEventListener('click',e=>{
-  const t=e.target.closest('[data-go],[data-view],[data-nav],[data-filter],[data-ev],[data-day],[data-task],[data-new],[data-pick],[data-everyone],[data-tl],[data-back],[data-logout]');
+  const t=e.target.closest('[data-go],[data-view],[data-nav],[data-filter],[data-ev],[data-day],[data-task],[data-new],[data-pick],[data-everyone],[data-tl],[data-back],[data-logout],[data-preview],[data-profile]');
   if(!t) return;
   if(t.dataset.logout){ (sb?sb.auth.signOut():Promise.resolve()).then(()=>location.reload()); return; }
+  if(t.dataset.preview){
+    ME.preview=!ME.preview;
+    S.role=ME.preview?'comms':(ROLE_PRESET[ME.role]||'comms');
+    if(!ROLES[S.role].sections.includes(S.section))S.section='home';
+    umClose(); render(); return;
+  }
+  if(t.dataset.profile){ umClose(); profileDrawer(); return; }
   if(t.dataset.pick){
     const [type,tok]=t.dataset.pick.split('|');
     TYPES[type].hue='var('+tok+')';
@@ -1138,20 +1101,58 @@ function prettyNameFromEmail(email){
   if(!email)return "";
   return email.split("@")[0].split(/[._-]+/).filter(Boolean).map(w=>w.charAt(0).toUpperCase()+w.slice(1)).join(" ");
 }
+/* ---- account menu (metrics-style, at the rail foot) ---- */
+const cap=s=>s?s.charAt(0).toUpperCase()+s.slice(1):"";
+const umPop=document.createElement("div");umPop.className="um-pop";document.body.appendChild(umPop);
+function umClose(){umPop.classList.remove("open");}
+function umHtml(){
+  const isAdmin=ME.role==="admin";
+  return '<div class="um-head"><div class="um-name">'+esc(ME.name||"")+'</div><div class="um-mail">'+esc(ME.email||"")+'</div>'+
+    '<span class="um-role">'+(isAdmin?"Admin · all campuses":esc(cap(ME.role||"")))+(ME.preview?" · viewing as staff":"")+"</span></div>"+
+    '<button class="um-item" data-profile="1">'+ic("info")+'Profile</button>'+
+    (isAdmin?'<a class="um-item" href="https://metrics.mosaic.org" target="_blank" rel="noopener">'+ic("settings")+'Admin <span class="hint">Metrics '+ic("ext","width:11px;height:11px")+'</span></a>'+
+      '<button class="um-item" data-preview="1">'+ic("target")+(ME.preview?"Exit staff view":"View as staff")+"</button>":"")+
+    '<div class="um-sep"></div><button class="um-item" data-logout="1">'+ic("x")+'Log Out</button>';
+}
+function profileDrawer(){
+  openDrawer('<h2 style="margin-top:0">Profile</h2><div class="sub">'+esc(ME.name||"")+' · '+esc(ME.email||"")+"</div>"+
+    '<div style="margin-top:20px"><label style="display:block;font-size:12px;color:var(--text2);margin-bottom:5px">New password</label>'+
+    '<input id="pfPass" type="password" autocomplete="new-password" style="width:100%;box-sizing:border-box;padding:9px 11px;border:1px solid var(--hairline);border-radius:7px;font-family:inherit;font-size:14px"></div>'+
+    '<button class="btn-primary" id="pfSave" style="margin-top:14px">Update password</button>'+
+    '<div id="pfNote" style="font-size:12.5px;margin-top:10px;color:var(--text2)"></div>');
+  document.getElementById("pfSave").addEventListener("click",async()=>{
+    const p=document.getElementById("pfPass").value,n=document.getElementById("pfNote");
+    if(p.length<8){n.textContent="Password needs at least 8 characters.";return;}
+    const {error}=await sb.auth.updateUser({password:p});
+    n.textContent=error?error.message:"Password updated.";
+  });
+}
+document.querySelector(".rail-foot").addEventListener("click",e=>{
+  if(!ME.email)return;
+  umPop.innerHTML=umHtml();
+  umPop.classList.toggle("open");
+  e.stopPropagation();
+});
+document.addEventListener("click",e=>{
+  if(umPop.classList.contains("open")&&!umPop.contains(e.target)&&!e.target.closest(".rail-foot"))umClose();
+});
 let BOOTED=false;
+const PATH_SECTION={"/":"home","/home":"home","/calendar":"calendar","/comms":"comms","/pm":"planning","/planning":"planning","/metrics":"numbers","/numbers":"numbers","/goals":"goals","/budgets":"budgets","/giving":"giving","/settings":"settings"};
 async function enterPortal(){
   const {data:{user}}=await sb.auth.getUser();
   if(!user)return;
   ME.email=user.email;
   const {data:prof}=await sb.from("profiles").select("role,display_name,full_name").eq("id",user.id).single();
   if(prof){ME.role=prof.role;ME.name=prof.display_name||prof.full_name;}
-  if(!ME.name)ME.name=prettyNameFromEmail(ME.email);
+  if(!ME.name||ME.name.includes("@"))ME.name=prettyNameFromEmail(ME.email);
   if(ROLE_PRESET[ME.role])S.role=ROLE_PRESET[ME.role];
+  const want=PATH_SECTION[location.pathname.replace(/\/+$/,"")||"/"];
+  if(want&&ROLES[S.role].sections.includes(want))S.section=want;
   const who=document.getElementById("who"),av=document.querySelector(".rail-foot .avatar");
   if(who)who.textContent=ME.name;
   if(av)av.textContent=(ME.name||"?").charAt(0).toUpperCase();
   $g("gate").classList.add("hide");
-  if(!BOOTED){BOOTED=true;render();}
+  if(!BOOTED){BOOTED=true;await loadLive();render();}
 }
 (function initAuth(){
   if(!sb){gateNote("Can't reach the sign-in service — check your connection and reload the page.","err");return;}
