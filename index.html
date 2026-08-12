@@ -51,6 +51,51 @@
 .um-item svg{width:15px;height:15px;color:#5c5c5c;flex:none}
 .um-item .hint{color:#8a8a8a;font-size:11px;margin-left:auto}
 .um-sep{height:1px;background:#f0f0f0;margin:6px 0}
+.um-head{display:flex;gap:10px;align-items:flex-start}
+.um-head .um-av{width:34px;height:34px;border-radius:50%;background:#e2e2e0;flex:none;object-fit:cover;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:#5c5c5c}
+
+/* ---- avatars ---- */
+.avatar{overflow:hidden}
+.avatar img,.pa-av img{width:100%;height:100%;object-fit:cover;display:block}
+.pf-av{display:flex;align-items:center;gap:14px;margin:0 0 18px}
+.pf-av .ring{width:64px;height:64px;border-radius:50%;background:#e2e2e0;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:600;color:#5c5c5c;flex:none}
+.pf-av .ring img{width:100%;height:100%;object-fit:cover}
+.pa-av{width:24px;height:24px;border-radius:50%;background:#e2e2e0;overflow:hidden;display:inline-flex;align-items:center;justify-content:center;font-size:9.5px;font-weight:600;color:#5c5c5c;vertical-align:middle;margin-right:9px}
+
+/* ---- appearance: dark theme re-points the neutral tokens; the type hues
+   (which encode meaning) stay exactly as they are. ---- */
+html.dark{color-scheme:dark}
+html.dark body,html.dark #gate{background:#151514}
+html.dark:root,html.dark{
+  --surface:#1c1c1b; --rail:#161615; --rail-active:#2a2a28; --fill:#242422;
+  --hairline:#302f2d; --separator:#262624; --grid:#37362f;
+  --text:#f2f2f0; --text2:#9a9a95; --text3:#6d6d68;
+}
+html.dark .main,html.dark .app{background:#151514;color:var(--text)}
+html.dark .rail{background:var(--rail);border-right-color:var(--hairline)}
+html.dark .card,html.dark .pa-card,html.dark .rp-card,html.dark .drawer,html.dark .um-pop,html.dark .gate-card{background:var(--surface);border-color:var(--hairline);color:var(--text)}
+html.dark .pa-table th,html.dark .rp-table th,html.dark .rp-table tr.rp-sec td{background:#201f1e;color:var(--text2)}
+html.dark .pa-table td,html.dark .rp-table td{border-top-color:var(--separator)}
+html.dark .pa-bar input,html.dark .pa-bar select,html.dark .pa-in,html.dark .pa-table select,html.dark .gate-card input{background:#242422;border-color:var(--hairline);color:var(--text)}
+html.dark .um-item,html.dark .um-name,html.dark .gate-card h1,html.dark .gate-brand .name{color:var(--text)}
+html.dark .um-item:hover{background:var(--fill)}
+html.dark .um-role,html.dark .pa-av,html.dark .avatar,html.dark .pf-av .ring,html.dark .um-head .um-av{background:var(--fill);color:var(--text2)}
+html.dark .um-head,html.dark .um-sep{border-color:var(--separator);background:none}
+html.dark .btn-primary,html.dark .gate-btn{background:#f2f2f0;color:#151514}
+html.dark .gate-brand .mark,html.dark .brand-mark{background:#f2f2f0}
+html.dark .embed-open{background:rgba(28,28,27,.92);border-color:var(--hairline);color:var(--text2)}
+html.dark .app-embed,html.dark .embed-wrap iframe{background:#fff}
+html.dark .nav button{color:var(--text2)}
+html.dark .nav button.on,html.dark .nav button:hover{color:var(--text);background:var(--rail-active)}
+html.dark h1,html.dark h2,html.dark .brand-name,html.dark .who{color:var(--text)}
+html.dark .navgroup,html.dark .sub,html.dark .empty{color:var(--text2)}
+html.dark .badge,html.dark .count,html.dark .tag{background:var(--fill);color:var(--text2)}
+html.dark .banner{background:var(--surface);border-color:var(--hairline);color:var(--text2)}
+html.dark .cell,html.dark .wk-head div,html.dark .wk-body{border-color:var(--grid)}
+html.dark .row:hover{background:var(--fill)}
+.ap-seg{display:inline-flex;gap:2px;background:var(--fill);border-radius:9px;padding:3px}
+.ap-seg button{border:0;background:none;font-family:inherit;letter-spacing:inherit;font-size:12.5px;padding:6px 12px;border-radius:6px;color:var(--text2);cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.ap-seg button.on{background:var(--surface);color:var(--text);font-weight:500;box-shadow:0 0 0 1px var(--hairline)}
 
 /* ---- native Admin page ---- */
 .pa-bar{display:flex;gap:10px;align-items:center;margin:0 0 14px}
@@ -120,7 +165,6 @@ button{font:inherit;letter-spacing:inherit;color:inherit;background:none;border:
 .brand-mark{width:18px;height:18px;border-radius:5px;background:#000;flex:none}
 .brand-name{font-size:13.5px;font-weight:500}
 .nav{display:flex;flex-direction:column;gap:1px;flex:1;min-height:0}
-.nav [data-go="settings"]{margin-top:auto}
 .nav button{display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:var(--r-ctrl);
   font-size:13.5px;color:#5c5c5c;text-align:left;width:100%}
 .nav button:hover{background:#eaeae8}
@@ -303,7 +347,6 @@ select{font:inherit;font-size:13px;padding:7px 10px;border:1px solid var(--hairl
     padding:6px 4px;z-index:3;overflow-x:auto}
   .brand,.rail-foot{display:none}
   .nav{flex-direction:row;gap:2px;width:100%}
-  .nav [data-go="settings"]{margin-top:0;margin-left:auto}
   .nav button{flex-direction:column;gap:3px;font-size:10px;padding:6px 4px;justify-content:center;text-align:center}
   .nav .badge,.nav .count{display:none}
   .main{padding:18px 16px 96px}
@@ -498,15 +541,15 @@ const SECTIONS = [
   {id:'goals',label:'Goals',icon:'target',beta:true,h:'var(--magenta)',t:'var(--magenta-t)',url:'https://mosaic-hub.replit.app/'},
   {id:'budgets',label:'Budgets',icon:'wallet',beta:true,restricted:true,h:'var(--indigo)',t:'var(--indigo-t)'},
   {id:'giving',label:'Giving',icon:'heart',beta:true,restricted:true,h:'var(--lime)',t:'var(--lime-t)'},
-  {group:''},
-  {id:'settings',label:'Settings',icon:'settings',h:'var(--slate)',t:'var(--slate-t)'}
+  /* Settings lives in the account menu (click your name), not the rail. */
+  {id:'settings',label:'App settings',icon:'settings',h:'var(--slate)',t:'var(--slate-t)',inMenu:true}
 ];
 const PALETTE = ['--neutral','--red','--milestone','--amber','--lime','--session','--gathering','--indigo','--comms','--magenta'];
 const ROLES = {
-  comms:{name:'Comms / staff',sections:['home','calendar','comms','planning','numbers','goals','settings']},
+  comms:{name:'Comms / staff',sections:['home','calendar','comms','planning','numbers','goals']},
   leadership:{name:'Leadership',sections:['home','calendar','comms','planning','numbers','goals','budgets','giving','settings','admin']},
-  ops:{name:'Ops / event management',sections:['home','calendar','planning','settings']},
-  volunteer:{name:'Volunteer lead',sections:['home','calendar','settings']}
+  ops:{name:'Ops / event management',sections:['home','calendar','planning']},
+  volunteer:{name:'Volunteer lead',sections:['home','calendar']}
 };
 const BUDGETS=[
   {k:'Facilities — NYC',b:72000,a:51400},
@@ -560,6 +603,7 @@ function renderNav(){
   const items=[];
   SECTIONS.forEach(sec=>{
     if(sec.group!==undefined){ items.push({divider:sec.group}); return; }
+    if(sec.inMenu) return;                       // lives in the account menu
     if(!allowed.includes(sec.id)) return;
     items.push(sec);
   });
@@ -582,7 +626,7 @@ function renderNav(){
   document.getElementById('nav').innerHTML=out.join('');
   const _who=document.getElementById('who'),_av=document.querySelector('.rail-foot .avatar');
   const _nm=(typeof ME!=='undefined'&&ME.name)?ME.name:'';
-  if(_nm){_who.textContent=_nm;if(_av)_av.textContent=_nm.charAt(0).toUpperCase();}
+  if(_nm){_who.textContent=_nm;if(_av)_av.innerHTML=avatarHtml(ME.avatar_url,_nm);}
 }
 
 /* ============================ pages ============================ */
@@ -726,7 +770,7 @@ function adminName(p){const n=p.display_name||p.full_name||'—';return n.includ
 async function loadAdmin(){
   if(ADMIN.loading)return;ADMIN.loading=true;
   const [r1,r2]=await Promise.all([
-    sb.from('profiles').select('id,display_name,full_name,role,campus_id'),
+    sb.from('profiles').select('id,display_name,full_name,role,campus_id,avatar_url'),
     sb.from('campuses').select('id,name,parent_campus_id')
   ]);
   ADMIN.err=(r1.error&&r1.error.message)||(r2.error&&r2.error.message)||null;
@@ -817,7 +861,8 @@ function pageAdmin(){
     '<div id="paNote" class="banner" style="display:none"></div>'+
     '<div class="pa-card"><table class="pa-table"><thead><tr><th>Name</th><th>Role</th><th>Campus</th></tr></thead><tbody>'+
     (rows.length?rows.map(p=>'<tr>'+
-      '<td><button class="pa-eye" data-user="'+esc(p.id)+'" title="View profile">'+ic('info')+'</button><span style="font-weight:500">'+esc(adminName(p))+'</span>'+
+      '<td><button class="pa-eye" data-user="'+esc(p.id)+'" title="View profile">'+ic('info')+'</button>'+
+      '<span class="pa-av">'+avatarHtml(p.avatar_url,adminName(p))+'</span><span style="font-weight:500">'+esc(adminName(p))+'</span>'+
       (ME.email&&p.full_name===ME.email?' <span style="color:var(--text2);font-size:11.5px">(you)</span>':'')+'</td>'+
       '<td>'+roleSel(p)+'</td><td>'+campusSel(p)+'</td></tr>').join('')
       :'<tr><td colspan="3" style="color:var(--text2)">No users match.</td></tr>')+
@@ -1172,7 +1217,7 @@ function render(){
 
 /* ============================ events ============================ */
 document.addEventListener('click',e=>{
-  const t=e.target.closest('[data-go],[data-view],[data-nav],[data-filter],[data-ev],[data-day],[data-task],[data-new],[data-pick],[data-everyone],[data-tl],[data-back],[data-logout],[data-preview],[data-profile],[data-newuser],[data-user],[data-adtab]');
+  const t=e.target.closest('[data-go],[data-view],[data-nav],[data-filter],[data-ev],[data-day],[data-task],[data-new],[data-pick],[data-everyone],[data-tl],[data-back],[data-logout],[data-preview],[data-profile],[data-newuser],[data-user],[data-adtab],[data-theme]');
   if(!t) return;
   if(t.dataset.logout){ (sb?sb.auth.signOut():Promise.resolve()).then(()=>location.reload()); return; }
   if(t.dataset.preview){
@@ -1193,6 +1238,12 @@ document.addEventListener('click',e=>{
   if(t.dataset.everyone){ S.forEveryone=!S.forEveryone; render(); return; }
   if(t.dataset.tl!==undefined){ const n=Number(t.dataset.tl); S.tlShift = n===0?0:S.tlShift+n; render(); return; }
   if(t.dataset.go){ if(ROLES[S.role].sections.includes(t.dataset.go)){S.section=t.dataset.go; closeDrawer(); if(typeof umClose==="function")umClose(); render();} return; }
+  if(t.dataset.theme){
+    THEME=t.dataset.theme; try{localStorage.setItem(themeKey(),THEME);}catch(e){}
+    applyTheme();
+    document.querySelectorAll('#pfTheme button').forEach(b=>b.classList.toggle('on',b.dataset.theme===THEME));
+    return;
+  }
   if(t.dataset.adtab){ ADMIN.tab=t.dataset.adtab; render(); return; }
   if(t.dataset.newuser){ paInviteDrawer(); return; }
   if(t.dataset.user){ paUserDrawer(t.dataset.user); return; }
@@ -1333,12 +1384,29 @@ function prettyNameFromEmail(email){
 const cap=s=>s?s.charAt(0).toUpperCase()+s.slice(1):"";
 const umPop=document.createElement("div");umPop.className="um-pop";document.body.appendChild(umPop);
 function umClose(){umPop.classList.remove("open");}
+/* Appearance — per person, per device. Stored under the signed-in email so a
+   shared computer doesn't hand one person's choice to the next. */
+let THEME='system';
+function themeKey(){return 'mosaic-theme:'+(ME.email||'anon');}
+function applyTheme(){
+  const dark = THEME==='dark' || (THEME==='system' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  document.documentElement.classList.toggle('dark',dark);
+}
+function loadTheme(){
+  try{THEME=localStorage.getItem(themeKey())||'system';}catch(e){THEME='system';}
+  applyTheme();
+}
+if(window.matchMedia)window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if(THEME==='system')applyTheme();});
+const initialsOf=n=>{const p=String(n||"").trim().split(/\s+/).filter(Boolean);return !p.length?"?":(p.length===1?p[0].slice(0,2):p[0][0]+p[p.length-1][0]).toUpperCase();};
+function avatarHtml(url,name){return url?'<img src="'+esc(url)+'" alt="">':esc(initialsOf(name));}
 function umHtml(){
   const isAdmin=ME.role==="admin";
-  return '<div class="um-head"><div class="um-name">'+esc(ME.name||"")+'</div><div class="um-mail">'+esc(ME.email||"")+'</div>'+
-    '<span class="um-role">'+(isAdmin?"Admin · all campuses":esc(cap(ME.role||"")))+(ME.preview?" · viewing as staff":"")+"</span></div>"+
+  return '<div class="um-head"><span class="um-av">'+avatarHtml(ME.avatar_url,ME.name)+'</span>'+
+    '<div><div class="um-name">'+esc(ME.name||"")+'</div><div class="um-mail">'+esc(ME.email||"")+'</div>'+
+    '<span class="um-role">'+(isAdmin?"Admin · all campuses":esc(cap(ME.role||"")))+(ME.preview?" · viewing as staff":"")+"</span></div></div>"+
     '<button class="um-item" data-profile="1">'+ic("info")+'Profile</button>'+
-    (isAdmin?'<button class="um-item" data-go="admin">'+ic("settings")+'Admin</button>'+
+    (isAdmin?'<button class="um-item" data-go="settings">'+ic("settings")+'App settings</button>'+
+      '<button class="um-item" data-go="admin">'+ic("lock")+'Admin</button>'+
       '<button class="um-item" data-preview="1">'+ic("target")+(ME.preview?"Exit staff view":"View as staff")+"</button>":"")+
     '<div class="um-sep"></div><button class="um-item" data-logout="1">'+ic("x")+'Log Out</button>';
 }
@@ -1351,16 +1419,58 @@ async function profileDrawer(){
   const campusLab=ME.role==='admin'?'All campuses':(ME.campus_id?campusName(ME.campus_id):'—');
   openDrawer('<div class="eyebrow" style="letter-spacing:.13em;text-transform:uppercase;color:var(--text2);font-size:11px;font-weight:700;margin-bottom:6px">Account</div>'+
     '<h2 style="margin:0 0 18px">Profile</h2>'+
+    '<div class="pf-av"><span class="ring" id="pfRing">'+avatarHtml(ME.avatar_url,ME.name)+'</span>'+
+      '<div><button class="btn-primary" id="pfPhotoBtn" style="padding:7px 13px;font-size:12.5px">'+(ME.avatar_url?'Change photo':'Upload photo')+'</button>'+
+      (ME.avatar_url?' <button class="gate-ghost" id="pfPhotoDel" style="display:inline;margin:0 0 0 8px">Remove</button>':'')+
+      '<div style="font-size:11.5px;color:var(--text2);margin-top:6px">JPG, PNG or WebP · up to 2 MB</div></div>'+
+      '<input type="file" id="pfPhotoIn" accept="image/jpeg,image/png,image/webp,image/gif" style="display:none"></div>'+
     '<div class="kv"><span>Name</span><span><input id="pfName" class="pa-in" style="width:170px;padding:6px 9px;font-size:13px;text-align:right" value="'+esc(ME.name||'')+'"></span></div>'+
     '<div class="kv"><span>Email</span><span>'+esc(ME.email||'')+'</span></div>'+
     '<div class="kv"><span>Role</span><span>'+esc(roleLab)+'</span></div>'+
     '<div class="kv" style="border-bottom:0"><span>Campus</span><span>'+esc(campusLab)+'</span></div>'+
     '<button class="btn-primary" id="pfSaveName" style="margin-top:14px">Save name</button>'+
+    '<div class="eyebrow" style="letter-spacing:.13em;text-transform:uppercase;color:var(--text2);font-size:11px;font-weight:700;margin:24px 0 8px">Appearance</div>'+
+    '<div class="ap-seg" id="pfTheme">'+
+      ['light','dark','system'].map(t=>'<button data-theme="'+t+'" class="'+(THEME===t?'on':'')+'">'+cap(t)+'</button>').join('')+
+    '</div>'+
+    '<p style="font-size:12.5px;color:var(--text2);margin:10px 0 22px;line-height:1.5">Just for you, on this device — nobody else\'s view changes. System follows your computer\'s setting. The apps shown inside the portal (Metrics, Comms, Planning) still render in their own light theme.</p>'+
     '<p style="font-size:12.5px;color:var(--text2);margin:12px 0 22px;line-height:1.5">Your name is yours to edit. Role and campus are set by an administrator.</p>'+
     '<div class="eyebrow" style="letter-spacing:.13em;text-transform:uppercase;color:var(--text2);font-size:11px;font-weight:700;margin-bottom:6px">Password</div>'+
     '<p style="font-size:13px;color:var(--text2);margin:0 0 12px">We\'ll email you a secure link to set a new password.</p>'+
     '<button class="btn-primary" id="pfReset">Email me a reset link</button>'+
     '<div id="pfNote" style="font-size:12.5px;margin-top:12px;color:var(--text2)"></div>');
+  /* photo upload — stored at avatars/<your user id>/<file>, which is the only
+     folder the storage policy lets you write to. */
+  const fileIn=document.getElementById('pfPhotoIn');
+  document.getElementById('pfPhotoBtn').addEventListener('click',()=>fileIn.click());
+  fileIn.addEventListener('change',async()=>{
+    const f=fileIn.files&&fileIn.files[0];if(!f)return;
+    const n=document.getElementById('pfNote');
+    if(f.size>2*1024*1024){n.textContent='That photo is over 2 MB — please pick a smaller one.';return;}
+    n.textContent='Uploading…';
+    const {data:{user}}=await sb.auth.getUser();
+    const ext=(f.name.split('.').pop()||'jpg').toLowerCase();
+    const path=user.id+'/avatar.'+ext;
+    const up=await sb.storage.from('avatars').upload(path,f,{upsert:true,contentType:f.type});
+    if(up.error){n.textContent="Couldn't upload — "+(up.error.message||'try again.');return;}
+    const {data:pub}=sb.storage.from('avatars').getPublicUrl(path);
+    const url=pub.publicUrl+'?v='+f.size+f.lastModified;   // bust the CDN cache on re-upload
+    const {error}=await sb.from('profiles').update({avatar_url:url}).eq('id',user.id);
+    if(error){n.textContent="Uploaded, but couldn't save it to your profile — "+(error.message||'try again.');return;}
+    ME.avatar_url=url;ADMIN.profs=null;
+    document.getElementById('pfRing').innerHTML=avatarHtml(url,ME.name);
+    n.textContent='Photo updated.';render();
+  });
+  const del=document.getElementById('pfPhotoDel');
+  if(del)del.addEventListener('click',async()=>{
+    const n=document.getElementById('pfNote');
+    const {data:{user}}=await sb.auth.getUser();
+    const {error}=await sb.from('profiles').update({avatar_url:null}).eq('id',user.id);
+    if(error){n.textContent="Couldn't remove — "+(error.message||'try again.');return;}
+    ME.avatar_url=null;ADMIN.profs=null;
+    document.getElementById('pfRing').innerHTML=avatarHtml(null,ME.name);
+    n.textContent='Photo removed.';render();
+  });
   document.getElementById('pfSaveName').addEventListener('click',async()=>{
     const v=document.getElementById('pfName').value.trim(),n=document.getElementById('pfNote');
     if(!v){n.textContent='Please enter a name.';return;}
@@ -1397,15 +1507,16 @@ async function enterPortal(){
   const {data:{user}}=await sb.auth.getUser();
   if(!user)return;
   ME.email=user.email;
-  const {data:prof}=await sb.from("profiles").select("role,display_name,full_name,campus_id").eq("id",user.id).single();
-  if(prof){ME.role=prof.role;ME.name=prof.display_name||prof.full_name;ME.campus_id=prof.campus_id;}
+  const {data:prof}=await sb.from("profiles").select("role,display_name,full_name,campus_id,avatar_url").eq("id",user.id).single();
+  if(prof){ME.role=prof.role;ME.name=prof.display_name||prof.full_name;ME.campus_id=prof.campus_id;ME.avatar_url=prof.avatar_url;}
   if(!ME.name||ME.name.includes("@"))ME.name=prettyNameFromEmail(ME.email);
   if(ROLE_PRESET[ME.role])S.role=ROLE_PRESET[ME.role];
+  loadTheme();
   const want=PATH_SECTION[location.pathname.replace(/\/+$/,"")||"/"];
   if(want&&ROLES[S.role].sections.includes(want))S.section=want;
   const who=document.getElementById("who"),av=document.querySelector(".rail-foot .avatar");
   if(who)who.textContent=ME.name;
-  if(av)av.textContent=(ME.name||"?").charAt(0).toUpperCase();
+  if(av)av.innerHTML=avatarHtml(ME.avatar_url,ME.name);
   $g("gate").classList.add("hide");
   if(!BOOTED){BOOTED=true;await loadLive();render();}
 }
