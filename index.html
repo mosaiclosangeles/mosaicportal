@@ -107,6 +107,10 @@ html.dark .row:hover{background:var(--fill)}
 .pu-check{display:flex;align-items:center;gap:8px;font-size:13px;padding:7px 8px;border-radius:7px;cursor:pointer}
 .pu-check:hover{background:var(--fill)}
 .pu-check input{margin:0;width:15px;height:15px;flex:none;cursor:pointer}
+.pu-danger{border:1px solid #f3c9c2;background:#fff;color:#8f2c32;font-family:inherit;letter-spacing:inherit;font-size:13px;font-weight:500;padding:9px 15px;border-radius:8px;cursor:pointer}
+.pu-danger:hover{background:#fbe4e0}
+.pu-danger:disabled{opacity:.55;cursor:default}
+html.dark .pu-danger{background:transparent;border-color:#5c2a2a;color:#e88b8b}
 .pu-lock{margin-left:auto;color:var(--text3);display:inline-flex}
 .pu-lock svg{width:12px;height:12px}
 html.dark .pa-pill{background:var(--fill);color:var(--text2)}
@@ -124,9 +128,10 @@ html.dark .pu-check:hover{background:var(--fill)}
 .pa-table th{text-align:left;font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:#8a8a8a;font-weight:500;padding:12px 16px;background:#fafaf9}
 .pa-table td{padding:9px 16px;border-top:1px solid #f0f0f0}
 .pa-table select{padding:6px 9px;border:1px solid #e6e6e5;border-radius:7px;font-family:inherit;letter-spacing:inherit;font-size:12.5px;background:#fff;cursor:pointer}
-.pa-eye{border:none;background:none;cursor:pointer;padding:2px;margin-right:8px;vertical-align:middle;color:#5c5c5c}
-.pa-eye svg{width:14px;height:14px}
-.pa-eye:hover{color:#000}
+.pa-name{border:none;background:none;cursor:pointer;padding:0;display:inline-flex;align-items:center;font-family:inherit;letter-spacing:inherit;font-size:14px;color:inherit;text-align:left}
+.pa-name .nm{font-weight:500;border-bottom:1px solid transparent}
+.pa-name:hover .nm{border-bottom-color:currentColor}
+html.dark .pa-name{color:var(--text)}
 .pa-lbl{display:block;font-size:12px;color:#8a8a8a;margin-bottom:5px}
 .pa-in{width:100%;box-sizing:border-box;padding:9px 11px;border:1px solid #e6e6e5;border-radius:7px;font-family:inherit;letter-spacing:inherit;font-size:14px;background:#fff}
 .pa-tabs{display:inline-flex;gap:2px;background:#f2f2f1;border-radius:9px;padding:3px;margin:0 0 18px}
@@ -826,6 +831,15 @@ function campusesFor(p){
   if(p.role==='admin')return (ADMIN.campuses||[]).map(c=>c.id);
   return p.campus_id?[p.campus_id]:[];
 }
+function relDays(ts){
+  const d=new Date(ts);if(isNaN(d))return '';
+  const days=Math.round((TODAY-d)/86400000);
+  if(days<=0)return 'today';
+  if(days===1)return 'yesterday';
+  if(days<30)return days+' days ago';
+  if(days<365)return Math.round(days/30)+' months ago';
+  return Math.round(days/365)+'y ago';
+}
 function permSummary(p){
   const secs=sectionsFor(p), cams=campusesFor(p);
   const allCam=(ADMIN.campuses||[]).length;
@@ -920,8 +934,8 @@ function pageAdmin(){
     '<div id="paNote" class="banner" style="display:none"></div>'+
     '<div class="pa-card"><table class="pa-table"><thead><tr><th>Name</th><th>Role</th><th>Primary campus</th><th>Roles &amp; permissions</th></tr></thead><tbody>'+
     (rows.length?rows.map(p=>'<tr>'+
-      '<td><button class="pa-eye" data-user="'+esc(p.id)+'" title="View profile">'+ic('info')+'</button>'+
-      '<span class="pa-av">'+avatarHtml(p.avatar_url,adminName(p))+'</span><span style="font-weight:500">'+esc(adminName(p))+'</span>'+
+      '<td><button class="pa-name" data-user="'+esc(p.id)+'" title="Open '+esc(adminName(p))+'">'+
+      '<span class="pa-av">'+avatarHtml(p.avatar_url,adminName(p))+'</span><span class="nm">'+esc(adminName(p))+'</span></button>'+
       (ME.email&&p.full_name===ME.email?' <span style="color:var(--text2);font-size:11.5px">(you)</span>':'')+'</td>'+
       '<td>'+roleSel(p)+'</td><td>'+campusSel(p)+'</td>'+
       '<td><button class="pa-perm" data-user="'+esc(p.id)+'">'+permSummary(p)+'</button></td></tr>').join('')
@@ -965,10 +979,19 @@ async function paUserDrawer(id){
   const isAdminUser=p.role==='admin';
   const roleOpts=ROLE_LIST.map(r=>'<option value="'+r+'"'+(r===p.role?' selected':'')+'>'+cap(r)+'</option>').join('');
   const camOpts='<option value="">Select a campus</option>'+(ADMIN.campuses||[]).map(c=>'<option value="'+esc(c.id)+'"'+(c.id===p.campus_id?' selected':'')+'>'+esc(c.name)+'</option>').join('');
+  const lastActive=u&&u.last_sign_in_at;
   document.getElementById('drawerBody').innerHTML=
-    '<div class="pu-head"><span class="ring">'+avatarHtml(p.avatar_url,nm)+'</span>'+
-      '<div><h2 style="margin:0">'+esc(nm)+'</h2><div class="sub" style="margin-top:2px">'+esc(email)+'</div>'+
-      '<div class="sub" style="font-size:12px">Joined '+esc(fdt(u&&u.created_at))+' · '+esc(u&&u.last_sign_in_at?'last active '+fdt(u.last_sign_in_at):'never signed in')+'</div></div></div>'+
+    '<div class="pu-head"><span class="ring" id="puRing">'+avatarHtml(p.avatar_url,nm)+'</span>'+
+      '<div style="min-width:0"><h2 style="margin:0">'+esc(nm)+'</h2><div class="sub" style="margin-top:2px">'+esc(email)+'</div>'+
+      '<button class="gate-ghost" id="puPhotoBtn" style="margin:8px 0 0;display:inline-block">'+(p.avatar_url?'Change photo':'Upload photo')+'</button>'+
+      (p.avatar_url?' <button class="gate-ghost" id="puPhotoDel" style="margin:0 0 0 10px;display:inline-block">Remove photo</button>':'')+
+      '<input type="file" id="puPhotoIn" accept="image/jpeg,image/png,image/webp,image/gif" style="display:none"></div></div>'+
+
+    '<div class="pu-sec">Account</div>'+
+    '<div class="kv"><span>Name</span><span><input id="puName" class="pa-in" style="width:180px;padding:6px 9px;font-size:13px;text-align:right" value="'+esc(nm)+'"></span></div>'+
+    '<div class="kv"><span>Last active</span><span>'+esc(lastActive?fdt(lastActive)+' ('+relDays(lastActive)+')':'Never signed in')+'</span></div>'+
+    '<div class="kv" style="border-bottom:0"><span>Joined</span><span>'+esc(fdt(u&&u.created_at))+'</span></div>'+
+    '<button class="btn-primary" id="puSaveName" style="margin-top:12px;padding:7px 13px;font-size:12.5px">Save name</button>'+
 
     '<div class="pu-sec">Role</div>'+
     '<div class="kv"><span>Role</span><span><select class="pa-role" data-id="'+esc(id)+'">'+roleOpts+'</select></span></div>'+
@@ -996,8 +1019,65 @@ async function paUserDrawer(id){
     '<div id="puNote" style="font-size:12.5px;color:var(--text2);margin-top:10px"></div>'+
     '<div class="pu-sec" style="margin-top:26px">Password</div>'+
     '<button class="btn-primary" id="paReset" style="margin-top:4px">Email a password reset link</button>'+
-    '<div id="paResetNote" style="font-size:12.5px;color:var(--text2);margin-top:10px"></div>';
+    '<div id="paResetNote" style="font-size:12.5px;color:var(--text2);margin-top:10px"></div>'+
+    '<div class="pu-sec" style="margin-top:26px;color:#8f2c32">Remove from Mosaic</div>'+
+    '<p class="pu-note" style="margin-top:0">Deletes this account: their email and password stop working and every session they have open is signed out, everywhere. This can\'t be undone — to bring them back you\'d invite them again.</p>'+
+    '<button class="pu-danger" id="puRemove">Remove '+esc(nm)+'</button>'+
+    '<div id="puRemoveNote" style="font-size:12.5px;color:var(--text2);margin-top:10px"></div>';
 
+  /* admin edits this person's photo + name */
+  const pfi=document.getElementById('puPhotoIn');
+  document.getElementById('puPhotoBtn').addEventListener('click',()=>pfi.click());
+  pfi.addEventListener('change',async()=>{
+    const f=pfi.files&&pfi.files[0];if(!f)return;
+    const n=document.getElementById('puNote');
+    if(f.size>2*1024*1024){n.textContent='That photo is over 2 MB — please pick a smaller one.';return;}
+    n.textContent='Uploading…';
+    const ext=(f.name.split('.').pop()||'jpg').toLowerCase();
+    const path=id+'/avatar.'+ext;
+    const up=await sb.storage.from('avatars').upload(path,f,{upsert:true,contentType:f.type});
+    if(up.error){n.textContent="Couldn't upload — "+(up.error.message||'try again.');return;}
+    const {data:pub}=sb.storage.from('avatars').getPublicUrl(path);
+    const url=pub.publicUrl+'?v='+f.size+f.lastModified;
+    const {error:e5}=await sb.from('profiles').update({avatar_url:url}).eq('id',id);
+    if(e5){n.textContent="Uploaded, but couldn't save it — "+(e5.message||'try again.');return;}
+    p.avatar_url=url;document.getElementById('puRing').innerHTML=avatarHtml(url,nm);
+    n.textContent='Photo updated.';if(S.section==='admin')render();
+  });
+  const pdel=document.getElementById('puPhotoDel');
+  if(pdel)pdel.addEventListener('click',async()=>{
+    const n=document.getElementById('puNote');
+    const {error:e6}=await sb.from('profiles').update({avatar_url:null}).eq('id',id);
+    if(e6){n.textContent="Couldn't remove — "+(e6.message||'try again.');return;}
+    p.avatar_url=null;document.getElementById('puRing').innerHTML=avatarHtml(null,nm);
+    n.textContent='Photo removed.';if(S.section==='admin')render();
+  });
+  document.getElementById('puSaveName').addEventListener('click',async()=>{
+    const v=document.getElementById('puName').value.trim(),n=document.getElementById('puNote');
+    if(!v){n.textContent='Please enter a name.';return;}
+    const {error:e7}=await sb.from('profiles').update({display_name:v}).eq('id',id);
+    if(e7){n.textContent="Couldn't save — "+(e7.message||'try again.');return;}
+    p.display_name=v;n.textContent='Name updated.';if(S.section==='admin')render();
+  });
+  /* remove the account entirely */
+  document.getElementById('puRemove').addEventListener('click',async()=>{
+    const n=document.getElementById('puRemoveNote');
+    if(!confirm('Remove '+nm+" from Mosaic?\n\nTheir email and password stop working immediately and they're signed out of every app. This can't be undone."))return;
+    const typed=prompt('To confirm, type their name exactly:\n'+nm);
+    if(typed===null)return;
+    if(typed.trim()!==nm){n.textContent="That didn't match — nothing was removed.";return;}
+    const btn=document.getElementById('puRemove');btn.disabled=true;btn.textContent='Removing…';
+    let errMsg=null,ok=false;
+    try{
+      const {data,error}=await sb.functions.invoke('remove-user',{body:{id}});
+      if(error){errMsg=error.message||'please try again.';try{const b=await error.context.json();if(b&&b.error)errMsg=b.error;}catch(_){}}
+      else if(data&&data.error){errMsg=data.error;}
+      else ok=true;
+    }catch(ex){errMsg=String((ex&&ex.message)||ex);}
+    btn.disabled=false;btn.textContent='Remove '+nm;
+    if(!ok){n.textContent="Couldn't remove — "+errMsg;return;}
+    ADMIN.profs=null;closeDrawer();if(S.section==='admin')render();
+  });
   document.getElementById('puSave').addEventListener('click',async()=>{
     const n=document.getElementById('puNote');
     const app={};
