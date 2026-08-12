@@ -93,6 +93,24 @@ html.dark .badge,html.dark .count,html.dark .tag{background:var(--fill);color:va
 html.dark .banner{background:var(--surface);border-color:var(--hairline);color:var(--text2)}
 html.dark .cell,html.dark .wk-head div,html.dark .wk-body{border-color:var(--grid)}
 html.dark .row:hover{background:var(--fill)}
+/* permissions summary + editor */
+.pa-perm{border:0;background:none;padding:0;cursor:pointer;display:inline-flex;gap:5px;flex-wrap:wrap;font-family:inherit}
+.pa-pill{font-size:11px;padding:2px 8px;border-radius:999px;background:var(--fill);color:#4a4a4a;white-space:nowrap}
+.pa-pill.custom{background:#e8f0fa;color:#2c4c85}
+.pa-perm:hover .pa-pill{background:#e6e6e4}
+.pu-head{display:flex;gap:14px;align-items:flex-start;margin-bottom:6px}
+.pu-head .ring{width:52px;height:52px;border-radius:50%;background:#e2e2e0;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:600;color:#5c5c5c;flex:none}
+.pu-head .ring img{width:100%;height:100%;object-fit:cover}
+.pu-sec{font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--text2);font-weight:600;margin:22px 0 8px}
+.pu-note{font-size:12px;color:var(--text2);margin:8px 0 0;line-height:1.5}
+.pu-grid{display:grid;grid-template-columns:1fr 1fr;gap:2px}
+.pu-check{display:flex;align-items:center;gap:8px;font-size:13px;padding:7px 8px;border-radius:7px;cursor:pointer}
+.pu-check:hover{background:var(--fill)}
+.pu-check input{margin:0;width:15px;height:15px;flex:none;cursor:pointer}
+.pu-lock{margin-left:auto;color:var(--text3);display:inline-flex}
+.pu-lock svg{width:12px;height:12px}
+html.dark .pa-pill{background:var(--fill);color:var(--text2)}
+html.dark .pu-check:hover{background:var(--fill)}
 .ap-seg{display:inline-flex;gap:2px;background:var(--fill);border-radius:9px;padding:3px}
 .ap-seg button{border:0;background:none;font-family:inherit;letter-spacing:inherit;font-size:12.5px;padding:6px 12px;border-radius:6px;color:var(--text2);cursor:pointer;display:inline-flex;align-items:center;gap:6px}
 .ap-seg button.on{background:var(--surface);color:var(--text);font-weight:500;box-shadow:0 0 0 1px var(--hairline)}
@@ -598,8 +616,18 @@ function dueSoon(){return TASKS.filter(t=>!t.done && D(t.due)>=addDays(TODAY,-1)
 function waiting(){return EVENTS.filter(e=>e.status==='waiting').length;}
 
 /* ============================ nav ============================ */
+/* Which sections this person actually sees: the role preset, then any
+   per-person override an admin set in Admin > Users. */
+function allowedSections(){
+  const base=ROLES[S.role].sections.slice();
+  const ov=(!ME.preview&&ME.app_access)?ME.app_access:null;
+  if(!ov)return base;
+  const out=base.filter(id=>ov[id]!==false);
+  Object.keys(ov).forEach(id=>{if(ov[id]===true&&!out.includes(id))out.push(id);});
+  return out;
+}
 function renderNav(){
-  const allowed=ROLES[S.role].sections;
+  const allowed=allowedSections();
   const items=[];
   SECTIONS.forEach(sec=>{
     if(sec.group!==undefined){ items.push({divider:sec.group}); return; }
@@ -766,11 +794,12 @@ function pageEmbed(id){
    admin's own session — RLS enforces that only admins can. ---- */
 const ADMIN={profs:null,campuses:null,err:null,q:'',role:'all',loading:false,tab:'users'};
 const ROLE_LIST=['admin','staff','leader','volunteer'];
+const SECTION_LABEL=id=>{const s=SECTIONS.find(x=>x.id===id);return s?s.label:id;};
 function adminName(p){const n=p.display_name||p.full_name||'—';return n.includes('@')?prettyNameFromEmail(n):n;}
 async function loadAdmin(){
   if(ADMIN.loading)return;ADMIN.loading=true;
   const [r1,r2]=await Promise.all([
-    sb.from('profiles').select('id,display_name,full_name,role,campus_id,avatar_url'),
+    sb.from('profiles').select('id,display_name,full_name,role,campus_id,avatar_url,app_access,campus_ids'),
     sb.from('campuses').select('id,name,parent_campus_id')
   ]);
   ADMIN.err=(r1.error&&r1.error.message)||(r2.error&&r2.error.message)||null;
@@ -780,6 +809,36 @@ async function loadAdmin(){
   if(S.section==='admin')render();
 }
 function campusName(id){const c=(ADMIN.campuses||[]).find(x=>x.id===id);return c?c.name:'—';}
+/* The sections a person can reach, and the campuses they can see, resolving
+   role defaults plus any per-person override. */
+const PERM_SECTIONS=SECTIONS.filter(s=>s.id&&s.id!=='settings');
+function sectionsFor(p){
+  const preset=ROLE_PRESET[p.role]||'volunteer';
+  const base=(ROLES[preset]||ROLES.volunteer).sections.filter(id=>id!=='settings'&&id!=='admin');
+  const ov=p.app_access||null;
+  if(!ov)return base;
+  const out=base.filter(id=>ov[id]!==false);
+  Object.keys(ov).forEach(id=>{if(ov[id]===true&&!out.includes(id))out.push(id);});
+  return out;
+}
+function campusesFor(p){
+  if(p.campus_ids&&p.campus_ids.length)return p.campus_ids;
+  if(p.role==='admin')return (ADMIN.campuses||[]).map(c=>c.id);
+  return p.campus_id?[p.campus_id]:[];
+}
+function permSummary(p){
+  const secs=sectionsFor(p), cams=campusesFor(p);
+  const allCam=(ADMIN.campuses||[]).length;
+  const camLab=(p.role==='admin'&&!(p.campus_ids||[]).length)?'all campuses'
+    :cams.length===0?'no campus'
+    :cams.length===1?campusName(cams[0])
+    :cams.length===allCam?'all campuses'
+    :cams.length+' campuses';
+  const custom=!!(p.app_access||(p.campus_ids&&p.campus_ids.length));
+  return '<span class="pa-pill">'+secs.length+' of '+PERM_SECTIONS.length+' apps</span>'+
+    '<span class="pa-pill">'+esc(camLab)+'</span>'+
+    (custom?'<span class="pa-pill custom">custom</span>':'');
+}
 /* Roles & permissions — Paola's reference matrix from the Metrics admin,
    adapted to the portal: what each role can reach across the whole app,
    not just Metrics. Reference only; the rules themselves are enforced by
@@ -859,13 +918,14 @@ function pageAdmin(){
       ROLE_LIST.map(r=>'<option value="'+r+'"'+(ADMIN.role===r?' selected':'')+'>'+cap(r)+'</option>').join('')+'</select>'+
     '<span style="margin-left:auto;font-size:12.5px;color:var(--text2)">'+rows.length+' of '+ADMIN.profs.length+' users</span></div>'+
     '<div id="paNote" class="banner" style="display:none"></div>'+
-    '<div class="pa-card"><table class="pa-table"><thead><tr><th>Name</th><th>Role</th><th>Campus</th></tr></thead><tbody>'+
+    '<div class="pa-card"><table class="pa-table"><thead><tr><th>Name</th><th>Role</th><th>Primary campus</th><th>Roles &amp; permissions</th></tr></thead><tbody>'+
     (rows.length?rows.map(p=>'<tr>'+
       '<td><button class="pa-eye" data-user="'+esc(p.id)+'" title="View profile">'+ic('info')+'</button>'+
       '<span class="pa-av">'+avatarHtml(p.avatar_url,adminName(p))+'</span><span style="font-weight:500">'+esc(adminName(p))+'</span>'+
       (ME.email&&p.full_name===ME.email?' <span style="color:var(--text2);font-size:11.5px">(you)</span>':'')+'</td>'+
-      '<td>'+roleSel(p)+'</td><td>'+campusSel(p)+'</td></tr>').join('')
-      :'<tr><td colspan="3" style="color:var(--text2)">No users match.</td></tr>')+
+      '<td>'+roleSel(p)+'</td><td>'+campusSel(p)+'</td>'+
+      '<td><button class="pa-perm" data-user="'+esc(p.id)+'">'+permSummary(p)+'</button></td></tr>').join('')
+      :'<tr><td colspan="4" style="color:var(--text2)">No users match.</td></tr>')+
     '</tbody></table></div>'+
     '<p style="font-size:12.5px;color:var(--text2);margin-top:14px;max-width:620px;line-height:1.5">Changing a role or campus here applies everywhere the Mosaic account is used — the portal, Metrics, and anything added later. Campus applies to staff, leaders and volunteers; admins see all campuses.</p>';
 }
@@ -896,22 +956,72 @@ async function paUserDrawer(id){
   openDrawer('<div class="empty">Loading…</div>');
   const {data,error}=await sb.rpc('admin_get_user',{target:id});
   const u=Array.isArray(data)?data[0]:data;
-  if(error||!u){document.getElementById('drawerBody').innerHTML='<div class="empty">Couldn\'t load this profile — '+esc((error&&error.message)||'not found')+'</div>';return;}
   const p=ADMIN.profs.find(x=>x.id===id)||{};
-  const nm=adminName(Object.assign({},u,p));
+  if(error&&!p.id){document.getElementById('drawerBody').innerHTML='<div class="empty">Couldn\'t load this profile — '+esc((error&&error.message)||'not found')+'</div>';return;}
+  const nm=adminName(Object.assign({},u||{},p));
+  const email=(u&&u.email)||p.full_name||'';
   const fdt=ts=>{if(!ts)return '—';const d=new Date(ts);return isNaN(d)?'—':d.toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'});};
+  const secs=sectionsFor(p), cams=campusesFor(p);
+  const isAdminUser=p.role==='admin';
+  const roleOpts=ROLE_LIST.map(r=>'<option value="'+r+'"'+(r===p.role?' selected':'')+'>'+cap(r)+'</option>').join('');
+  const camOpts='<option value="">Select a campus</option>'+(ADMIN.campuses||[]).map(c=>'<option value="'+esc(c.id)+'"'+(c.id===p.campus_id?' selected':'')+'>'+esc(c.name)+'</option>').join('');
   document.getElementById('drawerBody').innerHTML=
-    '<h2 style="margin-top:0">'+esc(nm)+'</h2><div class="sub">'+esc(u.email||'')+'</div>'+
-    '<div class="kv"><span>Role</span><span>'+esc(cap(p.role||u.role||''))+'</span></div>'+
-    '<div class="kv"><span>Campus</span><span>'+esc((p.role||u.role)==='admin'?'All campuses':campusName(p.campus_id||u.campus_id))+'</span></div>'+
-    '<div class="kv"><span>Joined</span><span>'+esc(fdt(u.created_at))+'</span></div>'+
-    '<div class="kv" style="border-bottom:0"><span>Last active</span><span>'+esc(u.last_sign_in_at?fdt(u.last_sign_in_at):'Never signed in')+'</span></div>'+
-    '<button class="btn-primary" id="paReset" style="margin-top:18px">Email a password reset link</button>'+
+    '<div class="pu-head"><span class="ring">'+avatarHtml(p.avatar_url,nm)+'</span>'+
+      '<div><h2 style="margin:0">'+esc(nm)+'</h2><div class="sub" style="margin-top:2px">'+esc(email)+'</div>'+
+      '<div class="sub" style="font-size:12px">Joined '+esc(fdt(u&&u.created_at))+' · '+esc(u&&u.last_sign_in_at?'last active '+fdt(u.last_sign_in_at):'never signed in')+'</div></div></div>'+
+
+    '<div class="pu-sec">Role</div>'+
+    '<div class="kv"><span>Role</span><span><select class="pa-role" data-id="'+esc(id)+'">'+roleOpts+'</select></span></div>'+
+    '<div class="kv" style="border-bottom:0"><span>Primary campus</span><span>'+
+      (isAdminUser?'<span style="color:var(--text2)">All campuses</span>'
+       :'<select class="pa-campus" data-id="'+esc(id)+'">'+camOpts+'</select>')+'</span></div>'+
+    '<p class="pu-note">The role sets the defaults below. Anything you tick here is an override for this person only.</p>'+
+
+    '<div class="pu-sec">App access</div>'+
+    '<div class="pu-grid">'+PERM_SECTIONS.map(s=>
+      '<label class="pu-check"><input type="checkbox" data-app="'+s.id+'"'+(secs.includes(s.id)?' checked':'')+'>'+
+      '<span>'+esc(s.label)+'</span>'+(s.restricted?'<span class="pu-lock">'+ic('lock')+'</span>':'')+'</label>').join('')+
+    '</div>'+
+
+    '<div class="pu-sec">Campus access</div>'+
+    '<div class="pu-grid">'+(ADMIN.campuses||[]).map(c=>
+      '<label class="pu-check"><input type="checkbox" data-campus="'+esc(c.id)+'"'+(cams.includes(c.id)?' checked':'')+'>'+
+      '<span>'+esc(c.name)+'</span></label>').join('')+
+    '</div>'+
+    '<p class="pu-note">Which campuses this person can see. Leave every box ticked for someone who works across all of them.</p>'+
+
+    '<div style="display:flex;gap:10px;align-items:center;margin-top:20px">'+
+      '<button class="btn-primary" id="puSave">Save permissions</button>'+
+      '<button class="gate-ghost" id="puReset" style="margin:0">Reset to role defaults</button></div>'+
+    '<div id="puNote" style="font-size:12.5px;color:var(--text2);margin-top:10px"></div>'+
+    '<div class="pu-sec" style="margin-top:26px">Password</div>'+
+    '<button class="btn-primary" id="paReset" style="margin-top:4px">Email a password reset link</button>'+
     '<div id="paResetNote" style="font-size:12.5px;color:var(--text2);margin-top:10px"></div>';
+
+  document.getElementById('puSave').addEventListener('click',async()=>{
+    const n=document.getElementById('puNote');
+    const app={};
+    document.querySelectorAll('#drawerBody [data-app]').forEach(cb=>{app[cb.dataset.app]=cb.checked;});
+    const camIds=[...document.querySelectorAll('#drawerBody [data-campus]')].filter(cb=>cb.checked).map(cb=>cb.dataset.campus);
+    const {error:e3}=await sb.from('profiles').update({app_access:app,campus_ids:camIds}).eq('id',id);
+    if(e3){n.textContent="Couldn't save — "+(e3.message||'try again.');return;}
+    p.app_access=app;p.campus_ids=camIds;
+    n.textContent='Permissions saved.';
+    if(S.section==='admin')render();
+  });
+  document.getElementById('puReset').addEventListener('click',async()=>{
+    const n=document.getElementById('puNote');
+    const {error:e4}=await sb.from('profiles').update({app_access:null,campus_ids:null}).eq('id',id);
+    if(e4){n.textContent="Couldn't reset — "+(e4.message||'try again.');return;}
+    p.app_access=null;p.campus_ids=null;
+    n.textContent='Back to the role defaults.';
+    paUserDrawer(id);if(S.section==='admin')render();
+  });
   document.getElementById('paReset').addEventListener('click',async()=>{
     const n=document.getElementById('paResetNote');
-    const {error:e2}=await sb.auth.resetPasswordForEmail(u.email,{redirectTo:location.origin+'/'});
-    n.textContent=e2?("Couldn't send — "+(e2.message||'try again.')):('Reset link sent to '+u.email+'.');
+    if(!email){n.textContent='No email on this account.';return;}
+    const {error:e2}=await sb.auth.resetPasswordForEmail(email,{redirectTo:location.origin+'/'});
+    n.textContent=e2?("Couldn't send — "+(e2.message||'try again.')):('Reset link sent to '+email+'.');
   });
 }
 function paInviteDrawer(){
@@ -1212,7 +1322,7 @@ function render(){
   if(pr)pr.addEventListener('change',()=>{ADMIN.role=pr.value;render();});
   const rs=document.getElementById('roleSel');
   if(rs) rs.addEventListener('change',e=>{S.role=e.target.value;
-    if(!ROLES[S.role].sections.includes(S.section))S.section='home'; render();});
+    if(!allowedSections().includes(S.section))S.section='home'; render();});
 }
 
 /* ============================ events ============================ */
@@ -1223,7 +1333,7 @@ document.addEventListener('click',e=>{
   if(t.dataset.preview){
     ME.preview=!ME.preview;
     S.role=ME.preview?'comms':(ROLE_PRESET[ME.role]||'comms');
-    if(!ROLES[S.role].sections.includes(S.section))S.section='home';
+    if(!allowedSections().includes(S.section))S.section='home';
     umClose(); render(); return;
   }
   if(t.dataset.profile){ umClose(); profileDrawer(); return; }
@@ -1237,7 +1347,7 @@ document.addEventListener('click',e=>{
   }
   if(t.dataset.everyone){ S.forEveryone=!S.forEveryone; render(); return; }
   if(t.dataset.tl!==undefined){ const n=Number(t.dataset.tl); S.tlShift = n===0?0:S.tlShift+n; render(); return; }
-  if(t.dataset.go){ if(ROLES[S.role].sections.includes(t.dataset.go)){S.section=t.dataset.go; closeDrawer(); if(typeof umClose==="function")umClose(); render();} return; }
+  if(t.dataset.go){ if(allowedSections().includes(t.dataset.go)){S.section=t.dataset.go; closeDrawer(); if(typeof umClose==="function")umClose(); render();} return; }
   if(t.dataset.theme){
     THEME=t.dataset.theme; try{localStorage.setItem(themeKey(),THEME);}catch(e){}
     applyTheme();
@@ -1507,13 +1617,13 @@ async function enterPortal(){
   const {data:{user}}=await sb.auth.getUser();
   if(!user)return;
   ME.email=user.email;
-  const {data:prof}=await sb.from("profiles").select("role,display_name,full_name,campus_id,avatar_url").eq("id",user.id).single();
-  if(prof){ME.role=prof.role;ME.name=prof.display_name||prof.full_name;ME.campus_id=prof.campus_id;ME.avatar_url=prof.avatar_url;}
+  const {data:prof}=await sb.from("profiles").select("role,display_name,full_name,campus_id,avatar_url,app_access,campus_ids").eq("id",user.id).single();
+  if(prof){ME.role=prof.role;ME.name=prof.display_name||prof.full_name;ME.campus_id=prof.campus_id;ME.avatar_url=prof.avatar_url;ME.app_access=prof.app_access;ME.campus_ids=prof.campus_ids;}
   if(!ME.name||ME.name.includes("@"))ME.name=prettyNameFromEmail(ME.email);
   if(ROLE_PRESET[ME.role])S.role=ROLE_PRESET[ME.role];
   loadTheme();
   const want=PATH_SECTION[location.pathname.replace(/\/+$/,"")||"/"];
-  if(want&&ROLES[S.role].sections.includes(want))S.section=want;
+  if(want&&allowedSections().includes(want))S.section=want;
   const who=document.getElementById("who"),av=document.querySelector(".rail-foot .avatar");
   if(who)who.textContent=ME.name;
   if(av)av.innerHTML=avatarHtml(ME.avatar_url,ME.name);
