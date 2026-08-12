@@ -871,7 +871,7 @@ async function paSaveCampus(id,next){
    the per-app permissions and campus lists have room to breathe. */
 function openAdminUser(id){
   S.from='admin'; S.section='admin-user'; S.adminUserId=id;
-  ADMIN.viewUser={id,loading:false,u:null,roleOverrides:null,perms:null,campusIds:null,err:null};
+  ADMIN.viewUser=null;
   render();
 }
 async function loadAdminUser(id){
