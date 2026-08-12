@@ -845,6 +845,24 @@ function pageAdmin(){
     '<p style="font-size:12.5px;color:var(--text2);margin-top:14px;max-width:620px;line-height:1.5">Changing a role or campus here applies everywhere the Mosaic account is used — the portal, Metrics, and anything added later. Campus applies to staff, leaders and volunteers; admins see all campuses.</p>';
 }
 function paNote(msg,err){const n=document.getElementById('paNote');if(!n)return;n.style.display='flex';n.style.borderColor=err?'var(--red)':'var(--hairline)';n.innerHTML=ic('info')+'<div>'+esc(msg)+'</div>';clearTimeout(paNote._t);paNote._t=setTimeout(()=>{const x=document.getElementById('paNote');if(x)x.style.display='none';},4500);}
+async function paSaveGlobalRole(id,next){
+  const note=document.getElementById('paRoleNote');
+  const result=await paSaveRole(id,next);
+  if(result===false)return;
+  if(typeof result==='string'){
+    // Setting the global role resets this person back to that role's normal
+    // access everywhere — any per-app exceptions they had are cleared, so
+    // there's nothing left over contradicting the role just assigned. An
+    // admin can still carve out new per-app exceptions afterward.
+    await Promise.all([
+      sb.from('section_role_overrides').delete().eq('user_id',id),
+      sb.from('section_permissions').delete().eq('user_id',id)
+    ]);
+    if(note)note.textContent=result;
+    ADMIN.viewUser=null;
+    if(S.section==='admin-user'&&S.adminUserId===id)loadAdminUser(id);
+  }
+}
 async function paSaveRole(id,next){
   const p=ADMIN.profs.find(x=>x.id===id);if(!p||p.role===next)return true;
   const who=adminName(p);
@@ -908,7 +926,8 @@ function pageAdminUser(){
   return back+
     '<h1 style="font-size:26px;margin-bottom:2px">'+esc(nm)+'</h1><div class="sub">'+esc(u.email||'')+'</div>'+
     '<div class="ecard" style="margin-top:16px"><div>'+
-    '<div class="kv"><span>Role</span><span>'+esc(cap(globalRole))+'</span></div>'+
+    '<div class="kv"><span>Role</span><span><select data-global-role data-id="'+esc(id)+'">'+ROLE_LIST.map(r=>'<option value="'+r+'"'+(r===globalRole?' selected':'')+'>'+cap(r)+'</option>').join('')+'</select></span></div>'+
+    '<div id="paRoleNote" style="font-size:12.5px;color:var(--text2);margin-top:-8px;margin-bottom:8px"></div>'+
     '<div class="kv" style="border-bottom:0"><span>Joined</span><span>'+esc(fdt(u.created_at))+'</span></div>'+
     '<div class="kv" style="border-bottom:0"><span>Last active</span><span>'+esc(u.last_sign_in_at?fdt(u.last_sign_in_at):'Never signed in')+'</span></div>'+
     '<button class="btn-primary" id="paReset" style="margin-top:18px">Email a password reset link</button>'+
@@ -1365,6 +1384,8 @@ document.addEventListener('click',e=>{
 });
 document.addEventListener('change',e=>{
   if(S.section!=='admin-user')return;
+  const globalRoleSel=e.target.closest('[data-global-role]');
+  if(globalRoleSel){ paSaveGlobalRole(globalRoleSel.dataset.id,globalRoleSel.value); return; }
   const roleSel=e.target.closest('[data-app-role-override]');
   if(roleSel){ paSaveRoleOverride(S.adminUserId,roleSel.dataset.app,roleSel.value||null); return; }
   const permCb=e.target.closest('[data-perm]');
