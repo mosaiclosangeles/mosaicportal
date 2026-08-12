@@ -720,34 +720,40 @@ function pageEmbed(id){
 /* ---- Admin: user management for the whole app (same profiles the four
    apps share). Reads/writes the Metrics Supabase with the signed-in
    admin's own session — RLS enforces that only admins can. ---- */
-const ADMIN={profs:null,campuses:null,err:null,q:'',role:'all',loading:false,tab:'users',apps:null,appDefaults:null};
+const ADMIN={profs:null,campuses:null,err:null,q:'',role:'all',loading:false,tab:'users',apps:null,appPerms:null,appDefaults:null};
 const ROLE_LIST=['admin','staff','leader','volunteer'];
 function adminName(p){const n=p.display_name||p.full_name||'—';return n.includes('@')?prettyNameFromEmail(n):n;}
 async function loadAdmin(){
   if(ADMIN.loading)return;ADMIN.loading=true;
-  const [r1,r2,r3,r4]=await Promise.all([
+  const [r1,r2,r3,r4,r5]=await Promise.all([
     sb.from('profiles').select('id,display_name,full_name,role,campus_id'),
     sb.from('campuses').select('id,name,parent_campus_id'),
     sb.from('apps').select('key,name'),
-    sb.from('role_app_defaults').select('role,app_key,can_create,can_read,can_edit,can_delete')
+    sb.from('app_permissions').select('app_key,perm_key,label,sort_order').order('sort_order'),
+    sb.from('role_app_defaults').select('role,app_key,perm_key,granted')
   ]);
   ADMIN.err=(r1.error&&r1.error.message)||(r2.error&&r2.error.message)||null;
   ADMIN.profs=r1.data||[];
   ADMIN.campuses=(r2.data||[]).filter(c=>!c.parent_campus_id).sort((a,b)=>a.name.localeCompare(b.name));
   ADMIN.apps=r3.data||[];
-  ADMIN.appDefaults=r4.data||[];
+  ADMIN.appPerms=r4.data||[];
+  ADMIN.appDefaults=r5.data||[];
   ADMIN.loading=false;
   if(S.section==='admin')render();
 }
-/* Effective per-app permission for one user: an explicit override in
-   section_permissions wins field-by-field; anything the override leaves
-   null falls back to role_app_defaults for whichever role applies
-   (the override's own role_override if set, else the person's global role). */
-function effectivePerm(appKey,globalRole,override){
-  const effRole=(override&&override.role_override)||globalRole;
-  const def=(ADMIN.appDefaults||[]).find(d=>d.app_key===appKey&&d.role===effRole)||{can_create:false,can_read:false,can_edit:false,can_delete:false};
-  const pick=f=>(override&&override[f]!=null)?override[f]:def[f];
-  return {role:effRole,create:pick('can_create'),read:pick('can_read'),edit:pick('can_edit'),delete:pick('can_delete'),overridden:!!override};
+/* Effective permissions for one user, one app: start from the role that
+   applies (a section_role_overrides row for this app if set, else the
+   person's global role), grant whatever role_app_defaults says for it,
+   then let any per-permission row in section_permissions override that
+   field specifically. Returns [{perm_key,label,granted}]. */
+function effectiveAppPerms(appKey,globalRole,roleOverride,permOverrides){
+  const effRole=roleOverride||globalRole;
+  const perms=(ADMIN.appPerms||[]).filter(p=>p.app_key===appKey);
+  return perms.map(p=>{
+    const def=(ADMIN.appDefaults||[]).some(d=>d.role===effRole&&d.app_key===appKey&&d.perm_key===p.perm_key&&d.granted);
+    const ov=(permOverrides||[]).find(o=>o.app_key===appKey&&o.perm_key===p.perm_key);
+    return {perm_key:p.perm_key,label:p.label,granted:ov?ov.granted:def,overridden:!!ov};
+  });
 }
 function campusName(id){const c=(ADMIN.campuses||[]).find(x=>x.id===id);return c?c.name:'—';}
 /* Roles & permissions — Paola's reference matrix from the Metrics admin,
@@ -861,104 +867,143 @@ async function paSaveCampus(id,next){
   p.campus_id=next||null;
   return 'Set '+adminName(p)+"'s campus to "+(next?campusName(next):'No campus')+'.';
 }
-async function paUserDrawer(id){
-  openDrawer('<div class="empty">Loading…</div>');
-  const [{data,error},permRes]=await Promise.all([
+/* Admin user profile — a real page (like event detail), not a drawer, so
+   the per-app permissions and campus lists have room to breathe. */
+function openAdminUser(id){
+  S.from='admin'; S.section='admin-user'; S.adminUserId=id;
+  ADMIN.viewUser={id,loading:false,u:null,roleOverrides:null,perms:null,campusIds:null,err:null};
+  render();
+}
+async function loadAdminUser(id){
+  if(!ADMIN.viewUser||ADMIN.viewUser.id!==id)ADMIN.viewUser={id,loading:false,u:null,roleOverrides:null,perms:null,campusIds:null,err:null};
+  if(ADMIN.viewUser.loading)return;
+  ADMIN.viewUser.loading=true;
+  const [{data,error},roRes,permRes,ucRes]=await Promise.all([
     sb.rpc('admin_get_user',{target:id}),
-    sb.from('section_permissions').select('app_key,role_override,can_create,can_read,can_edit,can_delete').eq('user_id',id)
+    sb.from('section_role_overrides').select('app_key,role_override').eq('user_id',id),
+    sb.from('section_permissions').select('app_key,perm_key,granted').eq('user_id',id),
+    sb.from('user_campuses').select('campus_id').eq('user_id',id)
   ]);
   const u=Array.isArray(data)?data[0]:data;
-  if(error||!u){document.getElementById('drawerBody').innerHTML='<div class="empty">Couldn\'t load this profile — '+esc((error&&error.message)||'not found')+'</div>';return;}
+  ADMIN.viewUser.loading=false;
+  ADMIN.viewUser.err=(error&&error.message)||(!u?'not found':null);
+  ADMIN.viewUser.u=u||null;
+  ADMIN.viewUser.roleOverrides=roRes.data||[];
+  ADMIN.viewUser.perms=permRes.data||[];
+  ADMIN.viewUser.campusIds=(ucRes.data||[]).map(r=>r.campus_id);
+  if(S.section==='admin-user'&&S.adminUserId===id)render();
+}
+function pageAdminUser(){
+  const id=S.adminUserId;
+  const back='<button class="back" data-back="1">'+ic('left')+'Back</button>';
+  const vu=ADMIN.viewUser;
+  if(!vu||vu.id!==id){loadAdminUser(id);return back+'<div class="empty">Loading…</div>';}
+  if(vu.loading&&!vu.u)return back+'<div class="empty">Loading…</div>';
+  if(vu.err||!vu.u)return back+'<div class="empty">Couldn\'t load this profile — '+esc(vu.err||'not found')+'</div>';
+  const u=vu.u;
   const p=ADMIN.profs.find(x=>x.id===id)||{};
   const globalRole=p.role||u.role||'volunteer';
   const nm=adminName(Object.assign({},u,p));
   const fdt=ts=>{if(!ts)return '—';const d=new Date(ts);return isNaN(d)?'—':d.toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'});};
-  let perms=permRes.data||[];
-  document.getElementById('drawerBody').innerHTML=
-    '<h2 style="margin-top:0">'+esc(nm)+'</h2><div class="sub">'+esc(u.email||'')+'</div>'+
+  return back+
+    '<h1 style="font-size:26px;margin-bottom:2px">'+esc(nm)+'</h1><div class="sub">'+esc(u.email||'')+'</div>'+
+    '<div class="ecard" style="margin-top:16px"><div>'+
     '<div class="kv"><span>Role</span><span>'+esc(cap(globalRole))+'</span></div>'+
-    '<div class="kv"><span>Campus</span><span>'+esc(globalRole==='admin'?'All campuses':campusName(p.campus_id||u.campus_id))+'</span></div>'+
-    '<div class="kv"><span>Joined</span><span>'+esc(fdt(u.created_at))+'</span></div>'+
+    '<div class="kv" style="border-bottom:0"><span>Joined</span><span>'+esc(fdt(u.created_at))+'</span></div>'+
     '<div class="kv" style="border-bottom:0"><span>Last active</span><span>'+esc(u.last_sign_in_at?fdt(u.last_sign_in_at):'Never signed in')+'</span></div>'+
     '<button class="btn-primary" id="paReset" style="margin-top:18px">Email a password reset link</button>'+
     '<div id="paResetNote" style="font-size:12.5px;color:var(--text2);margin-top:10px"></div>'+
-    '<h3 style="margin:26px 0 4px">Per-app permissions</h3>'+
-    '<p class="sub" style="margin:0 0 12px">Every app defaults to '+esc(cap(globalRole))+"'s normal access. Change a row here to set an exception just for "+esc(nm.split(' ')[0]||'this person')+' — everything else keeps following the global role.</p>'+
-    '<div id="paPermsWrap">'+paPermsTable(id,globalRole,perms)+'</div>';
-  document.getElementById('paReset').addEventListener('click',async()=>{
-    const n=document.getElementById('paResetNote');
-    const {error:e2}=await sb.auth.resetPasswordForEmail(u.email,{redirectTo:location.origin+'/'});
-    n.textContent=e2?("Couldn't send — "+(e2.message||'try again.')):('Reset link sent to '+u.email+'.');
-  });
-  wirePermsTable(id,globalRole,()=>perms,next=>{perms=next;});
-}
-function paPermsTable(userId,globalRole,perms){
-  const apps=(ADMIN.apps||[]).slice().sort((a,b)=>a.name.localeCompare(b.name));
-  const roleOpt=r=>'<option value="'+r+'">'+cap(r)+'</option>';
-  return '<div class="pa-card" style="overflow-x:auto"><table class="rp-table"><thead><tr>'+
-    '<th>App</th><th>Role here</th><th>Create</th><th>Read</th><th>Edit</th><th>Delete</th><th></th></tr></thead><tbody>'+
-    apps.map(a=>{
-      const ov=perms.find(x=>x.app_key===a.key)||null;
-      const eff=effectivePerm(a.key,globalRole,ov);
-      const cb=(field,val)=>'<input type="checkbox" data-perm-cb="'+field+'" data-app="'+esc(a.key)+'" '+(val?'checked':'')+'>';
-      return '<tr data-app-row="'+esc(a.key)+'">'+
-        '<td>'+esc(a.name)+'</td>'+
-        '<td><select data-perm-role data-app="'+esc(a.key)+'">'+ROLE_LIST.map(r=>'<option value="'+r+'"'+(r===eff.role?' selected':'')+'>'+cap(r)+(r===globalRole?' (default)':'')+'</option>').join('')+'</select></td>'+
-        '<td>'+cb('can_create',eff.create)+'</td>'+
-        '<td>'+cb('can_read',eff.read)+'</td>'+
-        '<td>'+cb('can_edit',eff.edit)+'</td>'+
-        '<td>'+cb('can_delete',eff.delete)+'</td>'+
-        '<td>'+(eff.overridden?'<button class="pa-eye" data-perm-reset data-app="'+esc(a.key)+'" title="Reset to '+esc(cap(globalRole))+' default">'+ic('info')+' Reset</button>':'<span style="color:var(--text2);font-size:11.5px">default</span>')+'</td>'+
-      '</tr>';
-    }).join('')+
-    '</tbody></table></div>'+
+    '</div></div>'+
+    '<h2 style="margin-top:28px">Campuses</h2>'+
+    '<p class="sub" style="margin:0 0 12px;max-width:620px">'+(globalRole==='admin'?'Admins see every campus regardless of what\'s checked here.':'Select every campus '+esc(nm.split(' ')[0]||'this person')+' should have access to — more than one is fine.')+'</p>'+
+    paCampusPicker(vu.campusIds||[])+
+    '<h2 style="margin-top:28px">Per-app permissions</h2>'+
+    '<p class="sub" style="margin:0 0 12px;max-width:620px">Every app defaults to '+esc(cap(globalRole))+"'s normal access. Change anything below to set an exception just for "+esc(nm.split(' ')[0]||'this person')+' — everything else keeps following the global role.</p>'+
+    paPermsBlocks(globalRole,vu.roleOverrides||[],vu.perms||[])+
     '<div id="paPermNote" style="font-size:12.5px;color:var(--text2);margin-top:10px"></div>';
 }
-function wirePermsTable(userId,globalRole,getPerms,setPerms){
-  const wrap=document.getElementById('paPermsWrap');
-  if(!wrap)return;
-  const note=()=>document.getElementById('paPermNote');
-  async function saveRow(appKey){
-    const row=wrap.querySelector('tr[data-app-row="'+CSS.escape(appKey)+'"]');
-    const role=row.querySelector('[data-perm-role]').value;
-    const vals={
-      can_create:row.querySelector('[data-perm-cb="can_create"]').checked,
-      can_read:row.querySelector('[data-perm-cb="can_read"]').checked,
-      can_edit:row.querySelector('[data-perm-cb="can_edit"]').checked,
-      can_delete:row.querySelector('[data-perm-cb="can_delete"]').checked
-    };
-    const {error}=await sb.from('section_permissions').upsert({
-      user_id:userId,app_key:appKey,role_override:role,
-      can_create:vals.can_create,can_read:vals.can_read,can_edit:vals.can_edit,can_delete:vals.can_delete
-    },{onConflict:'user_id,app_key'});
-    if(note())note().textContent=error?("Couldn't save — "+error.message):'Saved.';
-    if(!error){
-      const perms=getPerms().filter(p=>p.app_key!==appKey);
-      perms.push({app_key:appKey,role_override:role,...vals});
-      setPerms(perms);
-      const cell=row.querySelector('td:last-child');
-      cell.innerHTML='<button class="pa-eye" data-perm-reset data-app="'+esc(appKey)+'" title="Reset to '+esc(cap(globalRole))+' default">'+ic('info')+' Reset</button>';
-      cell.querySelector('[data-perm-reset]').addEventListener('click',()=>resetRow(appKey));
-    }
+function paCampusPicker(selectedIds){
+  const campuses=(ADMIN.campuses||[]).slice().sort((a,b)=>a.name.localeCompare(b.name));
+  return '<div class="pa-card" style="display:flex;flex-wrap:wrap;gap:10px 22px;padding:16px">'+
+    campuses.map(c=>'<label style="display:flex;align-items:center;gap:7px;font-size:13.5px"><input type="checkbox" data-campus-cb value="'+esc(c.id)+'" '+(selectedIds.includes(c.id)?'checked':'')+'>'+esc(c.name)+'</label>').join('')+
+    '</div>'+
+    '<div id="paCampusNote" style="font-size:12.5px;color:var(--text2);margin-top:8px"></div>';
+}
+function paPermsBlocks(globalRole,roleOverrides,permOverrides){
+  const apps=(ADMIN.apps||[]).slice().sort((a,b)=>a.name.localeCompare(b.name));
+  return apps.map(a=>{
+    const ro=roleOverrides.find(x=>x.app_key===a.key);
+    const roleForApp=(ro&&ro.role_override)||globalRole;
+    const perms=effectiveAppPerms(a.key,globalRole,ro?ro.role_override:null,permOverrides);
+    if(!perms.length)return '';
+    const anyOverride=!!ro||perms.some(p=>p.overridden);
+    return '<div class="pa-card" data-app-block="'+esc(a.key)+'" style="margin-bottom:12px;padding:14px 16px">'+
+      '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px">'+
+        '<strong>'+esc(a.name)+'</strong>'+
+        '<div style="display:flex;align-items:center;gap:10px">'+
+          '<select data-app-role-override data-app="'+esc(a.key)+'"><option value=""'+(!ro?' selected':'')+'>Acts as '+cap(globalRole)+' (default)</option>'+
+          ROLE_LIST.map(r=>'<option value="'+r+'"'+(r===roleForApp&&ro?' selected':'')+'>Acts as '+cap(r)+'</option>').join('')+'</select>'+
+          (anyOverride?'<button class="pa-eye" data-app-reset data-app="'+esc(a.key)+'">'+ic('info')+' Reset app</button>':'')+
+        '</div>'+
+      '</div>'+
+      '<div style="display:flex;flex-wrap:wrap;gap:8px 20px">'+
+      perms.map(p=>'<label style="display:flex;align-items:center;gap:7px;font-size:13.5px'+(p.overridden?';color:var(--amber-d);font-weight:500':'')+'"><input type="checkbox" data-perm data-app="'+esc(a.key)+'" data-perm-key="'+esc(p.perm_key)+'" '+(p.granted?'checked':'')+'>'+esc(p.label)+(p.overridden?' *':'')+'</label>').join('')+
+      '</div>'+
+    '</div>';
+  }).join('');
+}
+async function paSaveCampuses(userId){
+  const boxes=[...document.querySelectorAll('[data-campus-cb]')];
+  const ids=boxes.filter(b=>b.checked).map(b=>b.value);
+  const note=document.getElementById('paCampusNote');
+  const {error:delErr}=await sb.from('user_campuses').delete().eq('user_id',userId);
+  if(delErr){if(note)note.textContent="Couldn't save — "+delErr.message;return;}
+  if(ids.length){
+    const {error:insErr}=await sb.from('user_campuses').insert(ids.map(campus_id=>({user_id:userId,campus_id})));
+    if(insErr){if(note)note.textContent="Couldn't save — "+insErr.message;return;}
   }
-  async function resetRow(appKey){
-    const {error}=await sb.from('section_permissions').delete().eq('user_id',userId).eq('app_key',appKey);
-    if(note())note().textContent=error?("Couldn't reset — "+error.message):'Reset to default.';
-    if(!error){
-      setPerms(getPerms().filter(p=>p.app_key!==appKey));
-      const row=wrap.querySelector('tr[data-app-row="'+CSS.escape(appKey)+'"]');
-      const eff=effectivePerm(appKey,globalRole,null);
-      row.querySelector('[data-perm-role]').value=eff.role;
-      row.querySelector('[data-perm-cb="can_create"]').checked=eff.create;
-      row.querySelector('[data-perm-cb="can_read"]').checked=eff.read;
-      row.querySelector('[data-perm-cb="can_edit"]').checked=eff.edit;
-      row.querySelector('[data-perm-cb="can_delete"]').checked=eff.delete;
-      row.querySelector('td:last-child').innerHTML='<span style="color:var(--text2);font-size:11.5px">default</span>';
-    }
+  await sb.from('profiles').update({campus_id:ids[0]||null}).eq('id',userId);
+  ADMIN.viewUser.campusIds=ids;
+  const p=ADMIN.profs.find(x=>x.id===userId);if(p)p.campus_id=ids[0]||null;
+  if(note)note.textContent='Saved.';
+}
+async function paSaveRoleOverride(userId,appKey,role){
+  const note=document.getElementById('paPermNote');
+  if(!role){
+    const {error}=await sb.from('section_role_overrides').delete().eq('user_id',userId).eq('app_key',appKey);
+    if(error){if(note)note.textContent="Couldn't save — "+error.message;return;}
+    ADMIN.viewUser.roleOverrides=(ADMIN.viewUser.roleOverrides||[]).filter(r=>r.app_key!==appKey);
+  }else{
+    const {error}=await sb.from('section_role_overrides').upsert({user_id:userId,app_key:appKey,role_override:role},{onConflict:'user_id,app_key'});
+    if(error){if(note)note.textContent="Couldn't save — "+error.message;return;}
+    const ros=(ADMIN.viewUser.roleOverrides||[]).filter(r=>r.app_key!==appKey);
+    ros.push({app_key:appKey,role_override:role});
+    ADMIN.viewUser.roleOverrides=ros;
   }
-  wrap.querySelectorAll('[data-perm-role]').forEach(el=>el.addEventListener('change',()=>saveRow(el.dataset.app)));
-  wrap.querySelectorAll('[data-perm-cb]').forEach(el=>el.addEventListener('change',()=>saveRow(el.dataset.app)));
-  wrap.querySelectorAll('[data-perm-reset]').forEach(el=>el.addEventListener('click',()=>resetRow(el.dataset.app)));
+  render();
+  const n2=document.getElementById('paPermNote');if(n2)n2.textContent='Saved.';
+}
+async function paTogglePerm(userId,appKey,permKey,granted){
+  const note=document.getElementById('paPermNote');
+  const {error}=await sb.from('section_permissions').upsert({user_id:userId,app_key:appKey,perm_key:permKey,granted},{onConflict:'user_id,app_key,perm_key'});
+  if(error){if(note)note.textContent="Couldn't save — "+error.message;return;}
+  const perms=(ADMIN.viewUser.perms||[]).filter(p=>!(p.app_key===appKey&&p.perm_key===permKey));
+  perms.push({app_key:appKey,perm_key:permKey,granted});
+  ADMIN.viewUser.perms=perms;
+  render();
+  const n2=document.getElementById('paPermNote');if(n2)n2.textContent='Saved.';
+}
+async function paResetApp(userId,appKey){
+  const note=document.getElementById('paPermNote');
+  const [{error:e1},{error:e2}]=await Promise.all([
+    sb.from('section_role_overrides').delete().eq('user_id',userId).eq('app_key',appKey),
+    sb.from('section_permissions').delete().eq('user_id',userId).eq('app_key',appKey)
+  ]);
+  if(e1||e2){if(note)note.textContent="Couldn't reset — "+((e1&&e1.message)||(e2&&e2.message));return;}
+  ADMIN.viewUser.roleOverrides=(ADMIN.viewUser.roleOverrides||[]).filter(r=>r.app_key!==appKey);
+  ADMIN.viewUser.perms=(ADMIN.viewUser.perms||[]).filter(p=>p.app_key!==appKey);
+  render();
+  const n2=document.getElementById('paPermNote');if(n2)n2.textContent='Reset to default.';
 }
 function paInviteDrawer(){
   openDrawer('<h2 style="margin-top:0">Invite a new user</h2><div class="sub">They\'ll get an email to set their own password.</div>'+
@@ -1250,6 +1295,7 @@ function render(){
     : S.section==='budgets'?pageBudgets()
     : S.section==='giving'?pageGiving()
     : S.section==='admin'?pageAdmin()
+    : S.section==='admin-user'?pageAdminUser()
     : pageSettings();
   window.scrollTo(0,0);
   const ps=document.getElementById('paSearch');
@@ -1263,7 +1309,7 @@ function render(){
 
 /* ============================ events ============================ */
 document.addEventListener('click',e=>{
-  const t=e.target.closest('[data-go],[data-view],[data-nav],[data-filter],[data-ev],[data-day],[data-task],[data-new],[data-pick],[data-everyone],[data-tl],[data-back],[data-logout],[data-preview],[data-profile],[data-newuser],[data-user],[data-adtab]');
+  const t=e.target.closest('[data-go],[data-view],[data-nav],[data-filter],[data-ev],[data-day],[data-task],[data-new],[data-pick],[data-everyone],[data-tl],[data-back],[data-logout],[data-preview],[data-profile],[data-newuser],[data-user],[data-adtab],[data-app-reset]');
   if(!t) return;
   if(t.dataset.logout){ (sb?sb.auth.signOut():Promise.resolve()).then(()=>location.reload()); return; }
   if(t.dataset.preview){
@@ -1286,7 +1332,8 @@ document.addEventListener('click',e=>{
   if(t.dataset.go){ if(ROLES[S.role].sections.includes(t.dataset.go)){S.section=t.dataset.go; closeDrawer(); if(typeof umClose==="function")umClose(); render();} return; }
   if(t.dataset.adtab){ ADMIN.tab=t.dataset.adtab; render(); return; }
   if(t.dataset.newuser){ paInviteDrawer(); return; }
-  if(t.dataset.user){ paUserDrawer(t.dataset.user); return; }
+  if(t.dataset.user){ openAdminUser(t.dataset.user); return; }
+  if(t.dataset.appReset){ paResetApp(S.adminUserId,t.dataset.app); return; }
   if(t.dataset.view){ S.view=t.dataset.view; render(); return; }
   if(t.dataset.nav!==undefined){
     const n=Number(t.dataset.nav);
@@ -1315,6 +1362,15 @@ document.addEventListener('click',e=>{
     const open=document.getElementById('drawer').classList.contains('open');
     render(); if(open) closeDrawer(); return;
   }
+});
+document.addEventListener('change',e=>{
+  if(S.section!=='admin-user')return;
+  const roleSel=e.target.closest('[data-app-role-override]');
+  if(roleSel){ paSaveRoleOverride(S.adminUserId,roleSel.dataset.app,roleSel.value||null); return; }
+  const permCb=e.target.closest('[data-perm]');
+  if(permCb){ paTogglePerm(S.adminUserId,permCb.dataset.app,permCb.dataset.permKey,permCb.checked); return; }
+  const campusCb=e.target.closest('[data-campus-cb]');
+  if(campusCb){ paSaveCampuses(S.adminUserId); return; }
 });
 document.getElementById('scrim').addEventListener('click',closeDrawer);
 document.getElementById('drawerClose').addEventListener('click',closeDrawer);
