@@ -804,7 +804,7 @@ function adminName(p){const n=p.display_name||p.full_name||'—';return n.includ
 async function loadAdmin(){
   if(ADMIN.loading)return;ADMIN.loading=true;
   const [r1,r2]=await Promise.all([
-    sb.from('profiles').select('id,display_name,full_name,role,campus_id,avatar_url,app_access,campus_ids'),
+    sb.from('profiles').select('id,display_name,full_name,role,campus_id,avatar_url,app_access,campus_ids,archived_at'),
     sb.from('campuses').select('id,name,parent_campus_id')
   ]);
   ADMIN.err=(r1.error&&r1.error.message)||(r2.error&&r2.error.message)||null;
@@ -922,6 +922,9 @@ function pageAdmin(){
   const q=ADMIN.q.trim().toLowerCase();
   if(ADMIN.role!=='all')rows=rows.filter(p=>p.role===ADMIN.role);
   if(q)rows=rows.filter(p=>adminName(p).toLowerCase().includes(q)||(p.full_name||'').toLowerCase().includes(q));
+  const archived=rows.filter(p=>p.archived_at);
+  rows=rows.filter(p=>!p.archived_at);
+  const activeTotal=ADMIN.profs.filter(p=>!p.archived_at).length;
   const roleSel=p=>'<select class="pa-role" data-id="'+esc(p.id)+'">'+ROLE_LIST.map(r=>'<option value="'+r+'"'+(r===p.role?' selected':'')+'>'+cap(r)+'</option>').join('')+'</select>';
   const campusSel=p=>p.role==='admin'?'<span style="color:var(--text2)">All campuses</span>'
     :'<select class="pa-campus" data-id="'+esc(p.id)+'"><option value="">Select a campus</option>'+
@@ -930,7 +933,7 @@ function pageAdmin(){
     '<div class="pa-bar"><input id="paSearch" type="text" placeholder="Search by name…" value="'+esc(ADMIN.q)+'">'+
     '<select id="paRole"><option value="all"'+(ADMIN.role==='all'?' selected':'')+'>All roles</option>'+
       ROLE_LIST.map(r=>'<option value="'+r+'"'+(ADMIN.role===r?' selected':'')+'>'+cap(r)+'</option>').join('')+'</select>'+
-    '<span style="margin-left:auto;font-size:12.5px;color:var(--text2)">'+rows.length+' of '+ADMIN.profs.length+' users</span></div>'+
+    '<span style="margin-left:auto;font-size:12.5px;color:var(--text2)">'+rows.length+' of '+activeTotal+' users</span></div>'+
     '<div id="paNote" class="banner" style="display:none"></div>'+
     '<div class="pa-card"><table class="pa-table"><thead><tr><th>Name</th><th>Role</th><th>Primary campus</th><th>Roles &amp; permissions</th></tr></thead><tbody>'+
     (rows.length?rows.map(p=>'<tr>'+
@@ -941,13 +944,24 @@ function pageAdmin(){
       '<td><button class="pa-perm" data-user="'+esc(p.id)+'">'+permSummary(p)+'</button></td></tr>').join('')
       :'<tr><td colspan="4" style="color:var(--text2)">No users match.</td></tr>')+
     '</tbody></table></div>'+
+    (archived.length?
+      '<div class="pu-sec" style="margin-top:26px">Archived users</div>'+
+      '<p style="font-size:12.5px;color:var(--text2);margin:4px 0 10px;max-width:620px;line-height:1.5">No longer on staff. They can\'t sign in, but their account and history are kept — open one to restore access.</p>'+
+      '<div class="pa-card"><table class="pa-table"><tbody>'+
+      archived.map(p=>'<tr style="opacity:.65">'+
+        '<td><button class="pa-name" data-user="'+esc(p.id)+'" title="Open '+esc(adminName(p))+'">'+
+        '<span class="pa-av">'+avatarHtml(p.avatar_url,adminName(p))+'</span><span class="nm">'+esc(adminName(p))+'</span></button></td>'+
+        '<td style="color:var(--text2)">'+cap(p.role||'')+'</td>'+
+        '<td style="color:var(--text2)">Archived '+esc(new Date(p.archived_at).toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'}))+'</td>'+
+        '<td></td></tr>').join('')+
+      '</tbody></table></div>':'')+
     '<p style="font-size:12.5px;color:var(--text2);margin-top:14px;max-width:620px;line-height:1.5">Changing a role or campus here applies everywhere the Mosaic account is used — the portal, Metrics, and anything added later. Campus applies to staff, leaders and volunteers; admins see all campuses.</p>';
 }
 function paNote(msg,err){const n=document.getElementById('paNote');if(!n)return;n.style.display='flex';n.style.borderColor=err?'var(--red)':'var(--hairline)';n.innerHTML=ic('info')+'<div>'+esc(msg)+'</div>';clearTimeout(paNote._t);paNote._t=setTimeout(()=>{const x=document.getElementById('paNote');if(x)x.style.display='none';},4500);}
 async function paSaveRole(id,next){
   const p=ADMIN.profs.find(x=>x.id===id);if(!p||p.role===next)return true;
   const who=adminName(p);
-  if(p.role==='admin'&&next!=='admin'&&ADMIN.profs.filter(x=>x.role==='admin').length<=1){alert("You can't change the last admin's role — promote someone else to Admin first.");return false;}
+  if(p.role==='admin'&&next!=='admin'&&ADMIN.profs.filter(x=>x.role==='admin'&&!x.archived_at).length<=1){alert("You can't change the last admin's role — promote someone else to Admin first.");return false;}
   const self=(p.full_name===ME.email);
   let msg='Change '+who+"'s role from “"+p.role+'” to “'+next+'”?';
   if(next==='admin')msg='Make '+who+' an Admin?\n\nAdmins can view and edit every campus and manage all users.';
@@ -982,7 +996,7 @@ async function paUserDrawer(id){
   const lastActive=u&&u.last_sign_in_at;
   document.getElementById('drawerBody').innerHTML=
     '<div class="pu-head"><span class="ring" id="puRing">'+avatarHtml(p.avatar_url,nm)+'</span>'+
-      '<div style="min-width:0"><h2 style="margin:0">'+esc(nm)+'</h2><div class="sub" style="margin-top:2px">'+esc(email)+'</div>'+
+      '<div style="min-width:0"><h2 style="margin:0">'+esc(nm)+(p.archived_at?' <span style="font-size:11.5px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;color:var(--text2);border:1px solid var(--hairline);border-radius:999px;padding:3px 9px;vertical-align:3px">Archived</span>':'')+'</h2><div class="sub" style="margin-top:2px">'+esc(email)+'</div>'+
       '<button class="gate-ghost" id="puPhotoBtn" style="margin:8px 0 0;display:inline-block">'+(p.avatar_url?'Change photo':'Upload photo')+'</button>'+
       (p.avatar_url?' <button class="gate-ghost" id="puPhotoDel" style="margin:0 0 0 10px;display:inline-block">Remove photo</button>':'')+
       '<input type="file" id="puPhotoIn" accept="image/jpeg,image/png,image/webp,image/gif" style="display:none"></div></div>'+
@@ -1020,6 +1034,13 @@ async function paUserDrawer(id){
     '<div class="pu-sec" style="margin-top:26px">Password</div>'+
     '<button class="btn-primary" id="paReset" style="margin-top:4px">Email a password reset link</button>'+
     '<div id="paResetNote" style="font-size:12.5px;color:var(--text2);margin-top:10px"></div>'+
+    '<div class="pu-sec" style="margin-top:26px">'+(p.archived_at?'Restore access':'Archive')+'</div>'+
+    (p.archived_at
+      ?'<p class="pu-note" style="margin-top:0">Archived '+esc(fdt(p.archived_at))+' — their sign-in is blocked but the account and history are kept. Restoring lets them sign in again with the same email and password.</p>'+
+       '<button class="btn-primary" id="puArchive">Restore '+esc(nm)+'</button>'
+      :'<p class="pu-note" style="margin-top:0">For someone leaving staff: blocks their sign-in everywhere but keeps their account, photo and history. You can restore them later — unlike Remove, nothing is lost.</p>'+
+       '<button class="gate-ghost" id="puArchive" style="margin:0">Archive '+esc(nm)+'</button>')+
+    '<div id="puArchiveNote" style="font-size:12.5px;color:var(--text2);margin-top:10px"></div>'+
     '<div class="pu-sec" style="margin-top:26px;color:#8f2c32">Remove from Mosaic</div>'+
     '<p class="pu-note" style="margin-top:0">Deletes this account: their email and password stop working and every session they have open is signed out, everywhere. This can\'t be undone — to bring them back you\'d invite them again.</p>'+
     '<button class="pu-danger" id="puRemove">Remove '+esc(nm)+'</button>'+
@@ -1058,6 +1079,23 @@ async function paUserDrawer(id){
     const {error:e7}=await sb.from('profiles').update({display_name:v}).eq('id',id);
     if(e7){n.textContent="Couldn't save — "+(e7.message||'try again.');return;}
     p.display_name=v;n.textContent='Name updated.';if(S.section==='admin')render();
+  });
+  /* archive (reversible) — blocks sign-in via the archive-user function, keeps everything */
+  document.getElementById('puArchive').addEventListener('click',async()=>{
+    const n=document.getElementById('puArchiveNote');
+    const toArchive=!p.archived_at;
+    if(toArchive&&!confirm('Archive '+nm+'?\n\nThey won\'t be able to sign in to the portal or any Mosaic app, but their account and history are kept. You can restore them any time.'))return;
+    const btn=document.getElementById('puArchive');btn.disabled=true;btn.textContent=toArchive?'Archiving…':'Restoring…';
+    let errMsg=null,ok=false;
+    try{
+      const {data,error}=await sb.functions.invoke('archive-user',{body:{id,archived:toArchive}});
+      if(error){errMsg=error.message||'please try again.';try{const b=await error.context.json();if(b&&b.error)errMsg=b.error;}catch(_){}}
+      else if(data&&data.error){errMsg=data.error;}
+      else ok=true;
+    }catch(ex){errMsg=String((ex&&ex.message)||ex);}
+    if(!ok){btn.disabled=false;btn.textContent=(toArchive?'Archive ':'Restore ')+nm;n.textContent="Couldn't "+(toArchive?'archive':'restore')+' — '+errMsg;return;}
+    p.archived_at=toArchive?new Date().toISOString():null;
+    paUserDrawer(id);if(S.section==='admin')render();
   });
   /* remove the account entirely */
   document.getElementById('puRemove').addEventListener('click',async()=>{
