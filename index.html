@@ -347,6 +347,12 @@ h2{font-size:16px;font-weight:600;letter-spacing:-.015em;margin:0 0 6px}
 .mini{display:flex;gap:22px;margin:4px 0 2px}
 .mini .v{font-size:24px;font-weight:600;letter-spacing:-.02em;line-height:1.05}
 .mini .k{font-size:11.5px;color:var(--text2);margin-top:2px}
+.foot-links button{font-family:inherit;letter-spacing:inherit;font-size:13px;color:var(--gathering);background:none;border:0;padding:0;cursor:pointer}
+.foot-links button:hover{text-decoration:underline}
+.kv button{font-family:inherit;letter-spacing:inherit;font-size:inherit;background:none;border:0;padding:0;cursor:pointer}
+.kv button:hover{text-decoration:underline}
+button.linkout{font-family:inherit;letter-spacing:inherit;background:none;border:0;padding:0;cursor:pointer}
+button.linkout:hover{text-decoration:underline}
 .linkout{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--gathering);margin-top:16px}
 .linkout svg{width:14px;height:14px}
 .empty{font-size:13px;color:var(--text2);background:var(--fill);border-radius:var(--r-card);padding:12px 14px}
@@ -764,7 +770,7 @@ function pageHome(){
   const upcoming=EVENTS.filter(e=>D(e.date)>=TODAY && e.type==='event').slice(0,5);
   const attn=ATTN.slice(0,6);
   return '<div class="page-head"><div><h1>Home</h1><div class="sub">'+pretty(TODAY)+' · week '+weekNum(TODAY)+'</div></div>'+
-   '<a class="btn-primary" href="https://pm.mosaic.org" target="_blank" rel="noopener" style="text-decoration:none">New event</a></div>'+
+   '<button class="btn-primary" data-go="planning">New event</button></div>'+
    (DATA_ERR?'<div class="banner">'+ic('info')+'<div>'+esc(DATA_ERR)+'</div></div>':'')+
    '<div class="cards">'+
      card('This week',twEvents.length,twComms.length+' comms alongside','calendar','--session')+
@@ -1529,9 +1535,9 @@ function pageEvent(){
 
   h+='</div></div>'+
     '<div class="foot-links">'+
-    '<a href="https://pm.mosaic.org" target="_blank" rel="noopener">Edit in Planning board '+ic('ext')+'</a>'+
-    '<a href="https://comms.mosaic.org" target="_blank" rel="noopener">Edit comms '+ic('ext')+'</a>'+
-    (isSunday?'<a href="https://metrics.mosaic.org" target="_blank" rel="noopener">'+(m?'View in Metrics ':'Submit attendance ')+ic('ext')+'</a>':'')+
+    '<button data-go="planning">Edit in Planning</button>'+
+    '<button data-go="comms">Edit comms</button>'+
+    (isSunday?'<button data-go="numbers">'+(m?'View in Metrics':'Submit attendance')+'</button>':'')+
     '</div>';
   return h;
 }
@@ -1568,19 +1574,19 @@ function eventDrawer(id){
         '<div><div class="v">'+m.n+'</div><div class="k">next steps</div></div></div>'+
         '<div class="bars-chart" style="height:70px;margin-top:14px">'+ks.map(k=>'<div class="bar-v'+(k===key(d)?' hi':'')+'" style="height:'+Math.round(METRICS[k].a/mx*100)+'%"></div>').join('')+'</div>'+
         '<div style="font-size:12px;color:var(--text2);margin-top:7px">Six-week average '+avg+'</div>'+
-        '<a class="linkout" href="https://metrics.mosaic.org" target="_blank" rel="noopener">Open in Metrics '+ic('ext')+'</a>';
+        '<button class="linkout" data-go="numbers">Open in Metrics</button>';
     } else {
-      h+='<div class="empty">No attendance recorded. <a href="https://metrics.mosaic.org" target="_blank" rel="noopener" style="color:var(--gathering)">Submit attendance</a></div>';
+      h+='<div class="empty">No attendance recorded. <button data-go="numbers" style="color:var(--gathering)">Submit attendance</button></div>';
     }
   }
   if(linked.length){
     h+='<div class="eyebrow">COMMS FOR THIS DAY</div>'+linked.map(c=>
       '<div class="kv"><span>'+esc(c.title)+'</span><span>'+STATUS_LABEL[c.status]+'</span></div>').join('')+
-      '<a class="linkout" href="https://comms.mosaic.org" target="_blank" rel="noopener">Open in Comms '+ic('ext')+'</a>';
+      '<button class="linkout" data-go="comms">Open in Comms</button>';
   }
   if(subs.length){
     h+='<div class="eyebrow">SUBTASKS</div>'+subs.map(t=>taskRow(t)).join('')+
-      '<a class="linkout" href="https://pm.mosaic.org" target="_blank" rel="noopener">Open in Planning Board '+ic('ext')+'</a>';
+      '<button class="linkout" data-go="planning">Open in Planning</button>';
   }
   openDrawer(h);
 }
@@ -1596,9 +1602,9 @@ function newDrawer(){
   openDrawer('<h1 style="font-size:22px">Creating happens in the source app</h1>'+
    '<div class="sub" style="margin-top:8px">The portal is read-only in v1. It reads and arranges; the four apps stay the systems of record.</div>'+
    '<div class="eyebrow">CREATE IN</div>'+
-   '<div class="kv"><span>An event or milestone</span><a href="https://pm.mosaic.org" target="_blank" rel="noopener" style="color:var(--gathering)">Planning board</a></div>'+
-   '<div class="kv"><span>An email, text, or script</span><a href="https://comms.mosaic.org" target="_blank" rel="noopener" style="color:var(--gathering)">Comms dashboard</a></div>'+
-   '<div class="kv"><span>Attendance numbers</span><a href="https://metrics.mosaic.org" target="_blank" rel="noopener" style="color:var(--gathering)">Metrics</a></div>'+
+   '<div class="kv"><span>An event or milestone</span><button data-go="planning" style="color:var(--gathering)">Planning</button></div>'+
+   '<div class="kv"><span>An email, text, or script</span><button data-go="comms" style="color:var(--gathering)">Comms</button></div>'+
+   '<div class="kv"><span>Attendance numbers</span><button data-go="numbers" style="color:var(--gathering)">Metrics</button></div>'+
    '<div class="note">Editing in the portal is explicitly out of scope for the two-week launch.</div>');
 }
 
