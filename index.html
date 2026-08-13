@@ -366,17 +366,31 @@ select{font:inherit;font-size:13px;padding:7px 10px;border:1px solid var(--hairl
 @media (max-width:760px){
   .app{flex-direction:column}
   .rail{position:fixed;bottom:0;left:0;right:0;top:auto;width:100%;height:auto;
-    flex-direction:row;border-right:0;border-top:1px solid var(--hairline);
-    padding:6px 4px;z-index:3;overflow-x:auto}
-  .brand,.rail-foot{display:none}
-  .nav{flex-direction:row;gap:2px;width:100%}
-  .nav button{flex-direction:column;gap:3px;font-size:10px;padding:6px 4px;justify-content:center;text-align:center}
+    flex-direction:row;align-items:center;gap:6px;border-right:0;border-top:1px solid var(--hairline);
+    padding:6px 8px calc(6px + env(safe-area-inset-bottom));z-index:3}
+  .brand{display:none}
+  .navgroup{display:none}   /* group labels don't fit a bottom bar */
+  .nav{flex-direction:row;gap:2px;flex:1;min-width:0;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  .nav::-webkit-scrollbar{display:none}
+  .nav button{flex-direction:column;gap:3px;font-size:10px;padding:6px 6px;justify-content:center;text-align:center;flex:none;min-width:54px}
   .nav .badge,.nav .count{display:none}
+  /* keep the account menu reachable on a phone: avatar-only, right of the bar */
+  .rail-foot{margin:0;border-top:0;padding:0 2px 0 8px;flex:none;border-left:1px solid var(--rail-active)}
+  .rail-foot .who{display:none}
+  .rail-foot .avatar{width:30px;height:30px;font-size:11px}
+  .um-pop{left:auto;right:10px;bottom:calc(72px + env(safe-area-inset-bottom));max-width:calc(100vw - 20px)}
   .main{padding:18px 16px 96px}
   h1{font-size:24px}
   .desktop-only{display:none!important}
   .mobile-only{display:block}
   .drawer{width:100%;max-width:100%}
+  .page-head{flex-wrap:wrap;gap:10px}
+  .pa-bar{flex-wrap:wrap}
+  .pa-bar input{min-width:0;flex:1 1 100%}
+  /* wide admin tables scroll inside their card instead of stretching the page */
+  .pa-card{overflow-x:auto}
+  .pa-table{min-width:600px}
+  .rp-table{min-width:600px}
 }
 </style>
 </head>
