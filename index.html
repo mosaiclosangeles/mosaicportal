@@ -566,7 +566,6 @@ async function loadLive(){
     ]);
     mapLive(pis,ces);
   }catch(e){DATA_ERR="Couldn't load live planning data — "+e.message+". Showing an empty calendar; the planning board itself is unaffected.";}
-  await loadCalendar();
   try{
     if(sb){
       let {data,error}=await sb.from('v_service_totals').select('date,gathering_type,in_person_total,online_views,baptisms').order('date',{ascending:false}).limit(80);
@@ -588,7 +587,10 @@ async function loadCalendar(){
   const iso=d=>d.toISOString().slice(0,10);
   const from=addDays(TODAY,-120), to=addDays(TODAY,300);
   try{
-    const {data,error}=await sb.functions.invoke('calendar-events',{body:{start:iso(from),end:iso(to)}});
+    const {data,error}=await Promise.race([
+      sb.functions.invoke('calendar-events',{body:{start:iso(from),end:iso(to)}}),
+      new Promise(r=>setTimeout(()=>r({error:new Error('timeout')}),12000))
+    ]);
     if(error||!data||!data.ok)return;
     CAL_ON=!!data.configured;
     (data.events||[]).forEach(e=>{
@@ -1976,6 +1978,10 @@ async function enterPortal(){
   $g("gate").classList.add("hide");
   if(!BOOTED){
     BOOTED=true;await loadLive();render();
+    // The shared calendar is extra context, so it loads after the page is
+    // usable and re-renders when it lands. Awaiting it before the first paint
+    // meant one slow Microsoft call left staff staring at an empty screen.
+    loadCalendar().then(()=>{if(BOOTED)render();});
     /* Come back to the tab and you get current data. There's no push from
        Outlook or the planning board, so a tab left open all afternoon would
        otherwise still show the morning. Refetch on return, at most once a
@@ -1986,6 +1992,7 @@ async function enterPortal(){
       if(Date.now()-lastLoad<60000)return;
       if(document.getElementById('drawer').classList.contains('open'))return;
       lastLoad=Date.now();await loadLive();render();
+      loadCalendar().then(()=>render());
     });
   }
 }
