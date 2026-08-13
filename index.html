@@ -501,7 +501,8 @@ function pretty(dt){return ['Sunday','Monday','Tuesday','Wednesday','Thursday','
 const TYPES = {
   event: {label:'Events',hue:'var(--gathering)',tint:'var(--gathering-t)',deep:'var(--gathering-d)',solid:'var(--gathering-s)'},
   comms: {label:'Comms', hue:'var(--amber)',    tint:'var(--amber-t)',    deep:'var(--amber-d)',    solid:'var(--amber-s)'},
-  other: {label:'Other', hue:'var(--neutral)',  tint:'var(--neutral-t)',  deep:'var(--neutral-d)',  solid:'var(--neutral-s)'}
+  other: {label:'Mosaic Calendar', hue:'var(--neutral)',  tint:'var(--neutral-t)',  deep:'var(--neutral-d)',  solid:'var(--neutral-s)'},
+  away:  {label:'Staff travel + PTO', hue:'var(--lime)', tint:'var(--lime-t)', deep:'var(--lime-d)', solid:'var(--lime-s)'}
 };
 // status: done | scheduled | waiting | drafting
 /* ---- live data ----------------------------------------------------------
@@ -511,7 +512,7 @@ const TYPES = {
    METRICS comes from the Mosaic Metrics view v_service_totals using the
    signed-in person's own session. The four apps stay the systems of record;
    the portal reads and arranges. */
-let EVENTS=[], CAMPAIGNS=[], METRICS={}, TASKS=[], ATTN=[], CLOSEOUT=0, DATA_ERR=null;
+let EVENTS=[], CAMPAIGNS=[], METRICS={}, TASKS=[], ATTN=[], CLOSEOUT=0, DATA_ERR=null, CAL_ON=false;
 const PM_URL='https://yrviwbqhjcrlxgozrgay.supabase.co';
 const PM_KEY='sb_publishable_3o7Avv4DEhHW7i_k5DrH6Q_tYFLrgwg';
 async function pmGet(q){
@@ -565,6 +566,7 @@ async function loadLive(){
     ]);
     mapLive(pis,ces);
   }catch(e){DATA_ERR="Couldn't load live planning data — "+e.message+". Showing an empty calendar; the planning board itself is unaffected.";}
+  await loadCalendar();
   try{
     if(sb){
       let {data,error}=await sb.from('v_service_totals').select('date,gathering_type,in_person_total,online_views,baptisms').order('date',{ascending:false}).limit(80);
@@ -577,6 +579,24 @@ async function loadLive(){
       }
     }
   }catch(e){/* metrics card stays empty */}
+}
+/* The shared Mosaic Calendar (calendar@mosaic.org), read through an edge
+   function because Graph needs an app credential the browser must never hold.
+   A window either side of today covers every view without a refetch per click. */
+async function loadCalendar(){
+  if(!sb)return;
+  const iso=d=>d.toISOString().slice(0,10);
+  const from=addDays(TODAY,-120), to=addDays(TODAY,300);
+  try{
+    const {data,error}=await sb.functions.invoke('calendar-events',{body:{start:iso(from),end:iso(to)}});
+    if(error||!data||!data.ok)return;
+    CAL_ON=!!data.configured;
+    (data.events||[]).forEach(e=>{
+      EVENTS.push({id:e.id,date:e.date,dateEnd:(e.end&&e.end!==e.date)?e.end:null,
+        title:e.title,type:e.kind==='away'?'away':'other',status:'done',
+        detail:e.where||'',owner:'',campus:'',link:e.link||''});
+    });
+  }catch(_){/* the calendar is extra context; the board still stands on its own */}
 }
 function weekNum(d){const t=addDays(weekStartOf(d),4);const y0=new Date(t.getFullYear(),0,1);return Math.ceil(((t-y0)/86400000+1)/7);}
 const GOALS = [
@@ -626,7 +646,7 @@ const S = {
   view:'week',
   anchor:new Date(TODAY),
   month:new Date(TODAY.getFullYear(),TODAY.getMonth(),1),
-  filters:new Set(['event','comms','other']),
+  filters:new Set(['event','comms','other','away']),
   role:'comms',
   forEveryone:false,
   tlShift:0,
@@ -825,8 +845,10 @@ function filterBar(){
     '<button class="chip '+(S.filters.has(k)?'on':'off')+'" data-filter="'+k+'">'+
     '<span class="swatch" style="background:'+TYPES[k].hue+'"></span>'+TYPES[k].label+'</button>').join('')+
     '<button class="chip" data-filter="__all">All</button></div>'+
-    (S.filters.has('other')
-      ? '<div style="font-size:12px;color:var(--text2);margin:-8px 0 14px">Other pulls meetings from your Outlook calendar and birthdays from CCB — only you see these.</div>'
+    ((S.filters.has('other')||S.filters.has('away'))
+      ? '<div style="font-size:12px;color:var(--text2);margin:-8px 0 14px">'+
+        (CAL_ON?'Mosaic Calendar shows the shared staff calendar — meetings, rehearsals, birthdays and closures. Staff travel + PTO pulls the time-away entries out of it.'
+               :'The shared Mosaic Calendar isn\'t connected yet, so these two rows are empty.')+'</div>'
       : '');
 }
 function legend(){
