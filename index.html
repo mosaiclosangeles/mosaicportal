@@ -186,6 +186,12 @@ button{font:inherit;letter-spacing:inherit;color:inherit;background:none;border:
 .rail{width:196px;flex:none;background:var(--rail);border-right:1px solid var(--hairline);
   padding:16px 10px 14px;display:flex;flex-direction:column;position:sticky;top:0;height:100vh}
 .brand{display:flex;align-items:center;gap:9px;padding:0 6px 16px}
+/* Only on a phone, where the rail is a panel that has to be dismissed.
+   Tapping the dimmed page works too, but a control you can see beats one
+   you have to guess at. */
+.rail-close{display:none;margin-left:auto;background:none;border:0;padding:6px;cursor:pointer;color:var(--text2)}
+.rail-close:hover{color:var(--text)}
+.rail-close svg{width:20px;height:20px;display:block}
 .brand-mark{width:18px;height:18px;border-radius:5px;background:#000;flex:none}
 .brand-name{font-size:13.5px;font-weight:500}
 .nav{display:flex;flex-direction:column;gap:1px;flex:1;min-height:0;
@@ -411,6 +417,8 @@ select{font:inherit;font-size:13px;padding:7px 10px;border:1px solid var(--hairl
     transform:translateX(-100%);transition:transform .22s ease;
     border-right:1px solid var(--hairline);padding:14px 12px calc(14px + env(safe-area-inset-bottom))}
   .rail.open{transform:translateX(0)}
+  .rail-close{display:block}
+  .brand{padding:2px 2px 14px}
   .rail-foot{flex:none;background:var(--rail)}
   .nav button{width:100%;font-size:14.5px;padding:9px 8px}
   .main{padding:74px 16px 40px}
@@ -473,7 +481,10 @@ select{font:inherit;font-size:13px;padding:7px 10px;border:1px solid var(--hairl
     <button class="mtop-av" id="mAv" aria-label="Your account"><span class="avatar">·</span></button>
   </div>
   <nav class="rail" aria-label="Sections">
-    <div class="brand"><div class="brand-mark"></div><div class="brand-name">Mosaic Portal</div></div>
+    <div class="brand"><div class="brand-mark"></div><div class="brand-name">Mosaic Portal</div>
+      <button class="rail-close" id="mClose" aria-label="Close menu" title="Close menu">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M17 6l-6 6 6 6M11 6l-6 6 6 6"/></svg>
+      </button></div>
     <div class="nav" id="nav"></div>
     <div class="rail-foot"><div class="avatar">L</div><div class="who" id="who">Loyda</div></div>
   </nav>
@@ -2010,6 +2021,7 @@ document.getElementById("mAv").addEventListener("click",e=>{
   e.stopPropagation();railOpen(false);
   umPop.innerHTML=umHtml();umPop.classList.toggle("open");
 });
+document.getElementById("mClose").addEventListener("click",e=>{e.stopPropagation();railOpen(false);});
 scrimEl.addEventListener("click",()=>railOpen(false));
 document.addEventListener("keydown",e=>{if(e.key==="Escape")railOpen(false);});
 railEl.addEventListener("click",e=>{if(e.target.closest("[data-go]"))railOpen(false);});
