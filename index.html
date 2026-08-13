@@ -199,6 +199,18 @@ button{font:inherit;letter-spacing:inherit;color:inherit;background:none;border:
 .nav .lock svg{width:13px;height:13px}
 .nav .lock + .badge{margin-left:6px}
 .nav .tile{width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;flex:none}
+.fb-card{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:26px;padding:15px 17px;
+  border:1px solid var(--hairline);border-radius:var(--r-card);background:var(--surface)}
+.fb-mark{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex:none}
+.fb-mark svg{width:17px;height:17px}
+.fb-txt{flex:1;min-width:180px}
+.fb-h{font-size:14px;font-weight:500;letter-spacing:-.011em}
+.fb-s{font-size:12.5px;color:var(--text2);margin-top:2px}
+.fb-tag{display:inline-block;font-size:10.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--text2);border:1px solid var(--hairline);border-radius:999px;padding:2px 8px;margin-right:6px;vertical-align:1px}
+.fb-btns{display:flex;gap:8px;flex-wrap:wrap}
+.fb-btn{font-size:12.5px;padding:7px 13px;border:1px solid var(--hairline);border-radius:999px;
+  background:transparent;color:var(--text2);font-family:inherit;letter-spacing:inherit}
+.fb-btn:hover{color:var(--text);border-color:var(--text3);background:var(--fill)}
 .subnav{display:flex;flex-direction:column;gap:1px;margin:2px 0 6px 0;padding-left:12px;border-left:1px solid var(--rail-active)}
 .subnav button{display:block;width:100%;text-align:left;font-size:12.5px;color:#6f6f6c;padding:5px 9px;border-radius:var(--r-ctrl)}
 .subnav button:hover{background:var(--rail-active);color:var(--text)}
@@ -577,7 +589,7 @@ const GOALS = [
 ];
 const SECTIONS = [
   {id:'home',label:'Home',icon:'home',h:'var(--slate)',t:'var(--slate-t)'},
-  {id:'calendar',label:'Calendar',icon:'calendar',h:'var(--gathering)',t:'var(--gathering-t)'},
+  {id:'calendar',label:'Calendars',icon:'calendar',h:'var(--gathering)',t:'var(--gathering-t)'},
   {group:'WORK'},
   {id:'comms',label:'Communication',icon:'mail',h:'var(--amber)',t:'var(--amber-t)',url:'https://comms.mosaic.org'},
   {id:'planning',label:'Planning',icon:'board',h:'var(--milestone)',t:'var(--milestone-t)',url:'https://pm.mosaic.org'},
@@ -746,7 +758,41 @@ function pageHome(){
      (upcoming.length?upcoming.map(e=>'<button class="row" data-ev="'+e.id+'"><span class="when">'+fmt(D(e.date))+'</span>'+
        '<span class="txt"><span class="name">'+esc(e.title)+'</span><span class="meta">'+esc(e.detail||'')+'</span></span></button>').join('')
        :'<div class="empty">No upcoming events loaded.</div>')+
-   '</div></div>';
+   '</div></div>'+
+   '<div class="fb-card">'+
+     '<span class="fb-mark" style="background:var(--comms-t);color:var(--comms)">'+ic('heart')+'</span>'+
+     '<div class="fb-txt"><div class="fb-h">Help us make this better</div>'+
+       '<div class="fb-s">Something broken, or something missing? Tell us.</div></div>'+
+     '<div class="fb-btns"><button class="fb-btn" data-fb="bug">Report a problem</button>'+
+       '<button class="fb-btn" data-fb="idea">Suggest an idea</button></div>'+
+   '</div>';
+}
+
+/* Feedback — goes to portal_feedback, and admins read it in Admin > Feedback.
+   A form that writes somewhere nobody looks is worse than no form at all. */
+function feedbackDrawer(kind){
+  const bug=kind==='bug';
+  openDrawer('<h2 style="margin-top:0">'+(bug?'Report a problem':'Suggest an idea')+'</h2>'+
+    '<div class="sub">'+(bug?'What happened, and what did you expect instead?':'What would make this more useful for you?')+'</div>'+
+    '<textarea id="fbMsg" class="pa-in" rows="6" style="margin-top:16px;resize:vertical;line-height:1.5" placeholder="'+
+      (bug?'When I click…':'It would help if…')+'"></textarea>'+
+    '<button class="btn-primary" id="fbSend" style="margin-top:14px">Send</button>'+
+    '<div id="fbNote" style="font-size:12.5px;color:var(--text2);margin-top:10px"></div>');
+  const ta=document.getElementById('fbMsg');ta.focus();
+  document.getElementById('fbSend').addEventListener('click',async()=>{
+    const msg=ta.value.trim(),n=document.getElementById('fbNote');
+    if(!msg){n.textContent='Please write a little about it first.';return;}
+    const btn=document.getElementById('fbSend');btn.disabled=true;btn.textContent='Sending…';
+    const {data,error}=await sb.from('portal_feedback')
+      .insert({type:bug?'bug':'idea',message:msg,section:S.section}).select('id').single();
+    btn.disabled=false;btn.textContent='Send';
+    if(error){n.textContent="Couldn't send — "+(error.message||'please try again.');return;}
+    // The saved row is the record; the email is a nudge, so a mail failure
+    // must not look like the feedback was lost.
+    if(data&&data.id)sb.functions.invoke('feedback-notify',{body:{id:data.id}}).catch(()=>{});
+    n.textContent='Thank you — this is with the team now.';
+    ta.value='';setTimeout(closeDrawer,1200);
+  });
 }
 function card(k,v,n,go,c){
   const bg=c?'background:var('+c+'-t);border-color:transparent':'';
@@ -762,7 +808,7 @@ function taskRow(t){
 
 function pageCalendar(){
   const ws=weekStartOf(S.anchor);
-  const head='<div class="page-head"><div><h1>Calendar</h1><div class="sub">'+
+  const head='<div class="page-head"><div><h1>Calendars</h1><div class="sub">'+
     (S.view==='week'? fmt(ws)+' – '+fmt(addDays(ws,6))+', '+addDays(ws,6).getFullYear()+' · week '+weekNum(ws)
                     : MON[S.month.getMonth()]+' '+S.month.getFullYear())+
     '</div></div><div style="display:flex;gap:8px;align-items:center">'+
@@ -853,7 +899,7 @@ function pageEmbed(id){
 /* ---- Admin: user management for the whole app (same profiles the four
    apps share). Reads/writes the Metrics Supabase with the signed-in
    admin's own session — RLS enforces that only admins can. ---- */
-const ADMIN={profs:null,campuses:null,err:null,q:'',role:'all',loading:false,tab:'users'};
+const ADMIN={profs:null,campuses:null,pending:null,err:null,fb:null,fbErr:null,q:'',role:'all',loading:false,tab:'users'};
 const ROLE_LIST=['admin','staff','leader','volunteer'];
 const SECTION_LABEL=id=>{const s=SECTIONS.find(x=>x.id===id);return s?s.label:id;};
 function adminName(p){const n=p.display_name||p.full_name||'—';return n.includes('@')?prettyNameFromEmail(n):n;}
@@ -924,7 +970,7 @@ const RP_ROLES=[
 const RP_SECTIONS=[
   {title:'Portal sections',rows:[
     ['Home','yes','yes','yes','yes'],
-    ['Calendar','yes','yes','yes','yes'],
+    ['Calendars','yes','yes','yes','yes'],
     ['Communication','yes','yes','no','no'],
     ['Planning','yes','yes','yes','no'],
     ['Metrics','yes','yes','yes','no'],
@@ -965,10 +1011,36 @@ function pageAdminRoles(){
     ).join('')+'</tbody></table></div>'+
     '<p style="font-size:12.5px;color:var(--text2);margin-top:14px;max-width:640px;line-height:1.5">A reference, not a control panel — change someone\'s access by changing their role on the Users tab. Section visibility is enforced by the portal; campus scope and who can edit what are enforced by the database itself, so the rules hold no matter which app you\'re in.</p>';
 }
+function pageAdminFeedback(){
+  if(!ADMIN.fb&&!ADMIN.fbErr){loadFeedback();return '<div class="empty">Loading…</div>';}
+  if(ADMIN.fbErr)return '<div class="banner">'+ic('info')+'<div>Couldn\'t load feedback — '+esc(ADMIN.fbErr)+'</div></div>';
+  if(!ADMIN.fb.length)return '<div class="empty">Nothing reported yet.</div>';
+  const who=id=>{const p=(ADMIN.profs||[]).find(x=>x.id===id);return p?adminName(p):'Someone';};
+  const fdt=ts=>{const d=new Date(ts);return isNaN(d)?'':d.toLocaleDateString(undefined,{month:'short',day:'numeric'});};
+  return '<div class="pa-card"><table class="pa-table"><thead><tr><th>What</th><th>From</th><th>When</th><th>Status</th></tr></thead><tbody>'+
+    ADMIN.fb.map(f=>'<tr><td style="max-width:520px;white-space:normal;line-height:1.45">'+
+      '<span class="fb-tag">'+(f.type==='bug'?'Problem':'Idea')+'</span> '+esc(f.message)+
+      (f.section?'<div style="color:var(--text3);font-size:11.5px;margin-top:3px">on '+esc(cap(f.section))+'</div>':'')+'</td>'+
+      '<td style="color:var(--text2)">'+esc(who(f.user_id))+'</td>'+
+      '<td style="color:var(--text2)">'+esc(fdt(f.created_at))+'</td>'+
+      '<td><select class="pa-role" data-fbst="'+esc(f.id)+'">'+
+        ['new','reviewed','resolved'].map(st=>'<option value="'+st+'"'+(f.status===st?' selected':'')+'>'+cap(st)+'</option>').join('')+
+      '</select></td></tr>').join('')+
+    '</tbody></table></div>';
+}
+async function loadFeedback(){
+  const {data,error}=await sb.from('portal_feedback').select('*').order('created_at',{ascending:false});
+  ADMIN.fbErr=error?(error.message||'please try again'):null;
+  ADMIN.fb=data||[];
+  if(S.section==='admin')render();
+}
 function pageAdmin(){
   if(ME.role!=='admin')return '<div class="page-head"><div><h1>Admin</h1></div></div><div class="empty">Only admins can open this.</div>';
-  const tabs='<div class="pa-tabs"><button data-adtab="users" class="'+(ADMIN.tab!=='roles'?'on':'')+'">Users</button>'+
-    '<button data-adtab="roles" class="'+(ADMIN.tab==='roles'?'on':'')+'">Roles & permissions</button></div>';
+  const tabs='<div class="pa-tabs"><button data-adtab="users" class="'+(ADMIN.tab!=='roles'&&ADMIN.tab!=='feedback'?'on':'')+'">Users</button>'+
+    '<button data-adtab="roles" class="'+(ADMIN.tab==='roles'?'on':'')+'">Roles & permissions</button>'+
+    '<button data-adtab="feedback" class="'+(ADMIN.tab==='feedback'?'on':'')+'">Feedback</button></div>';
+  if(ADMIN.tab==='feedback')
+    return '<div class="page-head"><div><h1>Admin</h1><div class="sub">What staff have reported from inside the portal</div></div></div>'+tabs+pageAdminFeedback();
   if(ADMIN.tab==='roles')
     return '<div class="page-head"><div><h1>Admin</h1><div class="sub">What each role can reach across the portal</div></div></div>'+tabs+pageAdminRoles();
   const head='<div class="page-head"><div><h1>Admin</h1><div class="sub">User management · every app, one account list</div></div>'+
@@ -1528,6 +1600,11 @@ function render(){
   window.scrollTo(0,0);
   const ps=document.getElementById('paSearch');
   if(ps)ps.addEventListener('input',()=>{ADMIN.q=ps.value;render();const el=document.getElementById('paSearch');if(el){el.focus();el.setSelectionRange(el.value.length,el.value.length);}});
+  document.querySelectorAll('[data-fbst]').forEach(sel=>sel.addEventListener('change',async()=>{
+    const {error}=await sb.from('portal_feedback').update({status:sel.value}).eq('id',sel.dataset.fbst);
+    paNote(error?("Couldn't update — "+(error.message||'try again.')):'Marked '+sel.value+'.',!!error);
+    if(!error){const f=(ADMIN.fb||[]).find(x=>x.id===sel.dataset.fbst);if(f)f.status=sel.value;}
+  }));
   const pr=document.getElementById('paRole');
   if(pr)pr.addEventListener('change',()=>{ADMIN.role=pr.value;render();});
   const rs=document.getElementById('roleSel');
@@ -1537,7 +1614,7 @@ function render(){
 
 /* ============================ events ============================ */
 document.addEventListener('click',e=>{
-  const t=e.target.closest('[data-go],[data-view],[data-nav],[data-filter],[data-ev],[data-day],[data-task],[data-new],[data-pick],[data-everyone],[data-tl],[data-back],[data-logout],[data-preview],[data-profile],[data-newuser],[data-gp],[data-user],[data-pinv],[data-pinvsend],[data-pinvdel],[data-adtab],[data-theme]');
+  const t=e.target.closest('[data-go],[data-view],[data-nav],[data-filter],[data-ev],[data-day],[data-task],[data-new],[data-pick],[data-everyone],[data-tl],[data-back],[data-logout],[data-preview],[data-profile],[data-fb],[data-newuser],[data-gp],[data-user],[data-pinv],[data-pinvsend],[data-pinvdel],[data-adtab],[data-theme]');
   if(!t) return;
   if(t.dataset.logout){ (sb?sb.auth.signOut():Promise.resolve()).then(()=>location.reload()); return; }
   if(t.dataset.preview){
@@ -1564,8 +1641,9 @@ document.addEventListener('click',e=>{
     document.querySelectorAll('#pfTheme button').forEach(b=>b.classList.toggle('on',b.dataset.theme===THEME));
     return;
   }
-  if(t.dataset.adtab){ ADMIN.tab=t.dataset.adtab; render(); return; }
+  if(t.dataset.adtab){ ADMIN.tab=t.dataset.adtab; if(t.dataset.adtab==='feedback')ADMIN.fb=null; render(); return; }
   if(t.dataset.newuser){ paInviteDrawer(); return; }
+  if(t.dataset.fb){ feedbackDrawer(t.dataset.fb); return; }
   if(t.dataset.gp!==undefined){ S.goalsPath=t.dataset.gp; S.section='goals'; render(); return; }
   if(t.dataset.user){ paUserDrawer(t.dataset.user); return; }
   if(t.dataset.pinv){ paInviteDrawer(t.dataset.pinv); return; }
