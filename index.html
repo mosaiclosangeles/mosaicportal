@@ -660,7 +660,8 @@ const S = {
   tlShift:0,
   eventId:'g0823',
   from:'calendar',
-  goalsPath:'/'
+  goalsPath:'/',
+  deep:{}   // section -> the item that section should open on arrival
 };
 
 /* Goals' own pages, shown as a sub-menu under the Goals rail button so the
@@ -922,6 +923,10 @@ function pageEmbed(id){
   let src=sec.url;
   if(id==='goals')src+=(S.goalsPath==='/'?'':S.goalsPath);
   if(id==='numbers'||id==='comms'||id==='planning'||id==='goals')src+=(src.includes('?')?'&':'?')+'embed=portal';
+  // Arriving from an event: tell the app which one, so people land on the
+  // thing they clicked instead of the app's front page.
+  const want=S.deep&&S.deep[id];
+  if(want)src+='&'+(id==='planning'?'item':id==='comms'?'on':'date')+'='+encodeURIComponent(want);
   return '<div class="embed-wrap"><iframe src="'+src+'" title="'+esc(sec.label)+'" allow="clipboard-write"></iframe>'+
     '<a class="embed-open" href="'+sec.url+'" target="_blank" rel="noopener" title="Open '+esc(sec.label)+' in its own tab">'+ic('ext','width:12px;height:12px')+'open</a></div>';
 }
@@ -1445,6 +1450,15 @@ function pageSettings(){
     '<div class="note" style="margin-top:22px">Prototype · data is illustrative and resets on reload. Built '+pretty(TODAY)+'.</div>';
 }
 
+/* The planning board's own id for an event. Repeats carry the occurrence date
+   too ('pm:123:2026-08-09'); the board only knows the item, so trim it. */
+function pmId(e){
+  const raw=String(e&&e.id||'');
+  if(!raw.startsWith('pm:'))return '';
+  const rest=raw.slice(3);
+  const cut=rest.lastIndexOf(':');
+  return (cut>0&&/^\d{4}-\d{2}-\d{2}$/.test(rest.slice(cut+1)))?rest.slice(0,cut):rest;
+}
 function pageEvent(){
   const e=EVENTS.find(x=>x.id===S.eventId);
   if(!e) return '<h1>Not found</h1>';
@@ -1535,9 +1549,9 @@ function pageEvent(){
 
   h+='</div></div>'+
     '<div class="foot-links">'+
-    '<button data-go="planning">Edit in Planning</button>'+
-    '<button data-go="comms">Edit comms</button>'+
-    (isSunday?'<button data-go="numbers">'+(m?'View in Metrics':'Submit attendance')+'</button>':'')+
+    '<button data-go="planning" data-item="'+esc(pmId(e))+'">Edit in Planning</button>'+
+    '<button data-go="comms" data-item="'+esc(e.date||'')+'">Edit comms</button>'+
+    (isSunday?'<button data-go="numbers" data-item="'+esc(e.date||'')+'">'+(m?'View in Metrics':'Submit attendance')+'</button>':'')+
     '</div>';
   return h;
 }
@@ -1664,7 +1678,10 @@ document.addEventListener('click',e=>{
   }
   if(t.dataset.everyone){ S.forEveryone=!S.forEveryone; render(); return; }
   if(t.dataset.tl!==undefined){ const n=Number(t.dataset.tl); S.tlShift = n===0?0:S.tlShift+n; render(); return; }
-  if(t.dataset.go){ if(allowedSections().includes(t.dataset.go)){S.section=t.dataset.go; closeDrawer(); if(typeof umClose==="function")umClose(); render();} return; }
+  if(t.dataset.go){ if(allowedSections().includes(t.dataset.go)){
+      S.deep=S.deep||{};
+      if(t.dataset.item)S.deep[t.dataset.go]=t.dataset.item; else delete S.deep[t.dataset.go];
+      S.section=t.dataset.go; closeDrawer(); if(typeof umClose==="function")umClose(); render();} return; }
   if(t.dataset.theme){
     THEME=t.dataset.theme; try{localStorage.setItem(themeKey(),THEME);}catch(e){}
     applyTheme();
