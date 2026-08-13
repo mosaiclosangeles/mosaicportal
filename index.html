@@ -803,12 +803,14 @@ const SECTION_LABEL=id=>{const s=SECTIONS.find(x=>x.id===id);return s?s.label:id
 function adminName(p){const n=p.display_name||p.full_name||'—';return n.includes('@')?prettyNameFromEmail(n):n;}
 async function loadAdmin(){
   if(ADMIN.loading)return;ADMIN.loading=true;
-  const [r1,r2]=await Promise.all([
+  const [r1,r2,r3]=await Promise.all([
     sb.from('profiles').select('id,display_name,full_name,role,campus_id,avatar_url,app_access,campus_ids,archived_at'),
-    sb.from('campuses').select('id,name,parent_campus_id')
+    sb.from('campuses').select('id,name,parent_campus_id'),
+    sb.from('pending_invites').select('id,email,name,role,campus_id,created_at').order('created_at')
   ]);
   ADMIN.err=(r1.error&&r1.error.message)||(r2.error&&r2.error.message)||null;
   ADMIN.profs=r1.data||[];
+  ADMIN.pending=r3.data||[];
   ADMIN.campuses=(r2.data||[]).filter(c=>!c.parent_campus_id).sort((a,b)=>a.name.localeCompare(b.name));
   ADMIN.loading=false;
   if(S.section==='admin')render();
@@ -944,6 +946,19 @@ function pageAdmin(){
       '<td><button class="pa-perm" data-user="'+esc(p.id)+'">'+permSummary(p)+'</button></td></tr>').join('')
       :'<tr><td colspan="4" style="color:var(--text2)">No users match.</td></tr>')+
     '</tbody></table></div>'+
+    ((ADMIN.pending||[]).length?
+      '<div class="pu-sec" style="margin-top:26px">Invite pending</div>'+
+      '<p style="font-size:12.5px;color:var(--text2);margin:4px 0 10px;max-width:620px;line-height:1.5">Accounts prepared but not announced yet — no email has gone out. Send each invite whenever you\'re ready, or open one to edit it.</p>'+
+      '<div class="pa-card"><table class="pa-table"><tbody>'+
+      ADMIN.pending.map(v=>'<tr>'+
+        '<td><button class="pa-name" data-pinv="'+esc(v.id)+'" title="Edit this pending invite">'+
+        '<span class="pa-av">'+avatarHtml(null,v.name||v.email)+'</span><span class="nm">'+esc(v.name||v.email)+'</span></button>'+
+        ' <span style="font-size:11px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;color:var(--milestone-d,#8a6d00);border:1px solid var(--hairline);border-radius:999px;padding:3px 9px;white-space:nowrap">Invite pending</span></td>'+
+        '<td style="color:var(--text2)">'+esc(v.email)+'</td>'+
+        '<td style="color:var(--text2)">'+cap(v.role)+(v.role!=='admin'&&v.campus_id?' · '+esc(campusName(v.campus_id)):'')+'</td>'+
+        '<td style="text-align:right;white-space:nowrap"><button class="btn-primary" data-pinvsend="'+esc(v.id)+'" style="padding:6px 12px;font-size:12px">Send invite</button> '+
+        '<button class="gate-ghost" data-pinvdel="'+esc(v.id)+'" style="margin:0;padding:6px 12px;font-size:12px">Remove</button></td></tr>').join('')+
+      '</tbody></table></div>':'')+
     (archived.length?
       '<div class="pu-sec" style="margin-top:26px">Archived users</div>'+
       '<p style="font-size:12.5px;color:var(--text2);margin:4px 0 10px;max-width:620px;line-height:1.5">No longer on staff. They can\'t sign in, but their account and history are kept — open one to restore access.</p>'+
@@ -1142,37 +1157,58 @@ async function paUserDrawer(id){
     n.textContent=e2?("Couldn't send — "+(e2.message||'try again.')):('Reset link sent to '+email+'.');
   });
 }
-function paInviteDrawer(){
-  openDrawer('<h2 style="margin-top:0">Invite a new user</h2><div class="sub">They\'ll get an email to set their own password.</div>'+
+/* Send the actual invite email for a person (used by the drawer and by the
+   "Send invite" button on a pending row). Deletes their pending row on success. */
+async function paSendInvite(v){
+  const {data,error}=await sb.functions.invoke('invite-user',{body:{email:v.email,name:v.name,role:v.role,campus_id:v.campus_id,redirect_to:location.origin+'/'}});
+  if(error){let m=error.message||'please try again.';try{const b=await error.context.json();if(b&&b.error)m=b.error;}catch(_){}return m;}
+  if(data&&data.error)return data.error;
+  await sb.from('pending_invites').delete().eq('email',v.email);
+  return null;
+}
+function paInviteDrawer(pendingId){
+  const pv=pendingId?(ADMIN.pending||[]).find(x=>x.id===pendingId):null;
+  openDrawer('<h2 style="margin-top:0">'+(pv?'Pending invite':'New user')+'</h2><div class="sub">'+(pv?'No email has gone out yet — edit the details, send the invite, or remove it.':'Send the invite now, or save it to send once you\'ve announced the portal.')+'</div>'+
     '<div style="display:flex;flex-direction:column;gap:12px;margin-top:16px">'+
-    '<div><label class="pa-lbl">Full name</label><input id="nuName" class="pa-in" type="text" placeholder="Jane Doe"></div>'+
-    '<div><label class="pa-lbl">Email</label><input id="nuEmail" class="pa-in" type="email" placeholder="jane@mosaic.org"></div>'+
-    '<div><label class="pa-lbl">Role</label><select id="nuRole" class="pa-in"><option value="leader" selected>Leader</option><option value="staff">Staff</option><option value="volunteer">Volunteer</option><option value="admin">Admin</option></select></div>'+
+    '<div><label class="pa-lbl">Full name</label><input id="nuName" class="pa-in" type="text" placeholder="Jane Doe" value="'+esc((pv&&pv.name)||'')+'"></div>'+
+    '<div><label class="pa-lbl">Email</label><input id="nuEmail" class="pa-in" type="email" placeholder="jane@mosaic.org" value="'+esc((pv&&pv.email)||'')+'"></div>'+
+    '<div><label class="pa-lbl">Role</label><select id="nuRole" class="pa-in">'+['leader','staff','volunteer','admin'].map(r=>'<option value="'+r+'"'+((pv?pv.role:'leader')===r?' selected':'')+'>'+cap(r)+'</option>').join('')+'</select></div>'+
     '<div id="nuCampusWrap"><label class="pa-lbl">Campus</label><select id="nuCampus" class="pa-in"><option value="">Select a campus</option>'+
-      (ADMIN.campuses||[]).map(c=>'<option value="'+esc(c.id)+'">'+esc(c.name)+'</option>').join('')+'</select></div></div>'+
-    '<button class="btn-primary" id="nuSend" style="margin-top:18px">Send invite</button>'+
+      (ADMIN.campuses||[]).map(c=>'<option value="'+esc(c.id)+'"'+(pv&&pv.campus_id===c.id?' selected':'')+'>'+esc(c.name)+'</option>').join('')+'</select></div></div>'+
+    '<div style="display:flex;gap:10px;align-items:center;margin-top:18px;flex-wrap:wrap">'+
+    '<button class="btn-primary" id="nuSend">Send invite</button>'+
+    '<button class="gate-ghost" id="nuLater" style="margin:0">'+(pv?'Save changes':'Save for later — no email')+'</button></div>'+
     '<div id="nuNote" style="font-size:12.5px;color:var(--text2);margin-top:10px"></div>');
   const roleSel=document.getElementById('nuRole'),wrap=document.getElementById('nuCampusWrap');
   const sync=()=>{wrap.style.display=roleSel.value==='admin'?'none':'';};
   roleSel.addEventListener('change',sync);sync();
-  document.getElementById('nuSend').addEventListener('click',async()=>{
-    const name=document.getElementById('nuName').value.trim(),email=document.getElementById('nuEmail').value.trim();
+  const read=()=>{
+    const name=document.getElementById('nuName').value.trim(),email=document.getElementById('nuEmail').value.trim().toLowerCase();
     const role=roleSel.value,campus_id=role==='admin'?null:(document.getElementById('nuCampus').value||null);
     const note=document.getElementById('nuNote');
-    if(!name){note.textContent='Please enter a name.';return;}
-    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){note.textContent='Please enter a valid email.';return;}
+    if(!name){note.textContent='Please enter a name.';return null;}
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){note.textContent='Please enter a valid email.';return null;}
+    return {name,email,role,campus_id};
+  };
+  document.getElementById('nuSend').addEventListener('click',async()=>{
+    const v=read();if(!v)return;
+    const note=document.getElementById('nuNote');
     const btn=document.getElementById('nuSend');btn.disabled=true;btn.textContent='Sending…';
-    let errMsg=null,ok=false;
-    try{
-      const {data,error}=await sb.functions.invoke('invite-user',{body:{email,name,role,campus_id,redirect_to:location.origin+'/'}});
-      if(error){errMsg=error.message||'please try again.';try{const b=await error.context.json();if(b&&b.error)errMsg=b.error;}catch(_){}}
-      else if(data&&data.error){errMsg=data.error;}
-      else ok=true;
-    }catch(ex){errMsg=String((ex&&ex.message)||ex);}
+    const errMsg=await paSendInvite(v).catch(ex=>String((ex&&ex.message)||ex));
     btn.disabled=false;btn.textContent='Send invite';
-    if(!ok){note.textContent="Couldn't send invite — "+errMsg;return;}
-    note.textContent='Invite sent to '+email+'.';
+    if(errMsg){note.textContent="Couldn't send invite — "+errMsg;return;}
+    note.textContent='Invite sent to '+v.email+'.';
     ADMIN.profs=null;setTimeout(()=>{closeDrawer();if(S.section==='admin')render();},900);
+  });
+  document.getElementById('nuLater').addEventListener('click',async()=>{
+    const v=read();if(!v)return;
+    const note=document.getElementById('nuNote');
+    const {error}=pv
+      ?await sb.from('pending_invites').update(v).eq('id',pv.id)
+      :await sb.from('pending_invites').upsert(v,{onConflict:'email'});
+    if(error){note.textContent="Couldn't save — "+(error.message||'please try again.');return;}
+    note.textContent=pv?'Saved.':'Saved — no email sent. It\'s listed under “Invite pending” until you send it.';
+    ADMIN.profs=null;setTimeout(()=>{closeDrawer();if(S.section==='admin')render();},1100);
   });
 }
 
@@ -1445,7 +1481,7 @@ function render(){
 
 /* ============================ events ============================ */
 document.addEventListener('click',e=>{
-  const t=e.target.closest('[data-go],[data-view],[data-nav],[data-filter],[data-ev],[data-day],[data-task],[data-new],[data-pick],[data-everyone],[data-tl],[data-back],[data-logout],[data-preview],[data-profile],[data-newuser],[data-user],[data-adtab],[data-theme]');
+  const t=e.target.closest('[data-go],[data-view],[data-nav],[data-filter],[data-ev],[data-day],[data-task],[data-new],[data-pick],[data-everyone],[data-tl],[data-back],[data-logout],[data-preview],[data-profile],[data-newuser],[data-user],[data-pinv],[data-pinvsend],[data-pinvdel],[data-adtab],[data-theme]');
   if(!t) return;
   if(t.dataset.logout){ (sb?sb.auth.signOut():Promise.resolve()).then(()=>location.reload()); return; }
   if(t.dataset.preview){
@@ -1475,6 +1511,27 @@ document.addEventListener('click',e=>{
   if(t.dataset.adtab){ ADMIN.tab=t.dataset.adtab; render(); return; }
   if(t.dataset.newuser){ paInviteDrawer(); return; }
   if(t.dataset.user){ paUserDrawer(t.dataset.user); return; }
+  if(t.dataset.pinv){ paInviteDrawer(t.dataset.pinv); return; }
+  if(t.dataset.pinvsend){
+    const v=(ADMIN.pending||[]).find(x=>x.id===t.dataset.pinvsend);if(!v)return;
+    if(!confirm('Send the invite email to '+(v.name||v.email)+' ('+v.email+') now?'))return;
+    t.disabled=true;t.textContent='Sending…';
+    paSendInvite(v).catch(ex=>String((ex&&ex.message)||ex)).then(errMsg=>{
+      if(errMsg){t.disabled=false;t.textContent='Send invite';paNote("Couldn't send to "+v.email+' — '+errMsg,true);return;}
+      paNote('Invite sent to '+v.email+'.');
+      ADMIN.profs=null;if(S.section==='admin')render();
+    });
+    return;
+  }
+  if(t.dataset.pinvdel){
+    const v=(ADMIN.pending||[]).find(x=>x.id===t.dataset.pinvdel);if(!v)return;
+    if(!confirm('Remove the pending invite for '+(v.name||v.email)+'? No email was ever sent.'))return;
+    sb.from('pending_invites').delete().eq('id',v.id).then(({error})=>{
+      if(error){paNote("Couldn't remove — "+(error.message||'please try again.'),true);return;}
+      ADMIN.profs=null;if(S.section==='admin')render();
+    });
+    return;
+  }
   if(t.dataset.view){ S.view=t.dataset.view; render(); return; }
   if(t.dataset.nav!==undefined){
     const n=Number(t.dataset.nav);
