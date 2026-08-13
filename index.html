@@ -1974,7 +1974,20 @@ async function enterPortal(){
   if(who)who.textContent=ME.name;
   if(av)av.innerHTML=avatarHtml(ME.avatar_url,ME.name);
   $g("gate").classList.add("hide");
-  if(!BOOTED){BOOTED=true;await loadLive();render();}
+  if(!BOOTED){
+    BOOTED=true;await loadLive();render();
+    /* Come back to the tab and you get current data. There's no push from
+       Outlook or the planning board, so a tab left open all afternoon would
+       otherwise still show the morning. Refetch on return, at most once a
+       minute, and never while someone is mid-edit in a drawer. */
+    let lastLoad=Date.now();
+    document.addEventListener('visibilitychange',async()=>{
+      if(document.hidden)return;
+      if(Date.now()-lastLoad<60000)return;
+      if(document.getElementById('drawer').classList.contains('open'))return;
+      lastLoad=Date.now();await loadLive();render();
+    });
+  }
 }
 (function initAuth(){
   if(!sb){gateNote("Can't reach the sign-in service — check your connection and reload the page.","err");return;}
