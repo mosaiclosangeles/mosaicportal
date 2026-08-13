@@ -939,7 +939,12 @@ function pageEmbed(id){
   // Arriving from an event: tell the app which one, so people land on the
   // thing they clicked instead of the app's front page.
   const want=S.deep&&S.deep[id];
-  if(want)src+='&'+(id==='planning'?'item':id==='comms'?'on':'date')+'='+encodeURIComponent(want);
+  if(want){
+    // comms takes either: an id opens that message, a date lands on its month
+    const k=id==='planning'?'item':id==='numbers'?'date'
+      :(/^\d{4}-\d{2}-\d{2}$/.test(want)?'on':'item');
+    src+='&'+k+'='+encodeURIComponent(want);
+  }
   return '<div class="embed-wrap"><iframe src="'+src+'" title="'+esc(sec.label)+'" allow="clipboard-write"></iframe>'+
     '<a class="embed-open" href="'+sec.url+'" target="_blank" rel="noopener" title="Open '+esc(sec.label)+' in its own tab">'+ic('ext','width:12px;height:12px')+'open</a></div>';
 }
@@ -1465,6 +1470,11 @@ function pageSettings(){
 
 /* The planning board's own id for an event. Repeats carry the occurrence date
    too ('pm:123:2026-08-09'); the board only knows the item, so trim it. */
+/* The comms app's id for a message ('ce:42' here, 42 there). */
+function ceId(e){
+  const raw=String(e&&e.id||'');
+  return raw.startsWith('ce:')?raw.slice(3):'';
+}
 function pmId(e){
   const raw=String(e&&e.id||'');
   if(!raw.startsWith('pm:'))return '';
@@ -1563,7 +1573,7 @@ function pageEvent(){
   h+='</div></div>'+
     '<div class="foot-links">'+
     '<button data-go="planning" data-item="'+esc(pmId(e))+'">Edit in Planning</button>'+
-    '<button data-go="comms" data-item="'+esc(e.date||'')+'">Edit comms</button>'+
+    '<button data-go="comms" data-item="'+esc(ceId(e)||e.date||'')+'">Edit comms</button>'+
     (isSunday?'<button data-go="numbers" data-item="'+esc(e.date||'')+'">'+(m?'View in Metrics':'Submit attendance')+'</button>':'')+
     '</div>';
   return h;
@@ -1609,7 +1619,7 @@ function eventDrawer(id){
   if(linked.length){
     h+='<div class="eyebrow">COMMS FOR THIS DAY</div>'+linked.map(c=>
       '<div class="kv"><span>'+esc(c.title)+'</span><span>'+STATUS_LABEL[c.status]+'</span></div>').join('')+
-      '<button class="linkout" data-go="comms">Open in Comms</button>';
+      '<button class="linkout" data-go="comms" data-item="'+esc(ceId(e))+'">Open in Comms</button>';
   }
   if(subs.length){
     h+='<div class="eyebrow">SUBTASKS</div>'+subs.map(t=>taskRow(t)).join('')+
