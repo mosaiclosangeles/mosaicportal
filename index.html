@@ -384,6 +384,14 @@ select{font:inherit;font-size:13px;padding:7px 10px;border:1px solid var(--hairl
 @media (max-width:860px){.ecard{grid-template-columns:1fr;gap:24px}}
 
 /* ---------- responsive ---------- */
+/* Phone chrome: a bar with the menu, the name, and you. Hidden on desktop,
+   where the rail is always visible. */
+.mtop{display:none;position:fixed;top:0;left:0;right:0;height:56px;z-index:50;align-items:center;gap:10px;
+  padding:0 12px;background:var(--rail);border-bottom:1px solid var(--hairline)}
+.mtop-btn,.mtop-av{background:none;border:0;padding:6px;display:flex;align-items:center;cursor:pointer;color:var(--text)}
+.mtop-btn svg{width:22px;height:22px}
+.mtop-name{flex:1;min-width:0;font-size:14.5px;font-weight:500;letter-spacing:-.011em}
+.mtop-av .avatar{width:30px;height:30px;font-size:11px}
 .mobile-only{display:none}
 @media (max-width:860px){
   .cards{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -391,24 +399,20 @@ select{font:inherit;font-size:13px;padding:7px 10px;border:1px solid var(--hairl
 }
 @media (max-width:760px){
   .app{flex-direction:column}
-  .rail{position:fixed;bottom:0;left:0;right:0;top:auto;width:100%;height:auto;
-    flex-direction:row;align-items:center;gap:6px;border-right:0;border-top:1px solid var(--hairline);
-    padding:6px 8px calc(6px + env(safe-area-inset-bottom));z-index:3}
-  .brand{display:none}
-  .navgroup{display:none}   /* group labels don't fit a bottom bar */
-  .nav{flex-direction:row;gap:2px;flex:1;min-width:0;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
-  .nav::-webkit-scrollbar{display:none}
-  .nav button{flex-direction:column;gap:3px;font-size:10px;padding:6px 6px;justify-content:center;text-align:center;flex:none;width:auto;min-width:54px}
-  .nav .badge,.nav .count{display:none}
-  /* keep the account menu reachable on a phone: avatar-only, right of the bar */
-  .rail-foot{margin:0;border-top:0;padding:0 2px 0 8px;flex:none;border-left:1px solid var(--rail-active)}
-  .rail-foot .who{display:none}
-  .rail-foot .avatar{width:30px;height:30px;font-size:11px}
-  .um-pop{left:auto;right:10px;bottom:calc(72px + env(safe-area-inset-bottom));max-width:calc(100vw - 20px)}
-  .main{padding:18px 16px 96px}
+  /* A bottom bar couldn't hold ten sections without hiding most of them behind
+     a swipe. The rail slides in instead — the whole list at once, with its
+     groups, the way it reads on a desktop. */
+  .mtop{display:flex}
+  .rail{position:fixed;top:0;bottom:0;left:0;width:264px;max-width:82vw;height:auto;z-index:60;
+    transform:translateX(-100%);transition:transform .22s ease;
+    border-right:1px solid var(--hairline);padding:14px 12px calc(14px + env(safe-area-inset-bottom))}
+  .rail.open{transform:translateX(0)}
+  .nav button{width:100%;font-size:14.5px;padding:9px 8px}
+  .main{padding:74px 16px 40px}
   h1{font-size:24px}
   .desktop-only{display:none!important}
   .mobile-only{display:block}
+  .um-pop{left:auto;right:10px;top:62px;bottom:auto;max-width:calc(100vw - 20px)}
   .drawer{width:100%;max-width:100%}
   .page-head{flex-wrap:wrap;gap:10px}
   .pa-bar{flex-wrap:wrap}
@@ -456,6 +460,13 @@ select{font:inherit;font-size:13px;padding:7px 10px;border:1px solid var(--hairl
 </div>
 
 <div class="app">
+  <div class="mtop">
+    <button class="mtop-btn" id="mMenu" aria-label="Open menu" aria-expanded="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+    </button>
+    <div class="mtop-name">Mosaic Portal</div>
+    <button class="mtop-av" id="mAv" aria-label="Your account"><span class="avatar">·</span></button>
+  </div>
   <nav class="rail" aria-label="Sections">
     <div class="brand"><div class="brand-mark"></div><div class="brand-name">Mosaic Portal</div></div>
     <div class="nav" id="nav"></div>
@@ -755,7 +766,9 @@ function renderNav(){
   document.getElementById('nav').innerHTML=out.join('');
   const _who=document.getElementById('who'),_av=document.querySelector('.rail-foot .avatar');
   const _nm=(typeof ME!=='undefined'&&ME.name)?ME.name:'';
-  if(_nm){_who.textContent=_nm;if(_av)_av.innerHTML=avatarHtml(ME.avatar_url,_nm);}
+  if(_nm){_who.textContent=_nm;if(_av)_av.innerHTML=avatarHtml(ME.avatar_url,_nm);
+    const _mav=document.querySelector('.mtop-av .avatar');
+    if(_mav)_mav.innerHTML=avatarHtml(ME.avatar_url,_nm);}
 }
 
 /* ============================ pages ============================ */
@@ -1965,6 +1978,26 @@ async function profileDrawer(){
     n.textContent=error?("Couldn't send — "+(error.message||'try again.')):('Reset link sent to '+ME.email+'.');
   });
 }
+/* The phone menu. Opening it dims the page behind, Escape and the scrim both
+   close it, and choosing a section closes it too — nobody wants to dismiss a
+   menu they have already finished with. */
+const railEl=document.querySelector(".rail"), scrimEl=document.getElementById("scrim");
+function railOpen(on){
+  railEl.classList.toggle("open",on);
+  scrimEl.classList.toggle("open",on);
+  const b=document.getElementById("mMenu");
+  if(b)b.setAttribute("aria-expanded",on?"true":"false");
+}
+document.getElementById("mMenu").addEventListener("click",e=>{
+  e.stopPropagation();railOpen(!railEl.classList.contains("open"));
+});
+document.getElementById("mAv").addEventListener("click",e=>{
+  e.stopPropagation();railOpen(false);
+  umPop.innerHTML=umHtml();umPop.classList.toggle("open");
+});
+scrimEl.addEventListener("click",()=>railOpen(false));
+document.addEventListener("keydown",e=>{if(e.key==="Escape")railOpen(false);});
+railEl.addEventListener("click",e=>{if(e.target.closest("[data-go]"))railOpen(false);});
 document.querySelector(".rail-foot").addEventListener("click",e=>{
   if(!ME.email)return;
   umPop.innerHTML=umHtml();
