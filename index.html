@@ -35,7 +35,8 @@
 .embed-wrap iframe{width:100%;height:100%;border:0;display:block;background:#fff}
 .embed-open{position:absolute;right:14px;bottom:14px;display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#8a8a8a;background:rgba(255,255,255,.92);border:1px solid #e6e6e5;border-radius:999px;padding:6px 12px;text-decoration:none;box-shadow:0 2px 8px rgba(0,0,0,.06)}
 .embed-open:hover{color:#000}
-@media(max-width:760px){.embed-wrap{margin:-18px -16px -96px;height:calc(100vh - 58px)}}
+@media(max-width:760px){.embed-wrap{margin:-18px -16px -96px;height:calc(100vh - 58px)}
+  .embed-open{display:none}}
 
 /* ---- account menu (rail foot) ---- */
 .rail-foot{cursor:pointer;border-radius:8px}
@@ -198,6 +199,13 @@ button{font:inherit;letter-spacing:inherit;color:inherit;background:none;border:
 .nav .lock svg{width:13px;height:13px}
 .nav .lock + .badge{margin-left:6px}
 .nav .tile{width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;flex:none}
+.subnav{display:flex;flex-direction:column;gap:1px;margin:2px 0 6px 0;padding-left:12px;border-left:1px solid var(--rail-active)}
+.subnav button{display:block;width:100%;text-align:left;font-size:12.5px;color:#6f6f6c;padding:5px 9px;border-radius:var(--r-ctrl)}
+.subnav button:hover{background:var(--rail-active);color:var(--text)}
+.subnav button.on{background:var(--rail-active);color:var(--text);font-weight:500}
+.subgroup{font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;color:#a3a3a0;padding:9px 9px 3px}
+html.dark .subnav button{color:var(--text2)}
+html.dark .subnav button:hover,html.dark .subnav button.on{color:var(--text);background:var(--rail-active)}
 .nav .tile svg{width:15px;height:15px}
 .swatches{display:grid;grid-template-columns:repeat(8,1fr);gap:7px;max-width:330px}
 .sw{aspect-ratio:1;border-radius:6px;display:flex;align-items:center;justify-content:center}
@@ -611,8 +619,33 @@ const S = {
   forEveryone:false,
   tlShift:0,
   eventId:'g0823',
-  from:'calendar'
+  from:'calendar',
+  goalsPath:'/'
 };
+
+/* Goals' own pages, shown as a sub-menu under the Goals rail button so the
+   embedded app doesn't need a second sidebar. Mirrors the role rules the
+   Goals app itself applies: staff/lead see the Staff Dashboard, admins also
+   see the admin console. `lead` here means a Mosaic staff or admin role. */
+const GOALS_NAV=[
+  {path:'/',label:'Dashboard'},
+  {path:'/goals',label:'Goals'},
+  {path:'/scorecards',label:'Assessment'},
+  {group:'Staff dashboard',lead:true},
+  {path:'/staff',label:'Overview',lead:true},
+  {path:'/staff/teams',label:'Teams',lead:true},
+  {path:'/staff/members',label:'Members',lead:true},
+  {path:'/staff/all-goals',label:'All goals',lead:true},
+  {path:'/staff/rubrics',label:'All assessments',lead:true},
+  {group:'Admin console',lead:true},
+  {path:'/settings',label:'Settings',lead:true},
+  {path:'/digest',label:'Digest',admin:true}
+];
+function goalsNavItems(){
+  const isAdmin=ME.role==='admin'&&!ME.preview;
+  const isLead=isAdmin||(ME.role==='staff'&&!ME.preview);
+  return GOALS_NAV.filter(it=>(it.admin?isAdmin:it.lead?isLead:true));
+}
 
 /* ============================ helpers ============================ */
 function evOn(dt){return EVENTS.filter(e=>e.date===key(dt) && S.filters.has(e.type));}
@@ -669,6 +702,13 @@ function renderNav(){
       (it.restricted?'<span class="lock" title="Restricted">'+ic('lock')+'</span>':'')+
       (it.beta?'<span class="badge">BETA</span>':(it.count?'<span class="count">'+it.count+'</span>':''))+
       '</button>');
+    // Goals' own pages hang off its rail button instead of a second sidebar
+    if(it.id==='goals'&&S.section==='goals'){
+      out.push('<div class="subnav">'+goalsNavItems().map(g=>g.group
+        ?'<div class="subgroup">'+esc(g.group)+'</div>'
+        :'<button data-gp="'+esc(g.path)+'" class="'+(S.goalsPath===g.path?'on':'')+'">'+esc(g.label)+'</button>'
+      ).join('')+'</div>');
+    }
   });
   document.getElementById('nav').innerHTML=out.join('');
   const _who=document.getElementById('who'),_av=document.querySelector('.rail-foot .avatar');
@@ -803,7 +843,8 @@ function monthGrid(){
 function pageEmbed(id){
   const sec=SECTIONS.find(x=>x.id===id);
   let src=sec.url;
-  if(id==='numbers'||id==='comms'||id==='planning')src+=(src.includes('?')?'&':'?')+'embed=portal';
+  if(id==='goals')src+=(S.goalsPath==='/'?'':S.goalsPath);
+  if(id==='numbers'||id==='comms'||id==='planning'||id==='goals')src+=(src.includes('?')?'&':'?')+'embed=portal';
   return '<div class="embed-wrap"><iframe src="'+src+'" title="'+esc(sec.label)+'" allow="clipboard-write"></iframe>'+
     '<a class="embed-open" href="'+sec.url+'" target="_blank" rel="noopener" title="Open '+esc(sec.label)+' in its own tab">'+ic('ext','width:12px;height:12px')+'open</a></div>';
 }
@@ -1495,7 +1536,7 @@ function render(){
 
 /* ============================ events ============================ */
 document.addEventListener('click',e=>{
-  const t=e.target.closest('[data-go],[data-view],[data-nav],[data-filter],[data-ev],[data-day],[data-task],[data-new],[data-pick],[data-everyone],[data-tl],[data-back],[data-logout],[data-preview],[data-profile],[data-newuser],[data-user],[data-pinv],[data-pinvsend],[data-pinvdel],[data-adtab],[data-theme]');
+  const t=e.target.closest('[data-go],[data-view],[data-nav],[data-filter],[data-ev],[data-day],[data-task],[data-new],[data-pick],[data-everyone],[data-tl],[data-back],[data-logout],[data-preview],[data-profile],[data-newuser],[data-gp],[data-user],[data-pinv],[data-pinvsend],[data-pinvdel],[data-adtab],[data-theme]');
   if(!t) return;
   if(t.dataset.logout){ (sb?sb.auth.signOut():Promise.resolve()).then(()=>location.reload()); return; }
   if(t.dataset.preview){
@@ -1524,6 +1565,7 @@ document.addEventListener('click',e=>{
   }
   if(t.dataset.adtab){ ADMIN.tab=t.dataset.adtab; render(); return; }
   if(t.dataset.newuser){ paInviteDrawer(); return; }
+  if(t.dataset.gp!==undefined){ S.goalsPath=t.dataset.gp; S.section='goals'; render(); return; }
   if(t.dataset.user){ paUserDrawer(t.dataset.user); return; }
   if(t.dataset.pinv){ paInviteDrawer(t.dataset.pinv); return; }
   if(t.dataset.pinvsend){
