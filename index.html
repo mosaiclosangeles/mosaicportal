@@ -189,6 +189,24 @@ button{font:inherit;letter-spacing:inherit;color:inherit;background:none;border:
 /* Only on a phone, where the rail is a panel that has to be dismissed.
    Tapping the dimmed page works too, but a control you can see beats one
    you have to guess at. */
+/* Collapsed, the rail keeps its icons exactly where they were and drops the
+   words — nothing shifts sideways when you toggle it. Loyda's spec called
+   ten items the ceiling for a fixed rail; this is the escape hatch it named. */
+.rail-collapse{display:none;margin-left:auto;background:none;border:0;padding:6px;cursor:pointer;color:var(--text2)}
+.rail-collapse:hover{color:var(--text)}
+.rail-collapse svg{width:18px;height:18px;display:block}
+@media (min-width:761px){ .rail-collapse{display:block} }
+body.railmin .rail{width:62px;padding-left:8px;padding-right:8px}
+body.railmin .brand-name,body.railmin .nav button>span:not(.tile):not(.badge):not(.lock),
+body.railmin .navgroup,body.railmin .subnav,body.railmin .who,body.railmin .nav .badge{display:none}
+body.railmin .brand{justify-content:center;padding:0 0 16px}
+body.railmin .rail-collapse{margin:0}
+body.railmin .nav button{justify-content:center;padding:8px 4px}
+body.railmin .nav .lock{display:none}
+body.railmin .rail-foot{justify-content:center}
+body.railmin .nav button:hover::after{content:attr(data-tip);position:fixed;left:70px;
+  background:var(--surface);color:var(--text);border:1px solid var(--hairline);border-radius:7px;
+  padding:5px 9px;font-size:12.5px;white-space:nowrap;z-index:80;box-shadow:0 6px 18px rgba(0,0,0,.10)}
 .rail-close{display:none;margin-left:auto;background:none;border:0;padding:6px;cursor:pointer;color:var(--text2)}
 .rail-close:hover{color:var(--text)}
 .rail-close svg{width:20px;height:20px;display:block}
@@ -482,6 +500,9 @@ select{font:inherit;font-size:13px;padding:7px 10px;border:1px solid var(--hairl
   </div>
   <nav class="rail" aria-label="Sections">
     <div class="brand"><div class="brand-mark"></div><div class="brand-name">Mosaic Portal</div>
+      <button class="rail-collapse" id="railToggle" aria-label="Collapse sidebar" title="Collapse sidebar (⌘\\)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9.5 4v16"/></svg>
+      </button>
       <button class="rail-close" id="mClose" aria-label="Close menu" title="Close menu">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M17 6l-6 6 6 6M11 6l-6 6 6 6"/></svg>
       </button></div>
@@ -766,7 +787,7 @@ function renderNav(){
       out.push('<div class="navgroup">'+it.divider+'</div>');
       return;
     }
-    out.push('<button data-go="'+it.id+'" class="'+(S.section===it.id?'on':'')+'">'+
+    out.push('<button data-go="'+it.id+'" data-tip="'+esc(it.label)+'" class="'+(S.section===it.id?'on':'')+'">'+
       '<span class="tile" style="background:'+it.t+';color:'+it.h+'">'+ic(it.icon)+'</span>'+
       '<span>'+it.label+'</span>'+
       (it.restricted?'<span class="lock" title="Restricted">'+ic('lock')+'</span>':'')+
@@ -1907,6 +1928,14 @@ function umClose(){umPop.classList.remove("open");}
 /* Appearance — per person, per device. Stored under the signed-in email so a
    shared computer doesn't hand one person's choice to the next. */
 let THEME='system';
+let RAILMIN=false;
+function railKey(){return 'mosaic-rail:'+(ME.email||'anon');}
+function applyRail(){
+  document.body.classList.toggle('railmin',RAILMIN);
+  const b=document.getElementById('railToggle');
+  if(b){b.setAttribute('aria-label',RAILMIN?'Expand sidebar':'Collapse sidebar');
+        b.title=(RAILMIN?'Expand':'Collapse')+' sidebar (⌘\\)';}
+}
 function themeKey(){return 'mosaic-theme:'+(ME.email||'anon');}
 function applyTheme(){
   const dark = THEME==='dark' || (THEME==='system' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
@@ -1914,6 +1943,8 @@ function applyTheme(){
 }
 function loadTheme(){
   try{THEME=localStorage.getItem(themeKey())||'system';}catch(e){THEME='system';}
+  try{RAILMIN=localStorage.getItem(railKey())==='1';}catch(e){RAILMIN=false;}
+  applyRail();
   applyTheme();
 }
 if(window.matchMedia)window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if(THEME==='system')applyTheme();});
@@ -2021,6 +2052,18 @@ document.getElementById("mMenu").addEventListener("click",e=>{
 document.getElementById("mAv").addEventListener("click",e=>{
   e.stopPropagation();railOpen(false);
   umPop.innerHTML=umHtml();umPop.classList.toggle("open");
+});
+document.getElementById("railToggle").addEventListener("click",e=>{
+  e.stopPropagation();RAILMIN=!RAILMIN;
+  try{localStorage.setItem(railKey(),RAILMIN?'1':'0');}catch(_){}
+  applyRail();
+});
+document.addEventListener("keydown",e=>{
+  if((e.metaKey||e.ctrlKey)&&e.key==="\\"){
+    e.preventDefault();RAILMIN=!RAILMIN;
+    try{localStorage.setItem(railKey(),RAILMIN?'1':'0');}catch(_){}
+    applyRail();
+  }
 });
 document.getElementById("mClose").addEventListener("click",e=>{e.stopPropagation();railOpen(false);});
 scrimEl.addEventListener("click",()=>railOpen(false));
