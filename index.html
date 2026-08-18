@@ -1649,8 +1649,13 @@ async function profileDrawer(){
   if(!ADMIN.campuses)await loadAdmin().catch(()=>{});
   const roleLab=ME.role==='admin'?'Admin':cap(ME.role||'');
   const campusLab=ME.role==='admin'?'All campuses':(ME.campus_id?campusName(ME.campus_id):'—');
+  const pfInitials=(ME.name||'?').split(' ').map(w=>w[0]||'').slice(0,2).join('').toUpperCase();
+  const pfAvatar=ME.avatar_url
+    ? '<img src="'+esc(ME.avatar_url)+'" alt="" style="width:72px;height:72px;border-radius:50%;object-fit:cover;display:block;margin:0 auto 14px">'
+    : '<div style="width:72px;height:72px;border-radius:50%;background:var(--brand);color:#fff;font-size:24px;font-weight:600;display:flex;align-items:center;justify-content:center;margin:0 auto 14px">'+esc(pfInitials)+'</div>';
   openDrawer('<div class="eyebrow" style="letter-spacing:.13em;text-transform:uppercase;color:var(--text2);font-size:11px;font-weight:700;margin-bottom:6px">Account</div>'+
     '<h2 style="margin:0 0 18px">Profile</h2>'+
+    pfAvatar+
     '<div class="kv"><span>Name</span><span><input id="pfName" class="pa-in" style="width:170px;padding:6px 9px;font-size:13px;text-align:right" value="'+esc(ME.name||'')+'"></span></div>'+
     '<div class="kv"><span>Email</span><span>'+esc(ME.email||'')+'</span></div>'+
     '<div class="kv"><span>Role</span><span>'+esc(roleLab)+'</span></div>'+
@@ -1697,8 +1702,8 @@ async function enterPortal(){
   const {data:{user}}=await sb.auth.getUser();
   if(!user)return;
   ME.email=user.email;
-  const {data:prof}=await sb.from("profiles").select("role,display_name,full_name,campus_id").eq("id",user.id).single();
-  if(prof){ME.role=prof.role;ME.name=prof.display_name||prof.full_name;ME.campus_id=prof.campus_id;}
+  const {data:prof}=await sb.from("profiles").select("role,display_name,full_name,campus_id,avatar_url").eq("id",user.id).single();
+  if(prof){ME.role=prof.role;ME.name=prof.display_name||prof.full_name;ME.campus_id=prof.campus_id;ME.avatar_url=prof.avatar_url||null;}
   if(!ME.name||ME.name.includes("@"))ME.name=prettyNameFromEmail(ME.email);
   if(ROLE_PRESET[ME.role])S.role=ROLE_PRESET[ME.role];
   const want=PATH_SECTION[location.pathname.replace(/\/+$/,"")||"/"];
