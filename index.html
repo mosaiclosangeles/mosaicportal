@@ -253,6 +253,7 @@ h2{font-size:16px;font-weight:600;letter-spacing:-.015em;margin:0 0 6px}
 .drawer.open{transform:none}
 .drawer-close{position:absolute;top:16px;right:18px;color:var(--text2)}
 .drawer-close svg{width:18px;height:18px}
+[data-av-wrap]:hover .av-overlay{opacity:1!important}
 .tag{font-size:11px;padding:3px 8px;border-radius:6px;background:var(--fill);color:#4a4a4a;margin-right:5px}
 .kv{display:flex;justify-content:space-between;font-size:13px;padding:8px 0;border-bottom:1px solid var(--separator)}
 .kv span:first-child{color:var(--text2)}
@@ -944,9 +945,16 @@ function pageAdminUser(){
   const nm=adminName(Object.assign({},u,p));
   const fdt=ts=>{if(!ts)return '—';const d=new Date(ts);return isNaN(d)?'—':d.toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'});};
   const initials=nm.split(' ').map(w=>w[0]||'').slice(0,2).join('').toUpperCase();
-  const avatarHtml=u.avatar_url
-    ? '<img src="'+esc(u.avatar_url)+'" alt="" style="width:72px;height:72px;border-radius:50%;object-fit:cover;flex:none">'
-    : '<div style="width:72px;height:72px;border-radius:50%;background:#4f7fd1;color:#fff;font-size:24px;font-weight:600;display:flex;align-items:center;justify-content:center;flex:none">'+esc(initials)+'</div>';
+  const avatarInnerAdmin=u.avatar_url
+    ? '<img src="'+esc(u.avatar_url)+'" alt="" style="width:72px;height:72px;border-radius:50%;object-fit:cover;display:block">'
+    : '<div style="width:72px;height:72px;border-radius:50%;background:#4f7fd1;color:#fff;font-size:24px;font-weight:600;display:flex;align-items:center;justify-content:center">'+esc(initials)+'</div>';
+  const avatarHtml='<input type="file" id="paAvatarInput" accept="image/*" style="display:none" data-uid="'+esc(id)+'">'+
+    '<div style="position:relative;flex:none;cursor:pointer" data-av-wrap data-pa-avatar="1" title="Change photo">'+
+      avatarInnerAdmin+
+      '<div style="position:absolute;inset:0;border-radius:50%;background:rgba(0,0,0,.38);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .15s" class="av-overlay">'+
+        '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>'+
+      '</div>'+
+    '</div>';
   return back+
     '<div style="display:flex;align-items:center;gap:18px;margin-bottom:4px">'+
       avatarHtml+
@@ -1451,7 +1459,7 @@ function render(){
 
 /* ============================ events ============================ */
 document.addEventListener('click',e=>{
-  const t=e.target.closest('[data-go],[data-view],[data-nav],[data-filter],[data-ev],[data-day],[data-task],[data-new],[data-pick],[data-everyone],[data-tl],[data-back],[data-logout],[data-preview],[data-profile],[data-newuser],[data-user],[data-adtab],[data-app-reset],[data-pf-save],[data-pf-reset]');
+  const t=e.target.closest('[data-go],[data-view],[data-nav],[data-filter],[data-ev],[data-day],[data-task],[data-new],[data-pick],[data-everyone],[data-tl],[data-back],[data-logout],[data-preview],[data-profile],[data-newuser],[data-user],[data-adtab],[data-app-reset],[data-pf-save],[data-pf-reset],[data-pf-avatar],[data-pa-avatar]');
   if(!t) return;
   if(t.dataset.logout){ (sb?sb.auth.signOut():Promise.resolve()).then(()=>location.reload()); return; }
   if(t.dataset.preview){
@@ -1511,6 +1519,8 @@ document.addEventListener('click',e=>{
       if(n)n.textContent=error?("Couldn't send — "+(error.message||'try again.')):('Reset link sent to '+ME.email+'.');
     });return;
   }
+  if(t.dataset.pfAvatar){ document.getElementById('pfAvatarInput')?.click(); return; }
+  if(t.dataset.paAvatar){ document.getElementById('paAvatarInput')?.click(); return; }
   if(t.dataset.day){ dayDrawer(t.dataset.day); return; }
   if(t.dataset.new){ newDrawer(); return; }
   if(t.dataset.task){
@@ -1661,15 +1671,24 @@ function pageProfile(){
   const roleLab=ME.role==='admin'?'Admin':cap(ME.role||'');
   const campusLab=ME.role==='admin'?'All campuses':(ME.campus_id?campusName(ME.campus_id):'—');
   const initials=(ME.name||'?').split(' ').map(w=>w[0]||'').slice(0,2).join('').toUpperCase();
-  const avatar=ME.avatar_url
-    ? '<img src="'+esc(ME.avatar_url)+'" alt="" style="width:64px;height:64px;border-radius:50%;object-fit:cover;flex:none">'
-    : '<div style="width:64px;height:64px;border-radius:50%;background:#4f7fd1;color:#fff;font-size:22px;font-weight:600;display:flex;align-items:center;justify-content:center;flex:none">'+esc(initials)+'</div>';
+  const avatarInner=ME.avatar_url
+    ? '<img src="'+esc(ME.avatar_url)+'" alt="" style="width:64px;height:64px;border-radius:50%;object-fit:cover;display:block">'
+    : '<div style="width:64px;height:64px;border-radius:50%;background:#4f7fd1;color:#fff;font-size:22px;font-weight:600;display:flex;align-items:center;justify-content:center">'+esc(initials)+'</div>';
   const eyebrow='letter-spacing:.12em;text-transform:uppercase;color:var(--text2);font-size:10.5px;font-weight:700;margin:0 0 16px';
   return '<div>'+
+    '<input type="file" id="pfAvatarInput" accept="image/*" style="display:none">'+
     '<div style="display:flex;align-items:center;gap:14px;margin-bottom:28px">'+
-      avatar+
-      '<div><div style="font-size:22px;font-weight:700;line-height:1.2">'+esc(ME.name||'')+'</div>'+
-      '<div style="font-size:13.5px;color:var(--text2);margin-top:3px">'+esc(ME.email||'')+'</div></div>'+
+      '<div style="position:relative;flex:none;cursor:pointer" data-av-wrap data-pf-avatar="1" title="Change photo">'+
+        avatarInner+
+        '<div style="position:absolute;inset:0;border-radius:50%;background:rgba(0,0,0,.38);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .15s" class="av-overlay">'+
+          '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>'+
+        '</div>'+
+      '</div>'+
+      '<div>'+
+        '<div style="font-size:22px;font-weight:700;line-height:1.2">'+esc(ME.name||'')+'</div>'+
+        '<div style="font-size:13.5px;color:var(--text2);margin-top:3px">'+esc(ME.email||'')+'</div>'+
+        '<button data-pf-avatar="1" style="font-size:12px;color:var(--text2);text-decoration:underline;margin-top:4px;padding:0;background:none;border:none;cursor:pointer">Change photo</button>'+
+      '</div>'+
     '</div>'+
     '<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start;max-width:700px">'+
       '<div class="pa-card" style="flex:1;min-width:240px;padding:20px 22px">'+
@@ -1698,6 +1717,36 @@ document.querySelector(".rail-foot").addEventListener("click",e=>{
 });
 document.addEventListener("click",e=>{
   if(umPop.classList.contains("open")&&!umPop.contains(e.target)&&!e.target.closest(".rail-foot"))umClose();
+});
+/* Avatar upload helpers */
+async function uploadAvatar(file,userId,noteEl){
+  const ext=file.name.split('.').pop().toLowerCase()||'jpg';
+  const path=userId+'/avatar.'+ext;
+  if(noteEl)noteEl.textContent='Uploading…';
+  const {error:upErr}=await sb.storage.from('avatars').upload(path,file,{upsert:true,contentType:file.type});
+  if(upErr){if(noteEl)noteEl.textContent="Upload failed — "+upErr.message;return null;}
+  const {data:{publicUrl}}=sb.storage.from('avatars').getPublicUrl(path);
+  const bust=publicUrl+(publicUrl.includes('?')?'&':'?')+'t='+Date.now();
+  const {error:dbErr}=await sb.from('profiles').update({avatar_url:bust}).eq('id',userId);
+  if(dbErr){if(noteEl)noteEl.textContent="Saved file but couldn't update profile — "+dbErr.message;return null;}
+  return bust;
+}
+document.addEventListener('change',async e=>{
+  if(e.target.id==='pfAvatarInput'){
+    const file=e.target.files[0];if(!file)return;
+    const {data:{user}}=await sb.auth.getUser();
+    const url=await uploadAvatar(file,user.id,document.getElementById('pfNote'));
+    if(url){ME.avatar_url=url;render();}
+    return;
+  }
+  if(e.target.id==='paAvatarInput'){
+    const file=e.target.files[0];if(!file)return;
+    const uid=e.target.dataset.uid;if(!uid)return;
+    const note=document.getElementById('paResetNote');
+    const url=await uploadAvatar(file,uid,note);
+    if(url&&ADMIN.viewUser){ADMIN.viewUser.u={...ADMIN.viewUser.u,avatar_url:url};render();}
+    return;
+  }
 });
 /* Admin table inline edits (delegated: the table re-renders) */
 document.addEventListener("change",async e=>{
