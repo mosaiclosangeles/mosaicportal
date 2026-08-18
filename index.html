@@ -822,7 +822,7 @@ function pageAdminRoles(){
       '</tr>').join('');
   }).join('');
   return '<div class="rp-desc">'+RP_ROLES.map(r=>'<div class="rp-card"><div class="rp-role" style="color:'+r.color+'">'+esc(r.name)+'</div><p>'+esc(r.desc)+'</p></div>').join('')+'</div>'+
-    '<div class="pa-card" style="overflow-x:auto"><table class="rp-table"><thead><tr><th>Permission</th>'+
+    '<div class="pa-card" style="overflow:auto;max-height:calc(100vh - 260px)"><table class="rp-table"><thead><tr><th>Permission</th>'+
     RP_ROLES.map(r=>'<th style="color:'+r.color+'">'+esc(r.name)+'</th>').join('')+'</tr></thead><tbody>'+
     appRows+'</tbody></table></div>'+
     '<p style="font-size:12.5px;color:var(--text2);margin-top:14px;max-width:640px;line-height:1.5">A reference, not a control panel — change someone\'s access by changing their role on the Users tab. Section visibility is enforced by the portal; campus scope and who can edit what are enforced by the database itself, so the rules hold no matter which app you\'re in.</p>';
