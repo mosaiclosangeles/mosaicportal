@@ -943,8 +943,15 @@ function pageAdminUser(){
   const globalRole=p.role||u.role||'volunteer';
   const nm=adminName(Object.assign({},u,p));
   const fdt=ts=>{if(!ts)return '—';const d=new Date(ts);return isNaN(d)?'—':d.toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'});};
+  const initials=nm.split(' ').map(w=>w[0]||'').slice(0,2).join('').toUpperCase();
+  const avatarHtml=u.avatar_url
+    ? '<img src="'+esc(u.avatar_url)+'" alt="" style="width:72px;height:72px;border-radius:50%;object-fit:cover;flex:none">'
+    : '<div style="width:72px;height:72px;border-radius:50%;background:var(--brand);color:#fff;font-size:24px;font-weight:600;display:flex;align-items:center;justify-content:center;flex:none">'+esc(initials)+'</div>';
   return back+
-    '<h1 style="font-size:26px;margin-bottom:2px">'+esc(nm)+'</h1><div class="sub">'+esc(u.email||'')+'</div>'+
+    '<div style="display:flex;align-items:center;gap:18px;margin-bottom:4px">'+
+      avatarHtml+
+      '<div><h1 style="font-size:26px;margin-bottom:2px">'+esc(nm)+'</h1><div class="sub">'+esc(u.email||'')+'</div></div>'+
+    '</div>'+
     '<div class="ecard" style="margin-top:16px"><div>'+
     '<div class="kv"><span>Role</span><span><select data-global-role data-id="'+esc(id)+'">'+ROLE_LIST.map(r=>'<option value="'+r+'"'+(r===globalRole?' selected':'')+'>'+cap(r)+'</option>').join('')+'</select></span></div>'+
     '<div id="paRoleNote" style="font-size:12.5px;color:var(--text2);margin-top:-8px;margin-bottom:8px"></div>'+
