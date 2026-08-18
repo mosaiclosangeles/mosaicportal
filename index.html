@@ -899,14 +899,15 @@ function openAdminUser(id){
   render();
 }
 async function loadAdminUser(id){
-  if(!ADMIN.viewUser||ADMIN.viewUser.id!==id)ADMIN.viewUser={id,loading:false,u:null,roleOverrides:null,perms:null,campusIds:null,err:null};
+  if(!ADMIN.viewUser||ADMIN.viewUser.id!==id)ADMIN.viewUser={id,loading:false,u:null,roleOverrides:null,perms:null,campusIds:null,appCampuses:null,err:null};
   if(ADMIN.viewUser.loading)return;
   ADMIN.viewUser.loading=true;
-  const [{data,error},roRes,permRes,ucRes]=await Promise.all([
+  const [{data,error},roRes,permRes,ucRes,uacRes]=await Promise.all([
     sb.rpc('admin_get_user',{target:id}),
     sb.from('section_role_overrides').select('app_key,role_override').eq('user_id',id),
     sb.from('section_permissions').select('app_key,perm_key,granted').eq('user_id',id),
-    sb.from('user_campuses').select('campus_id').eq('user_id',id)
+    sb.from('user_campuses').select('campus_id').eq('user_id',id),
+    sb.from('user_app_campuses').select('app_key,campus_id').eq('user_id',id)
   ]);
   const u=Array.isArray(data)?data[0]:data;
   ADMIN.viewUser.loading=false;
@@ -915,6 +916,8 @@ async function loadAdminUser(id){
   ADMIN.viewUser.roleOverrides=roRes.data||[];
   ADMIN.viewUser.perms=permRes.data||[];
   ADMIN.viewUser.campusIds=(ucRes.data||[]).map(r=>r.campus_id);
+  const acMap={};(uacRes.data||[]).forEach(r=>{if(!acMap[r.app_key])acMap[r.app_key]=[];acMap[r.app_key].push(r.campus_id);});
+  ADMIN.viewUser.appCampuses=acMap;
   if(S.section==='admin-user'&&S.adminUserId===id)render();
 }
 function pageAdminUser(){
@@ -939,27 +942,53 @@ function pageAdminUser(){
     '<button class="btn-primary" id="paReset" style="margin-top:18px">Email a password reset link</button>'+
     '<div id="paResetNote" style="font-size:12.5px;color:var(--text2);margin-top:10px"></div>'+
     '</div></div>'+
-    '<h2 style="margin-top:28px">Campuses</h2>'+
-    '<p class="sub" style="margin:0 0 12px;max-width:620px">'+(globalRole==='admin'?'Admins see every campus regardless of what\'s checked here.':'Select every campus '+esc(nm.split(' ')[0]||'this person')+' should have access to — more than one is fine.')+'</p>'+
-    paCampusPicker(vu.campusIds||[],globalRole==='admin')+
-    '<h2 style="margin-top:28px">App access</h2>'+
-    '<p class="sub" style="margin:0 0 12px;max-width:620px">'+(globalRole==='admin'?'Admins reach every app regardless of what\'s checked here.':'Uncheck an app to shut off '+esc(nm.split(' ')[0]||'this person')+"'s access to it entirely. Checked apps expand below with the specific things they can do inside.")+'</p>'+
-    paAppAccessGrid(globalRole,vu.roleOverrides||[],vu.perms||[])+
-    '<h2 style="margin-top:28px">Per-app permissions</h2>'+
-    '<p class="sub" style="margin:0 0 12px;max-width:620px">Only apps checked above show up here. Everything defaults to '+esc(cap(globalRole))+"'s normal access — change anything below to set an exception just for "+esc(nm.split(' ')[0]||'this person')+'.</p>'+
-    paPermsBlocks(globalRole,vu.roleOverrides||[],vu.perms||[])+
+    '<h2 style="margin-top:28px">Permissions</h2>'+
+    paPermissionsSection(globalRole,vu.roleOverrides||[],vu.perms||[],vu.appCampuses||{})+
     '<div id="paPermNote" style="font-size:12.5px;color:var(--text2);margin-top:10px"></div>';
 }
-function paAppAccessGrid(globalRole,roleOverrides,permOverrides){
+function paPermissionsSection(globalRole,roleOverrides,permOverrides,appCampuses){
   const apps=(ADMIN.apps||[]).slice().sort((a,b)=>a.name.localeCompare(b.name));
+  const campuses=(ADMIN.campuses||[]).slice().sort((a,b)=>a.name.localeCompare(b.name));
   const isAdmin=globalRole==='admin';
-  return '<div class="pa-card" style="display:flex;flex-wrap:wrap;gap:10px 22px;padding:16px">'+
-    apps.map(a=>{
-      const ro=roleOverrides.find(x=>x.app_key===a.key);
-      const on=isAdmin||appHasAccess(a.key,globalRole,ro?ro.role_override:null,permOverrides);
-      return '<label style="display:flex;align-items:center;gap:7px;font-size:13.5px'+(isAdmin?';color:var(--text2)':'')+'"><input type="checkbox" data-app-access data-app="'+esc(a.key)+'" '+(on?'checked':'')+' '+(isAdmin?'disabled':'')+'>'+esc(a.name)+'</label>';
-    }).join('')+
+  const lbl='font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text2);margin-bottom:8px';
+  return apps.map(a=>{
+    const ro=roleOverrides.find(x=>x.app_key===a.key);
+    const on=isAdmin||appHasAccess(a.key,globalRole,ro?ro.role_override:null,permOverrides);
+    const perms=effectiveAppPerms(a.key,globalRole,ro?ro.role_override:null,permOverrides);
+    const acIds=(appCampuses[a.key]||[]);
+    return '<div class="pa-card" data-app-block="'+esc(a.key)+'" style="margin-bottom:12px;padding:14px 16px">'+
+      '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px">'+
+        '<strong style="font-size:14.5px">'+esc(a.name)+'</strong>'+
+        '<label style="display:flex;align-items:center;gap:7px;font-size:13px;color:var(--text2)">Access'+
+          '<select data-app-access data-app="'+esc(a.key)+'"'+(isAdmin?' disabled':'')+' style="font-size:13px">'+
+            '<option value="yes"'+(on?' selected':'')+'>Yes</option>'+
+            '<option value="no"'+(!on?' selected':'')+'>No</option>'+
+          '</select>'+
+        '</label>'+
+      '</div>'+
+      (on?
+        '<div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">'+
+          (campuses.length?
+            '<div style="margin-bottom:14px"><div style="'+lbl+'">Campuses</div>'+
+            '<div style="display:flex;flex-wrap:wrap;gap:8px 20px">'+
+              campuses.map(c=>{
+                const chk=isAdmin||acIds.includes(c.id);
+                return '<label style="display:flex;align-items:center;gap:6px;font-size:13.5px'+(isAdmin?';color:var(--text2)':'')+'"><input type="checkbox" data-app-campus-cb data-app="'+esc(a.key)+'" value="'+esc(c.id)+'" '+(chk?'checked':'')+' '+(isAdmin?'disabled':'')+'>'+esc(c.name)+'</label>';
+              }).join('')+
+            '</div></div>'
+          :'')+
+          (perms.length?
+            '<div><div style="'+lbl+'">Permissions</div>'+
+            '<div style="display:flex;flex-wrap:wrap;gap:8px 20px">'+
+              perms.map(p=>'<label style="display:flex;align-items:center;gap:7px;font-size:13.5px"><input type="checkbox" data-perm data-app="'+esc(a.key)+'" data-perm-key="'+esc(p.perm_key)+'" '+(p.granted?'checked':'')+'>'+esc(p.label)+'</label>').join('')+
+            '</div></div>'
+          :'')+
+        '</div>'
+      :
+        '<div style="margin-top:8px;font-size:13px;color:var(--text2)">No access.</div>'
+      )+
     '</div>';
+  }).join('');
 }
 async function paSetAppAccess(userId,appKey,on){
   const note=document.getElementById('paPermNote');
@@ -1037,6 +1066,25 @@ async function paSaveCampuses(userId){
   await sb.from('profiles').update({campus_id:ids[0]||null}).eq('id',userId);
   ADMIN.viewUser.campusIds=ids;
   const p=ADMIN.profs.find(x=>x.id===userId);if(p)p.campus_id=ids[0]||null;
+  if(note)note.textContent='Saved.';
+}
+async function paSaveAppCampuses(userId,appKey){
+  const boxes=[...document.querySelectorAll('[data-app-campus-cb][data-app="'+appKey+'"]')];
+  const ids=boxes.filter(b=>b.checked).map(b=>b.value);
+  const note=document.getElementById('paPermNote');
+  const {error:delErr}=await sb.from('user_app_campuses').delete().eq('user_id',userId).eq('app_key',appKey);
+  if(delErr){if(note)note.textContent="Couldn't save — "+delErr.message;return;}
+  if(ids.length){
+    const {error:insErr}=await sb.from('user_app_campuses').insert(ids.map(campus_id=>({user_id:userId,app_key:appKey,campus_id})));
+    if(insErr){if(note)note.textContent="Couldn't save — "+insErr.message;return;}
+  }
+  if(!ADMIN.viewUser.appCampuses)ADMIN.viewUser.appCampuses={};
+  ADMIN.viewUser.appCampuses[appKey]=ids;
+  // Keep user_campuses in sync (union of all app campus sets, for RLS)
+  const allIds=[...new Set(Object.values(ADMIN.viewUser.appCampuses).flat())];
+  await sb.from('user_campuses').delete().eq('user_id',userId);
+  if(allIds.length)await sb.from('user_campuses').insert(allIds.map(campus_id=>({user_id:userId,campus_id})));
+  ADMIN.viewUser.campusIds=allIds;
   if(note)note.textContent='Saved.';
 }
 async function paSaveRoleOverride(userId,appKey,role){
@@ -1443,10 +1491,10 @@ document.addEventListener('change',e=>{
   if(roleSel){ paSaveRoleOverride(S.adminUserId,roleSel.dataset.app,roleSel.value||null); return; }
   const permCb=e.target.closest('[data-perm]');
   if(permCb){ paTogglePerm(S.adminUserId,permCb.dataset.app,permCb.dataset.permKey,permCb.checked); return; }
-  const appAccessCb=e.target.closest('[data-app-access]');
-  if(appAccessCb){ paSetAppAccess(S.adminUserId,appAccessCb.dataset.app,appAccessCb.checked); return; }
-  const campusCb=e.target.closest('[data-campus-cb]');
-  if(campusCb){ paSaveCampuses(S.adminUserId); return; }
+  const appAccessSel=e.target.closest('[data-app-access]');
+  if(appAccessSel){ paSetAppAccess(S.adminUserId,appAccessSel.dataset.app,appAccessSel.value==='yes'); return; }
+  const appCampusCb=e.target.closest('[data-app-campus-cb]');
+  if(appCampusCb){ paSaveAppCampuses(S.adminUserId,appCampusCb.dataset.app); return; }
 });
 document.getElementById('scrim').addEventListener('click',closeDrawer);
 document.getElementById('drawerClose').addEventListener('click',closeDrawer);
