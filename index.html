@@ -843,7 +843,7 @@ function pageAdmin(){
     '<div id="paNote" class="banner" style="display:none"></div>'+
     '<div class="pa-card"><table class="pa-table"><thead><tr><th>Name</th><th>Role</th><th>Campus</th></tr></thead><tbody>'+
     (rows.length?rows.map(p=>'<tr>'+
-      '<td><button class="pa-eye" data-user="'+esc(p.id)+'" title="View profile">'+ic('info')+'</button><span style="font-weight:500">'+esc(adminName(p))+'</span>'+
+      '<td><button class="pa-eye" data-user="'+esc(p.id)+'" style="font-weight:500;text-align:left;font-size:inherit;font-family:inherit;padding:0;color:inherit;text-decoration:none">'+esc(adminName(p))+'</button>'+
       (ME.email&&p.full_name===ME.email?' <span style="color:var(--text2);font-size:11.5px">(you)</span>':'')+'</td>'+
       '<td>'+roleSel(p)+'</td><td>'+campusSel(p)+'</td></tr>').join('')
       :'<tr><td colspan="3" style="color:var(--text2)">No users match.</td></tr>')+
