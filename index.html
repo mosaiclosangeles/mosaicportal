@@ -937,6 +937,8 @@ function pageAdminUser(){
     '<div class="ecard" style="margin-top:16px"><div>'+
     '<div class="kv"><span>Role</span><span><select data-global-role data-id="'+esc(id)+'">'+ROLE_LIST.map(r=>'<option value="'+r+'"'+(r===globalRole?' selected':'')+'>'+cap(r)+'</option>').join('')+'</select></span></div>'+
     '<div id="paRoleNote" style="font-size:12.5px;color:var(--text2);margin-top:-8px;margin-bottom:8px"></div>'+
+    '<div class="kv"><span>Main campus</span><span><select data-main-campus data-id="'+esc(id)+'">'+'<option value="">No campus</option>'+(ADMIN.campuses||[]).slice().sort((a,b)=>a.name.localeCompare(b.name)).map(c=>'<option value="'+esc(c.id)+'"'+((p.campus_id||u.campus_id)===c.id?' selected':'')+'>'+esc(c.name)+'</option>').join('')+'</select></span></div>'+
+    '<div id="paCampusNote2" style="font-size:12.5px;color:var(--text2);margin-top:-8px;margin-bottom:8px"></div>'+
     '<div class="kv" style="border-bottom:0"><span>Joined</span><span>'+esc(fdt(u.created_at))+'</span></div>'+
     '<div class="kv" style="border-bottom:0"><span>Last active</span><span>'+esc(u.last_sign_in_at?fdt(u.last_sign_in_at):'Never signed in')+'</span></div>'+
     '<button class="btn-primary" id="paReset" style="margin-top:18px">Email a password reset link</button>'+
@@ -1487,6 +1489,14 @@ document.addEventListener('change',e=>{
   if(S.section!=='admin-user')return;
   const globalRoleSel=e.target.closest('[data-global-role]');
   if(globalRoleSel){ paSaveGlobalRole(globalRoleSel.dataset.id,globalRoleSel.value); return; }
+  const mainCampusSel=e.target.closest('[data-main-campus]');
+  if(mainCampusSel){
+    paSaveCampus(mainCampusSel.dataset.id,mainCampusSel.value||null).then(r=>{
+      const n=document.getElementById('paCampusNote2');
+      if(n)n.textContent=r===false?'':typeof r==='string'?r:'Saved.';
+    });
+    return;
+  }
   const roleSel=e.target.closest('[data-app-role-override]');
   if(roleSel){ paSaveRoleOverride(S.adminUserId,roleSel.dataset.app,roleSel.value||null); return; }
   const permCb=e.target.closest('[data-perm]');
