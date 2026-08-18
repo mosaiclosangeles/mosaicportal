@@ -974,6 +974,26 @@ function pageAdminUser(){
     paPermissionsSection(globalRole,vu.roleOverrides||[],vu.perms||[],vu.appCampuses||{},p.campus_id||null)+
     '<div id="paPermNote" style="font-size:12.5px;color:var(--text2);margin-top:10px"></div>';
 }
+function campusPicker(appKey,selectedIds,allCampuses,isAdmin){
+  const sel=allCampuses.filter(c=>selectedIds.includes(c.id));
+  const avail=allCampuses.filter(c=>!selectedIds.includes(c.id));
+  const chips=sel.length
+    ? sel.map(c=>
+        '<span style="display:inline-flex;align-items:center;gap:5px;background:var(--fill);border:1px solid var(--border);border-radius:20px;padding:3px 10px 3px 12px;font-size:13px">'+
+          esc(c.name)+
+          (isAdmin?'':
+            '<button data-rm-campus data-app="'+esc(appKey)+'" data-cid="'+esc(c.id)+'" style="line-height:1;font-size:15px;color:var(--text2);padding:0 0 0 2px" title="Remove">×</button>')+
+        '</span>'
+      ).join('')
+    : '<span style="font-size:13px;color:var(--text2)">None</span>';
+  const addSel=(!isAdmin&&avail.length)
+    ? '<select data-add-campus data-app="'+esc(appKey)+'" style="font-size:13px;color:var(--text2);border:1px dashed var(--border);border-radius:20px;padding:3px 10px;background:none;cursor:pointer">'+
+        '<option value="">+ Add campus</option>'+
+        avail.map(c=>'<option value="'+esc(c.id)+'">'+esc(c.name)+'</option>').join('')+
+      '</select>'
+    : '';
+  return '<div data-campus-block data-app="'+esc(appKey)+'" style="display:flex;flex-wrap:wrap;gap:7px;align-items:center">'+chips+addSel+'</div>';
+}
 function paPermissionsSection(globalRole,roleOverrides,permOverrides,appCampuses,mainCampusId){
   const apps=(ADMIN.apps||[]).slice().sort((a,b)=>a.name.localeCompare(b.name));
   const campuses=(ADMIN.campuses||[]).slice().sort((a,b)=>a.name.localeCompare(b.name));
@@ -999,12 +1019,8 @@ function paPermissionsSection(globalRole,roleOverrides,permOverrides,appCampuses
         '<div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">'+
           (campuses.length?
             '<div style="margin-bottom:14px"><div style="'+lbl+'">Campuses</div>'+
-            '<div style="display:flex;flex-wrap:wrap;gap:8px 20px">'+
-              campuses.map(c=>{
-                const chk=isAdmin||acIds.includes(c.id);
-                return '<label style="display:flex;align-items:center;gap:6px;font-size:13.5px'+(isAdmin?';color:var(--text2)':'')+'"><input type="checkbox" data-app-campus-cb data-app="'+esc(a.key)+'" value="'+esc(c.id)+'" '+(chk?'checked':'')+' '+(isAdmin?'disabled':'')+'>'+esc(c.name)+'</label>';
-              }).join('')+
-            '</div></div>'
+            campusPicker(a.key,acIds,campuses,isAdmin)+
+            '</div>'
           :'')+
           (perms.length?
             '<div><div style="'+lbl+'">Permissions</div>'+
@@ -1097,15 +1113,13 @@ async function paSaveCampuses(userId){
   const p=ADMIN.profs.find(x=>x.id===userId);if(p)p.campus_id=ids[0]||null;
   if(note)note.textContent='Saved.';
 }
-async function paSaveAppCampuses(userId,appKey){
-  const boxes=[...document.querySelectorAll('[data-app-campus-cb][data-app="'+appKey+'"]')];
-  const ids=boxes.filter(b=>b.checked).map(b=>b.value);
+async function paSaveAppCampuses(userId,appKey,ids){
   const note=document.getElementById('paPermNote');
   const {error:delErr}=await sb.from('user_app_campuses').delete().eq('user_id',userId).eq('app_key',appKey);
-  if(delErr){if(note)note.textContent="Couldn't save — "+delErr.message;return;}
+  if(delErr){if(note)note.textContent="Couldn't save — "+delErr.message;return false;}
   if(ids.length){
     const {error:insErr}=await sb.from('user_app_campuses').insert(ids.map(campus_id=>({user_id:userId,app_key:appKey,campus_id})));
-    if(insErr){if(note)note.textContent="Couldn't save — "+insErr.message;return;}
+    if(insErr){if(note)note.textContent="Couldn't save — "+insErr.message;return false;}
   }
   if(!ADMIN.viewUser.appCampuses)ADMIN.viewUser.appCampuses={};
   ADMIN.viewUser.appCampuses[appKey]=ids;
@@ -1115,6 +1129,16 @@ async function paSaveAppCampuses(userId,appKey){
   if(allIds.length)await sb.from('user_campuses').insert(allIds.map(campus_id=>({user_id:userId,campus_id})));
   ADMIN.viewUser.campusIds=allIds;
   if(note)note.textContent='Saved.';
+  return true;
+}
+function paRefreshCampusBlock(appKey){
+  const block=document.querySelector('[data-campus-block][data-app="'+appKey+'"]');
+  if(!block)return;
+  const vu=ADMIN.viewUser;
+  const campuses=(ADMIN.campuses||[]).slice().sort((a,b)=>a.name.localeCompare(b.name));
+  const ids=(vu.appCampuses||{})[appKey]||[];
+  const isAdmin=(vu.u?.role||'volunteer')==='admin';
+  block.outerHTML=campusPicker(appKey,ids,campuses,isAdmin);
 }
 async function paSaveRoleOverride(userId,appKey,role){
   const note=document.getElementById('paPermNote');
@@ -1459,7 +1483,7 @@ function render(){
 
 /* ============================ events ============================ */
 document.addEventListener('click',e=>{
-  const t=e.target.closest('[data-go],[data-view],[data-nav],[data-filter],[data-ev],[data-day],[data-task],[data-new],[data-pick],[data-everyone],[data-tl],[data-back],[data-logout],[data-preview],[data-profile],[data-newuser],[data-user],[data-adtab],[data-app-reset],[data-pf-save],[data-pf-reset],[data-pf-avatar],[data-pa-avatar]');
+  const t=e.target.closest('[data-go],[data-view],[data-nav],[data-filter],[data-ev],[data-day],[data-task],[data-new],[data-pick],[data-everyone],[data-tl],[data-back],[data-logout],[data-preview],[data-profile],[data-newuser],[data-user],[data-adtab],[data-app-reset],[data-pf-save],[data-pf-reset],[data-pf-avatar],[data-pa-avatar],[data-rm-campus]');
   if(!t) return;
   if(t.dataset.logout){ (sb?sb.auth.signOut():Promise.resolve()).then(()=>location.reload()); return; }
   if(t.dataset.preview){
@@ -1521,6 +1545,13 @@ document.addEventListener('click',e=>{
   }
   if(t.dataset.pfAvatar){ document.getElementById('pfAvatarInput')?.click(); return; }
   if(t.dataset.paAvatar){ document.getElementById('paAvatarInput')?.click(); return; }
+  if(t.dataset.rmCampus){
+    const appKey=t.dataset.app,cid=t.dataset.cid;
+    const cur=(ADMIN.viewUser.appCampuses||{})[appKey]||[];
+    const ids=cur.filter(x=>x!==cid);
+    paSaveAppCampuses(S.adminUserId,appKey,ids).then(ok=>{if(ok)paRefreshCampusBlock(appKey);});
+    return;
+  }
   if(t.dataset.day){ dayDrawer(t.dataset.day); return; }
   if(t.dataset.new){ newDrawer(); return; }
   if(t.dataset.task){
@@ -1547,8 +1578,18 @@ document.addEventListener('change',e=>{
   if(permCb){ paTogglePerm(S.adminUserId,permCb.dataset.app,permCb.dataset.permKey,permCb.checked); return; }
   const appAccessSel=e.target.closest('[data-app-access]');
   if(appAccessSel){ paSetAppAccess(S.adminUserId,appAccessSel.dataset.app,appAccessSel.value==='yes'); return; }
-  const appCampusCb=e.target.closest('[data-app-campus-cb]');
-  if(appCampusCb){ paSaveAppCampuses(S.adminUserId,appCampusCb.dataset.app); return; }
+  const addCampusSel=e.target.closest('[data-add-campus]');
+  if(addCampusSel){
+    const appKey=addCampusSel.dataset.app,cid=addCampusSel.value;
+    if(!cid)return;
+    addCampusSel.value='';
+    const cur=(ADMIN.viewUser.appCampuses||{})[appKey]||[];
+    if(!cur.includes(cid)){
+      const ids=[...cur,cid];
+      paSaveAppCampuses(S.adminUserId,appKey,ids).then(ok=>{if(ok)paRefreshCampusBlock(appKey);});
+    }
+    return;
+  }
 });
 document.getElementById('scrim').addEventListener('click',closeDrawer);
 document.getElementById('drawerClose').addEventListener('click',closeDrawer);
