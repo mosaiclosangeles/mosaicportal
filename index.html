@@ -756,6 +756,12 @@ function effectiveAppPerms(appKey,globalRole,roleOverride,permOverrides){
   });
 }
 function campusName(id){const c=(ADMIN.campuses||[]).find(x=>x.id===id);return c?c.name:'—';}
+function appHasAccess(appKey,globalRole,roleOverride,permOverrides){
+  return effectiveAppPerms(appKey,globalRole,roleOverride,permOverrides).some(p=>p.granted);
+}
+function roleDefaultHasAny(appKey,role){
+  return (ADMIN.appDefaults||[]).some(d=>d.role===role&&d.app_key===appKey&&d.granted);
+}
 /* Roles & permissions — Paola's reference matrix from the Metrics admin,
    adapted to the portal: what each role can reach across the whole app,
    not just Metrics. Reference only; the rules themselves are enforced by
@@ -936,10 +942,56 @@ function pageAdminUser(){
     '<h2 style="margin-top:28px">Campuses</h2>'+
     '<p class="sub" style="margin:0 0 12px;max-width:620px">'+(globalRole==='admin'?'Admins see every campus regardless of what\'s checked here.':'Select every campus '+esc(nm.split(' ')[0]||'this person')+' should have access to — more than one is fine.')+'</p>'+
     paCampusPicker(vu.campusIds||[],globalRole==='admin')+
+    '<h2 style="margin-top:28px">App access</h2>'+
+    '<p class="sub" style="margin:0 0 12px;max-width:620px">'+(globalRole==='admin'?'Admins reach every app regardless of what\'s checked here.':'Uncheck an app to shut off '+esc(nm.split(' ')[0]||'this person')+"'s access to it entirely. Checked apps expand below with the specific things they can do inside.")+'</p>'+
+    paAppAccessGrid(globalRole,vu.roleOverrides||[],vu.perms||[])+
     '<h2 style="margin-top:28px">Per-app permissions</h2>'+
-    '<p class="sub" style="margin:0 0 12px;max-width:620px">Every app defaults to '+esc(cap(globalRole))+"'s normal access. Change anything below to set an exception just for "+esc(nm.split(' ')[0]||'this person')+' — everything else keeps following the global role.</p>'+
+    '<p class="sub" style="margin:0 0 12px;max-width:620px">Only apps checked above show up here. Everything defaults to '+esc(cap(globalRole))+"'s normal access — change anything below to set an exception just for "+esc(nm.split(' ')[0]||'this person')+'.</p>'+
     paPermsBlocks(globalRole,vu.roleOverrides||[],vu.perms||[])+
     '<div id="paPermNote" style="font-size:12.5px;color:var(--text2);margin-top:10px"></div>';
+}
+function paAppAccessGrid(globalRole,roleOverrides,permOverrides){
+  const apps=(ADMIN.apps||[]).slice().sort((a,b)=>a.name.localeCompare(b.name));
+  const isAdmin=globalRole==='admin';
+  return '<div class="pa-card" style="display:flex;flex-wrap:wrap;gap:10px 22px;padding:16px">'+
+    apps.map(a=>{
+      const ro=roleOverrides.find(x=>x.app_key===a.key);
+      const on=isAdmin||appHasAccess(a.key,globalRole,ro?ro.role_override:null,permOverrides);
+      return '<label style="display:flex;align-items:center;gap:7px;font-size:13.5px'+(isAdmin?';color:var(--text2)':'')+'"><input type="checkbox" data-app-access data-app="'+esc(a.key)+'" '+(on?'checked':'')+' '+(isAdmin?'disabled':'')+'>'+esc(a.name)+'</label>';
+    }).join('')+
+    '</div>';
+}
+async function paSetAppAccess(userId,appKey,on){
+  const note=document.getElementById('paPermNote');
+  const perms=(ADMIN.appPerms||[]).filter(p=>p.app_key===appKey);
+  if(!on){
+    // Turning an app off is an explicit denial of everything in it, regardless
+    // of what the role would otherwise grant — this is the "master switch."
+    const rows=perms.map(p=>({user_id:userId,app_key:appKey,perm_key:p.perm_key,granted:false}));
+    const {error}=await sb.from('section_permissions').upsert(rows,{onConflict:'user_id,app_key,perm_key'});
+    if(error){if(note)note.textContent="Couldn't save — "+error.message;return;}
+    let cur=(ADMIN.viewUser.perms||[]).filter(x=>x.app_key!==appKey);
+    ADMIN.viewUser.perms=cur.concat(rows.map(r=>({app_key:r.app_key,perm_key:r.perm_key,granted:false})));
+  }else{
+    const p=ADMIN.profs.find(x=>x.id===userId)||{};
+    const globalRole=p.role||'volunteer';
+    const ro=(ADMIN.viewUser.roleOverrides||[]).find(x=>x.app_key===appKey);
+    const effRole=(ro&&ro.role_override)||globalRole;
+    if(roleDefaultHasAny(appKey,effRole)){
+      // The role already grants something here — just clear any denial.
+      await paResetApp(userId,appKey,true);
+    }else{
+      // The role grants nothing for this app at all — turning it on means
+      // a real exception, so grant everything explicitly.
+      const rows=perms.map(p=>({user_id:userId,app_key:appKey,perm_key:p.perm_key,granted:true}));
+      const {error}=await sb.from('section_permissions').upsert(rows,{onConflict:'user_id,app_key,perm_key'});
+      if(error){if(note)note.textContent="Couldn't save — "+error.message;return;}
+      let cur=(ADMIN.viewUser.perms||[]).filter(x=>x.app_key!==appKey);
+      ADMIN.viewUser.perms=cur.concat(rows.map(r=>({app_key:r.app_key,perm_key:r.perm_key,granted:true})));
+    }
+  }
+  render();
+  const n2=document.getElementById('paPermNote');if(n2)n2.textContent='Saved.';
 }
 function paCampusPicker(selectedIds,isAdmin){
   const campuses=(ADMIN.campuses||[]).slice().sort((a,b)=>a.name.localeCompare(b.name));
@@ -955,6 +1007,7 @@ function paPermsBlocks(globalRole,roleOverrides,permOverrides){
     const roleForApp=(ro&&ro.role_override)||globalRole;
     const perms=effectiveAppPerms(a.key,globalRole,ro?ro.role_override:null,permOverrides);
     if(!perms.length)return '';
+    if(globalRole!=='admin'&&!perms.some(p=>p.granted))return '';
     const anyOverride=!!ro||perms.some(p=>p.overridden);
     return '<div class="pa-card" data-app-block="'+esc(a.key)+'" style="margin-bottom:12px;padding:14px 16px">'+
       '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px">'+
@@ -1390,6 +1443,8 @@ document.addEventListener('change',e=>{
   if(roleSel){ paSaveRoleOverride(S.adminUserId,roleSel.dataset.app,roleSel.value||null); return; }
   const permCb=e.target.closest('[data-perm]');
   if(permCb){ paTogglePerm(S.adminUserId,permCb.dataset.app,permCb.dataset.permKey,permCb.checked); return; }
+  const appAccessCb=e.target.closest('[data-app-access]');
+  if(appAccessCb){ paSetAppAccess(S.adminUserId,appAccessCb.dataset.app,appAccessCb.checked); return; }
   const campusCb=e.target.closest('[data-campus-cb]');
   if(campusCb){ paSaveCampuses(S.adminUserId); return; }
 });
