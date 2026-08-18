@@ -945,10 +945,10 @@ function pageAdminUser(){
     '<div id="paResetNote" style="font-size:12.5px;color:var(--text2);margin-top:10px"></div>'+
     '</div></div>'+
     '<h2 style="margin-top:28px">Permissions</h2>'+
-    paPermissionsSection(globalRole,vu.roleOverrides||[],vu.perms||[],vu.appCampuses||{})+
+    paPermissionsSection(globalRole,vu.roleOverrides||[],vu.perms||[],vu.appCampuses||{},p.campus_id||null)+
     '<div id="paPermNote" style="font-size:12.5px;color:var(--text2);margin-top:10px"></div>';
 }
-function paPermissionsSection(globalRole,roleOverrides,permOverrides,appCampuses){
+function paPermissionsSection(globalRole,roleOverrides,permOverrides,appCampuses,mainCampusId){
   const apps=(ADMIN.apps||[]).slice().sort((a,b)=>a.name.localeCompare(b.name));
   const campuses=(ADMIN.campuses||[]).slice().sort((a,b)=>a.name.localeCompare(b.name));
   const isAdmin=globalRole==='admin';
@@ -957,7 +957,8 @@ function paPermissionsSection(globalRole,roleOverrides,permOverrides,appCampuses
     const ro=roleOverrides.find(x=>x.app_key===a.key);
     const on=isAdmin||appHasAccess(a.key,globalRole,ro?ro.role_override:null,permOverrides);
     const perms=effectiveAppPerms(a.key,globalRole,ro?ro.role_override:null,permOverrides);
-    const acIds=(appCampuses[a.key]||[]);
+    // Use saved per-app campuses if present; otherwise fall back to main campus
+    const acIds=appCampuses.hasOwnProperty(a.key)?appCampuses[a.key]:(mainCampusId?[mainCampusId]:[]);
     return '<div class="pa-card" data-app-block="'+esc(a.key)+'" style="margin-bottom:12px;padding:14px 16px">'+
       '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px">'+
         '<strong style="font-size:14.5px">'+esc(a.name)+'</strong>'+
