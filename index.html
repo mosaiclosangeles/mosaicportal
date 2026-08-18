@@ -946,30 +946,37 @@ function pageAdminUser(){
   const fdt=ts=>{if(!ts)return '—';const d=new Date(ts);return isNaN(d)?'—':d.toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'});};
   const initials=nm.split(' ').map(w=>w[0]||'').slice(0,2).join('').toUpperCase();
   const avatarInnerAdmin=u.avatar_url
-    ? '<img src="'+esc(u.avatar_url)+'" alt="" style="width:72px;height:72px;border-radius:50%;object-fit:cover;display:block">'
-    : '<div style="width:72px;height:72px;border-radius:50%;background:#4f7fd1;color:#fff;font-size:24px;font-weight:600;display:flex;align-items:center;justify-content:center">'+esc(initials)+'</div>';
-  const avatarHtml='<input type="file" id="paAvatarInput" accept="image/*" style="display:none" data-uid="'+esc(id)+'">'+
+    ? '<img src="'+esc(u.avatar_url)+'" alt="" style="width:64px;height:64px;border-radius:50%;object-fit:cover;display:block">'
+    : '<div style="width:64px;height:64px;border-radius:50%;background:#4f7fd1;color:#fff;font-size:20px;font-weight:700;display:flex;align-items:center;justify-content:center">'+esc(initials)+'</div>';
+  const avatarWrap='<input type="file" id="paAvatarInput" accept="image/*" style="display:none" data-uid="'+esc(id)+'">'+
     '<div style="position:relative;flex:none;cursor:pointer" data-av-wrap data-pa-avatar="1" title="Change photo">'+
       avatarInnerAdmin+
       '<div style="position:absolute;inset:0;border-radius:50%;background:rgba(0,0,0,.38);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .15s" class="av-overlay">'+
-        '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>'+
+        '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>'+
       '</div>'+
     '</div>';
   return back+
-    '<div style="display:flex;align-items:center;gap:18px;margin-bottom:4px">'+
-      avatarHtml+
-      '<div><h1 style="font-size:26px;margin-bottom:2px">'+esc(nm)+'</h1><div class="sub">'+esc(u.email||'')+'</div></div>'+
+    '<div class="pa-card" style="margin-bottom:20px;overflow:visible">'+
+      '<div style="display:flex;align-items:center;gap:16px;padding:18px 20px">'+
+        avatarWrap+
+        '<div>'+
+          '<div style="font-size:20px;font-weight:700;line-height:1.2;color:inherit">'+esc(nm)+'</div>'+
+          '<div style="font-size:13px;color:var(--text2);margin-top:3px">'+esc(u.email||'')+'</div>'+
+        '</div>'+
+      '</div>'+
+      '<div style="border-top:1px solid var(--separator)">'+
+        '<div class="kv" style="padding:11px 20px"><span>Role</span><span><select data-global-role data-id="'+esc(id)+'">'+ROLE_LIST.map(r=>'<option value="'+r+'"'+(r===globalRole?' selected':'')+'>'+cap(r)+'</option>').join('')+'</select></span></div>'+
+        '<div id="paRoleNote" style="font-size:12.5px;color:var(--text2);padding:0 20px;margin-top:-6px;margin-bottom:6px"></div>'+
+        '<div class="kv" style="padding:11px 20px"><span>Main campus</span><span><select data-main-campus data-id="'+esc(id)+'">'+'<option value="">No campus</option>'+(ADMIN.campuses||[]).slice().sort((a,b)=>a.name.localeCompare(b.name)).map(c=>'<option value="'+esc(c.id)+'"'+((p.campus_id||u.campus_id)===c.id?' selected':'')+'>'+esc(c.name)+'</option>').join('')+'</select></span></div>'+
+        '<div id="paCampusNote2" style="font-size:12.5px;color:var(--text2);padding:0 20px;margin-top:-6px;margin-bottom:6px"></div>'+
+        '<div class="kv" style="padding:11px 20px"><span>Joined</span><span>'+esc(fdt(u.created_at))+'</span></div>'+
+        '<div class="kv" style="padding:11px 20px;border-bottom:0"><span>Last active</span><span>'+esc(u.last_sign_in_at?fdt(u.last_sign_in_at):'Never signed in')+'</span></div>'+
+      '</div>'+
+      '<div style="padding:14px 20px;border-top:1px solid var(--separator)">'+
+        '<button class="btn-primary" id="paReset">Email a password reset link</button>'+
+        '<div id="paResetNote" style="font-size:12.5px;color:var(--text2);margin-top:8px"></div>'+
+      '</div>'+
     '</div>'+
-    '<div class="ecard" style="margin-top:16px"><div>'+
-    '<div class="kv"><span>Role</span><span><select data-global-role data-id="'+esc(id)+'">'+ROLE_LIST.map(r=>'<option value="'+r+'"'+(r===globalRole?' selected':'')+'>'+cap(r)+'</option>').join('')+'</select></span></div>'+
-    '<div id="paRoleNote" style="font-size:12.5px;color:var(--text2);margin-top:-8px;margin-bottom:8px"></div>'+
-    '<div class="kv"><span>Main campus</span><span><select data-main-campus data-id="'+esc(id)+'">'+'<option value="">No campus</option>'+(ADMIN.campuses||[]).slice().sort((a,b)=>a.name.localeCompare(b.name)).map(c=>'<option value="'+esc(c.id)+'"'+((p.campus_id||u.campus_id)===c.id?' selected':'')+'>'+esc(c.name)+'</option>').join('')+'</select></span></div>'+
-    '<div id="paCampusNote2" style="font-size:12.5px;color:var(--text2);margin-top:-8px;margin-bottom:8px"></div>'+
-    '<div class="kv" style="border-bottom:0"><span>Joined</span><span>'+esc(fdt(u.created_at))+'</span></div>'+
-    '<div class="kv" style="border-bottom:0"><span>Last active</span><span>'+esc(u.last_sign_in_at?fdt(u.last_sign_in_at):'Never signed in')+'</span></div>'+
-    '<button class="btn-primary" id="paReset" style="margin-top:18px">Email a password reset link</button>'+
-    '<div id="paResetNote" style="font-size:12.5px;color:var(--text2);margin-top:10px"></div>'+
-    '</div></div>'+
     '<h2 style="margin-top:28px">Permissions</h2>'+
     paPermissionsSection(globalRole,vu.roleOverrides||[],vu.perms||[],vu.appCampuses||{},p.campus_id||null)+
     '<div id="paPermNote" style="font-size:12.5px;color:var(--text2);margin-top:10px"></div>';
