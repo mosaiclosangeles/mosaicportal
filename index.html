@@ -247,7 +247,7 @@ h2{font-size:16px;font-weight:600;letter-spacing:-.015em;margin:0 0 6px}
 /* ---------- drawer ---------- */
 .scrim{position:fixed;inset:0;background:rgba(0,0,0,.18);opacity:0;pointer-events:none;transition:opacity .18s}
 .scrim.open{opacity:1;pointer-events:auto}
-.drawer{position:fixed;top:0;right:0;bottom:0;width:460px;max-width:92vw;background:#fff;
+.drawer{position:fixed;top:0;right:0;bottom:0;width:396px;max-width:92vw;background:#fff;
   border-left:1px solid var(--hairline);transform:translateX(100%);transition:transform .22s ease;
   overflow-y:auto;padding:20px 22px 40px;z-index:2}
 .drawer.open{transform:none}
@@ -1437,6 +1437,7 @@ function render(){
     : S.section==='giving'?pageGiving()
     : S.section==='admin'?pageAdmin()
     : S.section==='admin-user'?pageAdminUser()
+    : S.section==='profile'?pageProfile()
     : pageSettings();
   window.scrollTo(0,0);
   const ps=document.getElementById('paSearch');
@@ -1450,7 +1451,7 @@ function render(){
 
 /* ============================ events ============================ */
 document.addEventListener('click',e=>{
-  const t=e.target.closest('[data-go],[data-view],[data-nav],[data-filter],[data-ev],[data-day],[data-task],[data-new],[data-pick],[data-everyone],[data-tl],[data-back],[data-logout],[data-preview],[data-profile],[data-newuser],[data-user],[data-adtab],[data-app-reset]');
+  const t=e.target.closest('[data-go],[data-view],[data-nav],[data-filter],[data-ev],[data-day],[data-task],[data-new],[data-pick],[data-everyone],[data-tl],[data-back],[data-logout],[data-preview],[data-profile],[data-newuser],[data-user],[data-adtab],[data-app-reset],[data-pf-save],[data-pf-reset]');
   if(!t) return;
   if(t.dataset.logout){ (sb?sb.auth.signOut():Promise.resolve()).then(()=>location.reload()); return; }
   if(t.dataset.preview){
@@ -1459,7 +1460,7 @@ document.addEventListener('click',e=>{
     if(!ROLES[S.role].sections.includes(S.section))S.section='home';
     umClose(); render(); return;
   }
-  if(t.dataset.profile){ umClose(); profileDrawer(); return; }
+  if(t.dataset.profile){ umClose(); S.from=S.section||'home'; S.section='profile'; render(); return; }
   if(t.dataset.pick){
     const [type,tok]=t.dataset.pick.split('|');
     TYPES[type].hue='var('+tok+')';
@@ -1496,6 +1497,20 @@ document.addEventListener('click',e=>{
     return;
   }
   if(t.dataset.back){ S.section=S.from||'calendar'; render(); return; }
+  if(t.dataset.pfSave){
+    const v=(document.getElementById('pfName')||{}).value?.trim(),n=document.getElementById('pfNote');
+    if(!v){if(n)n.textContent='Please enter a name.';return;}
+    sb.auth.getUser().then(({data:{user}})=>sb.from('profiles').update({display_name:v}).eq('id',user.id)).then(({error})=>{
+      if(error){if(n)n.textContent="Couldn't save — "+(error.message||'try again.');return;}
+      ME.name=v;ADMIN.profs=null;if(n)n.textContent='Name updated.';render();
+    });return;
+  }
+  if(t.dataset.pfReset){
+    const n=document.getElementById('pfNote');
+    sb.auth.resetPasswordForEmail(ME.email,{redirectTo:location.origin+'/'}).then(({error})=>{
+      if(n)n.textContent=error?("Couldn't send — "+(error.message||'try again.')):('Reset link sent to '+ME.email+'.');
+    });return;
+  }
   if(t.dataset.day){ dayDrawer(t.dataset.day); return; }
   if(t.dataset.new){ newDrawer(); return; }
   if(t.dataset.task){
@@ -1642,54 +1657,38 @@ function umHtml(){
       '<button class="um-item" data-preview="1">'+ic("target")+(ME.preview?"Exit staff view":"View as staff")+"</button>":"")+
     '<div class="um-sep"></div><button class="um-item" data-logout="1">'+ic("x")+'Log Out</button>';
 }
-/* Profile — same shape as the Metrics profile page: your account details,
-   an editable name, and a password reset by email. Role and campus are set
-   by an administrator, so they're shown, not editable. */
-async function profileDrawer(){
-  if(!ADMIN.campuses)await loadAdmin().catch(()=>{});
+function pageProfile(){
   const roleLab=ME.role==='admin'?'Admin':cap(ME.role||'');
   const campusLab=ME.role==='admin'?'All campuses':(ME.campus_id?campusName(ME.campus_id):'—');
-  const pfInitials=(ME.name||'?').split(' ').map(w=>w[0]||'').slice(0,2).join('').toUpperCase();
-  const pfAvatar=ME.avatar_url
-    ? '<img src="'+esc(ME.avatar_url)+'" alt="" style="width:48px;height:48px;border-radius:50%;object-fit:cover;flex:none">'
-    : '<div style="width:48px;height:48px;border-radius:50%;background:#4f7fd1;color:#fff;font-size:18px;font-weight:600;display:flex;align-items:center;justify-content:center;flex:none">'+esc(pfInitials)+'</div>';
-  const eyebrow='letter-spacing:.12em;text-transform:uppercase;color:var(--text2);font-size:10.5px;font-weight:700;margin-bottom:14px';
-  openDrawer(
-    '<div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">'+
-      pfAvatar+
-      '<div><div style="font-weight:600;font-size:16px">'+esc(ME.name||'')+'</div>'+
-      '<div style="font-size:13px;color:var(--text2);margin-top:2px">'+esc(ME.email||'')+'</div></div>'+
+  const initials=(ME.name||'?').split(' ').map(w=>w[0]||'').slice(0,2).join('').toUpperCase();
+  const avatar=ME.avatar_url
+    ? '<img src="'+esc(ME.avatar_url)+'" alt="" style="width:64px;height:64px;border-radius:50%;object-fit:cover;flex:none">'
+    : '<div style="width:64px;height:64px;border-radius:50%;background:#4f7fd1;color:#fff;font-size:22px;font-weight:600;display:flex;align-items:center;justify-content:center;flex:none">'+esc(initials)+'</div>';
+  const eyebrow='letter-spacing:.12em;text-transform:uppercase;color:var(--text2);font-size:10.5px;font-weight:700;margin:0 0 16px';
+  return '<div>'+
+    '<div style="display:flex;align-items:center;gap:14px;margin-bottom:28px">'+
+      avatar+
+      '<div><div style="font-size:22px;font-weight:700;line-height:1.2">'+esc(ME.name||'')+'</div>'+
+      '<div style="font-size:13.5px;color:var(--text2);margin-top:3px">'+esc(ME.email||'')+'</div></div>'+
     '</div>'+
-    '<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-start">'+
-      '<div class="pa-card" style="flex:1;min-width:180px;padding:16px 18px">'+
+    '<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start;max-width:700px">'+
+      '<div class="pa-card" style="flex:1;min-width:240px;padding:20px 22px">'+
         '<div style="'+eyebrow+'">Your account</div>'+
-        '<div class="kv"><span>Name</span><span><input id="pfName" class="pa-in" style="width:120px;padding:5px 8px;font-size:13px;text-align:right" value="'+esc(ME.name||'')+'"></span></div>'+
-        '<div class="kv"><span>Email</span><span style="font-size:12.5px;word-break:break-all">'+esc(ME.email||'')+'</span></div>'+
+        '<div class="kv"><span>Name</span><span><input id="pfName" class="pa-in" style="width:160px;padding:6px 9px;font-size:13px;text-align:right" value="'+esc(ME.name||'')+'"></span></div>'+
+        '<div class="kv"><span>Email</span><span style="font-size:13px">'+esc(ME.email||'')+'</span></div>'+
         '<div class="kv"><span>Role</span><span>'+esc(roleLab)+'</span></div>'+
         '<div class="kv" style="border-bottom:0"><span>Campus</span><span>'+esc(campusLab)+'</span></div>'+
-        '<button class="btn-primary" id="pfSaveName" style="margin-top:14px;width:100%">Save name</button>'+
+        '<button class="btn-primary" data-pf-save="1" style="margin-top:16px">Save name</button>'+
         '<p style="font-size:12px;color:var(--text2);margin:10px 0 0;line-height:1.5">Your name is yours to edit. Role and campus are set by an administrator.</p>'+
       '</div>'+
-      '<div class="pa-card" style="flex:1;min-width:180px;padding:16px 18px">'+
+      '<div class="pa-card" style="flex:1;min-width:200px;padding:20px 22px">'+
         '<div style="'+eyebrow+'">Password</div>'+
-        '<p style="font-size:13px;color:var(--text2);margin:0 0 14px;line-height:1.5">We\'ll email you a secure link to set a new password.</p>'+
-        '<button class="btn-primary" id="pfReset">Email me a reset link</button>'+
+        '<p style="font-size:13px;color:var(--text2);margin:0 0 16px;line-height:1.5">We\'ll email you a secure link to set a new password.</p>'+
+        '<button class="btn-primary" data-pf-reset="1">Email me a reset link</button>'+
       '</div>'+
     '</div>'+
-    '<div id="pfNote" style="font-size:12.5px;margin-top:12px;color:var(--text2)"></div>');
-  document.getElementById('pfSaveName').addEventListener('click',async()=>{
-    const v=document.getElementById('pfName').value.trim(),n=document.getElementById('pfNote');
-    if(!v){n.textContent='Please enter a name.';return;}
-    const {data:{user}}=await sb.auth.getUser();
-    const {error}=await sb.from('profiles').update({display_name:v}).eq('id',user.id);
-    if(error){n.textContent="Couldn't save — "+(error.message||'try again.');return;}
-    ME.name=v;ADMIN.profs=null;n.textContent='Name updated.';render();
-  });
-  document.getElementById('pfReset').addEventListener('click',async()=>{
-    const n=document.getElementById('pfNote');
-    const {error}=await sb.auth.resetPasswordForEmail(ME.email,{redirectTo:location.origin+'/'});
-    n.textContent=error?("Couldn't send — "+(error.message||'try again.')):('Reset link sent to '+ME.email+'.');
-  });
+    '<div id="pfNote" style="font-size:12.5px;margin-top:14px;color:var(--text2)"></div>'+
+  '</div>';
 }
 document.querySelector(".rail-foot").addEventListener("click",e=>{
   if(!ME.email)return;
