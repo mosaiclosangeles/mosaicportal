@@ -152,6 +152,9 @@ html.dark .pu-danger{background:transparent;border-color:#5c2a2a;color:#e88b8b}
 .pu-chip button{line-height:1;font-size:14px;color:var(--text2);background:none;border:none;padding:0 0 0 2px;cursor:pointer;font-family:inherit}
 .pu-chip button:hover{color:var(--text)}
 .pu-chip-none{font-size:12.5px;color:var(--text2)}
+.pu-chip-main{background:var(--gathering-t);border-color:var(--gathering)}
+.pu-chip-tag{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--gathering-d);margin-left:3px}
+html.dark .pu-chip-main{background:var(--fill);border-color:var(--gathering)}
 .pu-addcampus{font-size:12.5px;color:var(--text2);border:1px dashed var(--hairline);border-radius:999px;padding:3px 9px;background:none;cursor:pointer;font-family:inherit}
 html.dark .pu-chip,html.dark .pu-addcampus{background:var(--fill);border-color:var(--separator);color:var(--text2)}
 html.dark .pa-pill{background:var(--fill);color:var(--text2)}
@@ -1267,6 +1270,31 @@ function pageAdmin(){
       '</tbody></table></div>':'')+
     '<p style="font-size:12.5px;color:var(--text2);margin-top:14px;max-width:620px;line-height:1.5">Changing a role or campus here applies everywhere the Mosaic account is used — the portal, Metrics, and anything added later. Campus applies to staff, leaders and volunteers; admins see all campuses.</p>';
 }
+/* Which campuses this person can see: a chip each, with their main campus
+   marked and not removable - it comes from the Main campus field above, so
+   taking it away here would just contradict that. "Add campus" offers the
+   rest. Admins see everything, so they get a plain statement instead. */
+function campusChips(selectedIds,allCampuses,mainId,isAdminUser){
+  if(isAdminUser)return '<div class="pu-campuses" data-campuschips><span class="pu-chip-none">Every campus</span></div>';
+  const cams=allCampuses.slice().sort((a,b)=>a.name.localeCompare(b.name));
+  const ids=selectedIds&&selectedIds.length?selectedIds.slice():(mainId?[mainId]:[]);
+  const sel=cams.filter(c=>ids.includes(c.id));
+  const avail=cams.filter(c=>!ids.includes(c.id));
+  const chips=sel.length
+    ? sel.map(c=>'<span class="pu-chip'+(c.id===mainId?' pu-chip-main':'')+'">'+esc(c.name)+
+        (c.id===mainId
+          ? '<span class="pu-chip-tag">main</span>'
+          : '<button type="button" data-rmcampusall data-cid="'+esc(c.id)+'" aria-label="Remove '+esc(c.name)+'">×</button>')+
+      '</span>').join('')
+    : '<span class="pu-chip-none">No campus yet</span>';
+  const add=avail.length
+    ? '<select class="pu-addcampus" data-addcampusall>'+
+        '<option value="">+ Add campus</option>'+
+        avail.map(c=>'<option value="'+esc(c.id)+'">'+esc(c.name)+'</option>').join('')+
+      '</select>'
+    : '';
+  return '<div class="pu-campuses" data-campuschips>'+chips+add+'</div>';
+}
 /* The campuses a person can see inside one app: chips for the ones they have,
    a dropdown to add another. Hidden until the app itself is ticked, and never
    shown for admins — they see every campus everywhere. */
@@ -1337,6 +1365,10 @@ async function paUserPage(id){
      campus everywhere, so they get no picker. */
   const {data:uacRows}=await sb.from('user_app_campuses').select('app_key,campus_id').eq('user_id',id);
   const appCampuses={};(uacRows||[]).forEach(r=>{(appCampuses[r.app_key]=appCampuses[r.app_key]||[]).push(r.campus_id);});
+  /* The campus chips are the source of truth for Campus access; Save reads
+     this rather than the DOM, so nothing depends on a checkbox that is no
+     longer there. Defaults to their main campus when nothing is set. */
+  let campusIds=(cams&&cams.length)?cams.slice():(p.campus_id?[p.campus_id]:[]);
   const roleOpts=ROLE_LIST.map(r=>'<option value="'+r+'"'+(r===p.role?' selected':'')+'>'+cap(r)+'</option>').join('');
   const camOpts='<option value="">Select a campus</option>'+(ADMIN.campuses||[]).map(c=>'<option value="'+esc(c.id)+'"'+(c.id===p.campus_id?' selected':'')+'>'+esc(c.name)+'</option>').join('');
   const lastActive=u&&u.last_sign_in_at;
@@ -1377,11 +1409,10 @@ async function paUserPage(id){
       '<strong>Turning an app off takes effect straight away.</strong> The campus choice is saved here but the apps don\'t read it yet, so it doesn\'t limit what anyone can see — treat it as a note of what you intend, not a restriction that\'s in place.</p>'+
 
     '<div class="pu-sec">Campus access</div>'+
-    '<div class="pu-grid">'+(ADMIN.campuses||[]).map(c=>
-      '<label class="pu-check"><input type="checkbox" data-campus="'+esc(c.id)+'"'+(cams.includes(c.id)?' checked':'')+'>'+
-      '<span>'+esc(c.name)+'</span></label>').join('')+
-    '</div>'+
-    '<p class="pu-note">Which campuses this person can see. Leave every box ticked for someone who works across all of them.</p>'+
+    campusChips(campusIds,ADMIN.campuses||[],p.campus_id,isAdminUser)+
+    '<p class="pu-note">'+(isAdminUser
+      ? 'Admins see every campus, so there is nothing to choose here.'
+      : 'Their main campus is here by default. Add another for someone who works across more than one.')+'</p>'+
 
     '<div style="display:flex;gap:10px;align-items:center;margin-top:20px">'+
       '<button class="btn-primary" id="puSave">Save permissions</button>'+
@@ -1474,6 +1505,10 @@ async function paUserPage(id){
   });
   /* Per-app campuses are held here and written by Save, alongside everything
      else in this drawer — one Save button, not two ways to save. */
+  const redrawCampusChips=()=>{
+    const el=document.querySelector('#auBody [data-campuschips]');
+    if(el)el.outerHTML=campusChips(campusIds,ADMIN.campuses||[],p.campus_id,isAdminUser);
+  };
   const redrawCampusRow=key=>{
     const row=document.querySelector('#auBody [data-campusrow="'+key+'"]');
     if(!row)return;
@@ -1492,20 +1527,33 @@ async function paUserPage(id){
       const key=add.dataset.capp;
       appCampuses[key]=(appCampuses[key]||[]).concat(add.value);
       redrawCampusRow(key);
+      return;
+    }
+    const addAll=e.target.closest('[data-addcampusall]');
+    if(addAll&&addAll.value){
+      campusIds=campusIds.concat(addAll.value);
+      redrawCampusChips();
     }
   });
   host.addEventListener('click',e=>{
     const rm=e.target.closest('[data-rmcampus]');
-    if(!rm)return;
-    const key=rm.dataset.capp;
-    appCampuses[key]=(appCampuses[key]||[]).filter(x=>x!==rm.dataset.cid);
-    redrawCampusRow(key);
+    if(rm){
+      const key=rm.dataset.capp;
+      appCampuses[key]=(appCampuses[key]||[]).filter(x=>x!==rm.dataset.cid);
+      redrawCampusRow(key);
+      return;
+    }
+    const rmAll=e.target.closest('[data-rmcampusall]');
+    if(rmAll){
+      campusIds=campusIds.filter(x=>x!==rmAll.dataset.cid);
+      redrawCampusChips();
+    }
   });
   document.getElementById('puSave').addEventListener('click',async()=>{
     const n=document.getElementById('puNote');
     const app={};
     document.querySelectorAll('#auBody input[type="checkbox"][data-app]').forEach(cb=>{app[cb.dataset.app]=cb.checked;});
-    const camIds=[...document.querySelectorAll('#auBody [data-campus]')].filter(cb=>cb.checked).map(cb=>cb.dataset.campus);
+    const camIds=campusIds.slice();
     const {error:e3}=await sb.from('profiles').update({app_access:app,campus_ids:camIds}).eq('id',id);
     if(e3){n.textContent="Couldn't save — "+(e3.message||'try again.');return;}
     if(!isAdminUser){
