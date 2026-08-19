@@ -1275,33 +1275,6 @@ function pageAdmin(){
       '</tbody></table></div>':'')+
     '<p style="font-size:12.5px;color:var(--text2);margin-top:14px;max-width:620px;line-height:1.5">Changing a role or campus here applies everywhere the Mosaic account is used — the portal, Metrics, and anything added later. Campus applies to staff, leaders and volunteers; admins see all campuses.</p>';
 }
-/* Which campuses this person can see: a chip each, with their main campus
-   marked and not removable - it comes from the Main campus field above, so
-   taking it away here would just contradict that. "Add campus" offers the
-   rest. Admins see everything, so they get a plain statement instead. */
-function campusChips(selectedIds,allCampuses,mainId,isAdminUser){
-  const cams=allCampuses.slice().sort((a,b)=>a.name.localeCompare(b.name));
-  if(isAdminUser)
-    return '<div class="pu-campuses" data-campuschips>'+
-      cams.map(c=>'<span class="pu-chip pu-chip-locked">'+esc(c.name)+'</span>').join('')+'</div>';
-  const ids=selectedIds&&selectedIds.length?selectedIds.slice():(mainId?[mainId]:[]);
-  const sel=cams.filter(c=>ids.includes(c.id));
-  const avail=cams.filter(c=>!ids.includes(c.id));
-  const chips=sel.length
-    ? sel.map(c=>'<span class="pu-chip'+(c.id===mainId?' pu-chip-main':'')+'">'+esc(c.name)+
-        (c.id===mainId
-          ? '<span class="pu-chip-tag">main</span>'
-          : '<button type="button" data-rmcampusall data-cid="'+esc(c.id)+'" aria-label="Remove '+esc(c.name)+'">×</button>')+
-      '</span>').join('')
-    : '<span class="pu-chip-none">No campus yet</span>';
-  const add=avail.length
-    ? '<select class="pu-addcampus" data-addcampusall>'+
-        '<option value="">+ Add campus</option>'+
-        avail.map(c=>'<option value="'+esc(c.id)+'">'+esc(c.name)+'</option>').join('')+
-      '</select>'
-    : '';
-  return '<div class="pu-campuses" data-campuschips>'+chips+add+'</div>';
-}
 /* The campuses a person can see inside one app: chips for the ones they have,
    a dropdown to add another. Hidden until the app itself is ticked, and never
    shown for admins — they see every campus everywhere. */
@@ -1311,9 +1284,8 @@ function puCampusRow(appKey,selectedIds,allCampuses,isAdminUser,appOn,personCamp
      campus under all eight apps says the same thing eight times. */
   if(isAdminUser)return wrap('<span class="pu-chip-none">All campuses</span>');
   const cams=allCampuses.slice().sort((a,b)=>a.name.localeCompare(b.name));
-  /* With nothing chosen for this app, the person sees the campuses they have
-     under Campus access below - not every campus. Saying "Every campus" here
-     contradicted that section and overstated what they can reach. */
+  /* With nothing chosen for this app, they get their main campus - not every
+     campus. Saying "Every campus" here overstated what they can reach. */
   const inherited=!selectedIds||!selectedIds.length;
   const ids=inherited?(personCampusIds||[]):selectedIds;
   const sel=cams.filter(c=>ids.includes(c.id));
@@ -1321,7 +1293,7 @@ function puCampusRow(appKey,selectedIds,allCampuses,isAdminUser,appOn,personCamp
   const chips=sel.length
     ? sel.map(c=>'<span class="pu-chip'+(inherited?' pu-chip-locked':'')+'">'+esc(c.name)+
         (inherited?'':'<button type="button" data-rmcampus data-capp="'+esc(appKey)+'" data-cid="'+esc(c.id)+'" aria-label="Remove '+esc(c.name)+'">×</button>')+
-      '</span>').join('')+(inherited?'<span class="pu-chip-none">same as Campus access</span>':'')
+      '</span>').join('')+(inherited?'<span class="pu-chip-none">their main campus</span>':'')
     : '<span class="pu-chip-none">No campus set — add one below</span>';
   const add=avail.length
     ? '<select class="pu-addcampus" data-addcampus data-capp="'+esc(appKey)+'">'+
@@ -1381,10 +1353,13 @@ async function paUserPage(id){
      campus everywhere, so they get no picker. */
   const {data:uacRows}=await sb.from('user_app_campuses').select('app_key,campus_id').eq('user_id',id);
   const appCampuses={};(uacRows||[]).forEach(r=>{(appCampuses[r.app_key]=appCampuses[r.app_key]||[]).push(r.campus_id);});
-  /* The campus chips are the source of truth for Campus access; Save reads
-     this rather than the DOM, so nothing depends on a checkbox that is no
-     longer there. Defaults to their main campus when nothing is set. */
+  /* Their campuses, used as the fallback for an app with none chosen and as
+     the basis for the campus_ids Save writes. */
   let campusIds=(cams&&cams.length)?cams.slice():(p.campus_id?[p.campus_id]:[]);
+  /* Their main campus is always part of their access even though the chips
+     only show the extras - otherwise changing Main campus would leave the
+     old one saved and the new one missing. */
+  if(p.campus_id&&!campusIds.includes(p.campus_id))campusIds.unshift(p.campus_id);
   const roleOpts=ROLE_LIST.map(r=>'<option value="'+r+'"'+(r===p.role?' selected':'')+'>'+cap(r)+'</option>').join('');
   const camOpts='<option value="">Select a campus</option>'+(ADMIN.campuses||[]).map(c=>'<option value="'+esc(c.id)+'"'+(c.id===p.campus_id?' selected':'')+'>'+esc(c.name)+'</option>').join('');
   const lastActive=u&&u.last_sign_in_at;
@@ -1427,11 +1402,7 @@ async function paUserPage(id){
     '<p class="pu-note">Say yes to an app, then choose which campuses this person sees inside it. Leaving it on every campus is fine for someone who works across all of them.<br>'+
       '<strong>Turning an app off takes effect straight away.</strong> The campus choice is saved here but the apps don\'t read it yet, so it doesn\'t limit what anyone can see — treat it as a note of what you intend, not a restriction that\'s in place.</p>'+
 
-    '<div class="pu-sec">Campus access</div>'+
-    campusChips(campusIds,ADMIN.campuses||[],p.campus_id,isAdminUser)+
-    '<p class="pu-note">'+(isAdminUser
-      ? 'Admins see every campus, so there is nothing to choose here.'
-      : 'Their main campus is here by default. Add another for someone who works across more than one.')+'</p>'+
+
 
     '<div style="display:flex;gap:10px;align-items:center;margin-top:20px">'+
       '<button class="btn-primary" id="puSave">Save permissions</button>'+
@@ -1524,13 +1495,6 @@ async function paUserPage(id){
   });
   /* Per-app campuses are held here and written by Save, alongside everything
      else in this drawer — one Save button, not two ways to save. */
-  const redrawCampusChips=()=>{
-    const el=document.querySelector('#auBody [data-campuschips]');
-    if(el)el.outerHTML=campusChips(campusIds,ADMIN.campuses||[],p.campus_id,isAdminUser);
-    /* any app still inheriting has to follow the change, or the page would
-       show a campus list the section above no longer agrees with */
-    PERM_SECTIONS.forEach(s=>{if(!(appCampuses[s.id]||[]).length)redrawCampusRow(s.id);});
-  };
   const redrawCampusRow=key=>{
     const row=document.querySelector('#auBody [data-campusrow="'+key+'"]');
     if(!row)return;
@@ -1551,11 +1515,6 @@ async function paUserPage(id){
       redrawCampusRow(key);
       return;
     }
-    const addAll=e.target.closest('[data-addcampusall]');
-    if(addAll&&addAll.value){
-      campusIds=campusIds.concat(addAll.value);
-      redrawCampusChips();
-    }
   });
   host.addEventListener('click',e=>{
     const rm=e.target.closest('[data-rmcampus]');
@@ -1565,17 +1524,15 @@ async function paUserPage(id){
       redrawCampusRow(key);
       return;
     }
-    const rmAll=e.target.closest('[data-rmcampusall]');
-    if(rmAll){
-      campusIds=campusIds.filter(x=>x!==rmAll.dataset.cid);
-      redrawCampusChips();
-    }
   });
   document.getElementById('puSave').addEventListener('click',async()=>{
     const n=document.getElementById('puNote');
     const app={};
     document.querySelectorAll('#auBody select.pu-yesno[data-app]').forEach(sel=>{app[sel.dataset.app]=(sel.value==='yes');});
-    const camIds=campusIds.slice();
+    /* campus_ids is every campus they touch anywhere - the union of the
+       per-app choices plus their main campus. It is derived, not edited
+       separately, so there is only one place to change a campus. */
+    const camIds=[...new Set([p.campus_id,...Object.keys(appCampuses).filter(k=>app[k]).flatMap(k=>appCampuses[k]||[])].filter(Boolean))];
     const {error:e3}=await sb.from('profiles').update({app_access:app,campus_ids:camIds}).eq('id',id);
     if(e3){n.textContent="Couldn't save — "+(e3.message||'try again.');return;}
     if(!isAdminUser){
