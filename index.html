@@ -53,15 +53,23 @@
 .um-item .hint{color:#8a8a8a;font-size:11px;margin-left:auto}
 .um-sep{height:1px;background:#f0f0f0;margin:6px 0}
 .um-head{display:flex;gap:10px;align-items:flex-start}
-.um-head .um-av{width:34px;height:34px;border-radius:50%;background:#e2e2e0;flex:none;overflow:hidden;object-fit:cover;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:#5c5c5c}
+.um-head .um-av{width:34px;height:34px;font-size:12px}
 
-/* ---- avatars ---- */
-.avatar{overflow:hidden}
-.avatar img,.pa-av img,.um-av img{width:100%;height:100%;object-fit:cover;display:block}
+/* ---- profile pictures ----
+   Every place a photo is shown is listed once, here. Both rules matter: the
+   circle has to clip (overflow) and the photo has to be told to fill it
+   (width/height/object-fit). Miss either and a full-size photo spills across
+   the page - which it has done twice. Showing a photo somewhere new means
+   adding that class to BOTH selector lists below and nothing else. */
+.avatar,.pa-av,.um-head .um-av,.pf-av .ring,.au-ring{
+  border-radius:50%;background:#e2e2e0;overflow:hidden;flex:none;
+  display:flex;align-items:center;justify-content:center;font-weight:600;color:#5c5c5c}
+.avatar img,.pa-av img,.um-head .um-av img,.pf-av .ring img,.au-ring img{
+  width:100%;height:100%;object-fit:cover;display:block}
+/* sizes only - everything else is shared above */
 .pf-av{display:flex;align-items:center;gap:14px;margin:0 0 18px}
-.pf-av .ring{width:64px;height:64px;border-radius:50%;background:#e2e2e0;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:600;color:#5c5c5c;flex:none}
-.pf-av .ring img{width:100%;height:100%;object-fit:cover}
-.pa-av{width:24px;height:24px;border-radius:50%;background:#e2e2e0;overflow:hidden;display:inline-flex;align-items:center;justify-content:center;font-size:9.5px;font-weight:600;color:#5c5c5c;vertical-align:middle;margin-right:9px}
+.pf-av .ring{width:64px;height:64px;font-size:20px}
+.pa-av{width:24px;height:24px;font-size:9.5px;vertical-align:middle;margin-right:9px}
 
 /* ---- appearance: dark theme re-points the neutral tokens; the type hues
    (which encode meaning) stay exactly as they are. ---- */
@@ -114,11 +122,16 @@ html.dark .row:hover{background:var(--fill)}
 html.dark .pu-danger{background:transparent;border-color:#5c2a2a;color:#e88b8b}
 .pu-lock{margin-left:auto;color:var(--text3);display:inline-flex}
 .pu-lock svg{width:12px;height:12px}
+/* your own profile: account on the left, password and appearance on the right */
+.pf-grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:16px;align-items:start;max-width:820px}
+.pf-side{display:flex;flex-direction:column;gap:16px;min-width:0}
+.pf-grid .pa-card{padding:20px 22px}
+.pf-cardsec{margin:0 0 14px}
+@media(max-width:760px){.pf-grid{grid-template-columns:1fr}}
 /* a person's own page in Admin */
 .au-card{margin:0 0 4px;max-width:620px;overflow:visible}
 .au-head{display:flex;gap:16px;align-items:center;padding:18px 20px}
-.au-ring{width:64px;height:64px;border-radius:50%;background:#e2e2e0;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:600;color:#5c5c5c;flex:none}
-.au-ring img{width:100%;height:100%;object-fit:cover;display:block}
+.au-ring{width:64px;height:64px;font-size:20px}
 .au-name{font-size:20px;font-weight:700;line-height:1.2}
 .au-arch{font-size:11.5px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;color:var(--text2);border:1px solid var(--hairline);border-radius:999px;padding:3px 9px;vertical-align:3px}
 .au-mail{font-size:13px;color:var(--text2);margin-top:3px}
@@ -280,8 +293,7 @@ html.dark .subnav button:hover,html.dark .subnav button.on{color:var(--text);bac
 .count{margin-left:auto;font-size:12px;color:var(--text3)}
 .rail-foot{margin-top:auto;border-top:1px solid var(--rail-active);padding-top:11px;
   display:flex;align-items:center;gap:9px}
-.avatar{width:24px;height:24px;border-radius:50%;background:#e2e2e0;font-size:10px;
-  font-weight:500;display:flex;align-items:center;justify-content:center;flex:none}
+.avatar{width:24px;height:24px;font-size:10px;font-weight:500}
 .who{font-size:12.5px;color:var(--text2)}
 
 /* ---------- main ---------- */
@@ -1811,6 +1823,7 @@ function render(){
     : S.section==='giving'?pageGiving()
     : S.section==='admin'?pageAdmin()
     : S.section==='admin-user'?pageAdminUser()
+    : S.section==='profile'?pageProfile()
     : pageSettings();
   window.scrollTo(0,0);
   const ps=document.getElementById('paSearch');
@@ -1838,7 +1851,7 @@ document.addEventListener('click',e=>{
     if(!allowedSections().includes(S.section))S.section='home';
     umClose(); render(); return;
   }
-  if(t.dataset.profile){ umClose(); profileDrawer(); return; }
+  if(t.dataset.profile){ umClose(); S.from=S.section||'home'; S.section='profile'; render(); return; }
   if(t.dataset.pick){
     const [type,tok]=t.dataset.pick.split('|');
     TYPES[type].hue='var('+tok+')';
@@ -2074,32 +2087,53 @@ function umHtml(){
 /* Profile — same shape as the Metrics profile page: your account details,
    an editable name, and a password reset by email. Role and campus are set
    by an administrator, so they're shown, not editable. */
-async function profileDrawer(){
+function pageProfile(){
+  setTimeout(()=>profilePage(),0);
+  return '<button class="back" data-back="1">'+ic('left')+'Back</button>'+
+    '<h1 style="margin:0 0 4px">Profile</h1>'+
+    '<p class="sub" style="margin:0 0 20px">Your account — your name and photo are yours to edit.</p>'+
+    '<div id="pfBody"><div class="empty">Loading…</div></div>';
+}
+async function profilePage(){
+  const host=document.getElementById('pfBody');
+  if(!host)return;
   if(!ADMIN.campuses)await loadAdmin().catch(()=>{});
+  if(!document.getElementById('pfBody'))return;   // they navigated away while it loaded
   const roleLab=ME.role==='admin'?'Admin':cap(ME.role||'');
   const campusLab=ME.role==='admin'?'All campuses':(ME.campus_id?campusName(ME.campus_id):'—');
-  openDrawer('<div class="eyebrow" style="letter-spacing:.13em;text-transform:uppercase;color:var(--text2);font-size:11px;font-weight:700;margin-bottom:6px">Account</div>'+
-    '<h2 style="margin:0 0 18px">Profile</h2>'+
-    '<div class="pf-av"><span class="ring" id="pfRing">'+avatarHtml(ME.avatar_url,ME.name)+'</span>'+
-      '<div><button class="btn-primary" id="pfPhotoBtn" style="padding:7px 13px;font-size:12.5px">'+(ME.avatar_url?'Change photo':'Upload photo')+'</button>'+
-      (ME.avatar_url?' <button class="gate-ghost" id="pfPhotoDel" style="display:inline;margin:0 0 0 8px">Remove</button>':'')+
-      '<div style="font-size:11.5px;color:var(--text2);margin-top:6px">JPG, PNG or WebP · up to 2 MB</div></div>'+
-      '<input type="file" id="pfPhotoIn" accept="image/jpeg,image/png,image/webp,image/gif" style="display:none"></div>'+
-    '<div class="kv"><span>Name</span><span><input id="pfName" class="pa-in" style="width:170px;padding:6px 9px;font-size:13px;text-align:right" value="'+esc(ME.name||'')+'"></span></div>'+
-    '<div class="kv"><span>Email</span><span>'+esc(ME.email||'')+'</span></div>'+
-    '<div class="kv"><span>Role</span><span>'+esc(roleLab)+'</span></div>'+
-    '<div class="kv" style="border-bottom:0"><span>Campus</span><span>'+esc(campusLab)+'</span></div>'+
-    '<button class="btn-primary" id="pfSaveName" style="margin-top:14px">Save name</button>'+
-    '<div class="eyebrow" style="letter-spacing:.13em;text-transform:uppercase;color:var(--text2);font-size:11px;font-weight:700;margin:24px 0 8px">Appearance</div>'+
-    '<div class="ap-seg" id="pfTheme">'+
-      ['light','dark','system'].map(t=>'<button data-theme="'+t+'" class="'+(THEME===t?'on':'')+'">'+cap(t)+'</button>').join('')+
+  const eyebrow='letter-spacing:.13em;text-transform:uppercase;color:var(--text2);font-size:11px;font-weight:700';
+  host.innerHTML=
+    '<div class="pf-grid">'+
+      '<div class="pa-card pf-main">'+
+        '<div class="pf-cardsec" style="'+eyebrow+'">Your account</div>'+
+        '<div class="pf-av"><span class="ring" id="pfRing">'+avatarHtml(ME.avatar_url,ME.name)+'</span>'+
+          '<div><button class="btn-primary" id="pfPhotoBtn" style="padding:7px 13px;font-size:12.5px">'+(ME.avatar_url?'Change photo':'Upload photo')+'</button>'+
+          (ME.avatar_url?' <button class="gate-ghost" id="pfPhotoDel" style="display:inline;margin:0 0 0 8px">Remove</button>':'')+
+          '<div style="font-size:11.5px;color:var(--text2);margin-top:6px">JPG, PNG or WebP · up to 2 MB</div></div>'+
+          '<input type="file" id="pfPhotoIn" accept="image/jpeg,image/png,image/webp,image/gif" style="display:none"></div>'+
+        '<div class="kv"><span>Name</span><span><input id="pfName" class="pa-in" style="width:170px;padding:6px 9px;font-size:13px;text-align:right" value="'+esc(ME.name||'')+'"></span></div>'+
+        '<div class="kv"><span>Email</span><span>'+esc(ME.email||'')+'</span></div>'+
+        '<div class="kv"><span>Role</span><span>'+esc(roleLab)+'</span></div>'+
+        '<div class="kv" style="border-bottom:0"><span>Campus</span><span>'+esc(campusLab)+'</span></div>'+
+        '<button class="btn-primary" id="pfSaveName" style="margin-top:14px">Save name</button>'+
+        '<p style="font-size:12.5px;color:var(--text2);margin:14px 0 0;line-height:1.5">Role and campus are set by an administrator.</p>'+
+      '</div>'+
+      '<div class="pf-side">'+
+        '<div class="pa-card">'+
+          '<div class="pf-cardsec" style="'+eyebrow+'">Password</div>'+
+          '<p style="font-size:13px;color:var(--text2);margin:0 0 12px">We\'ll email you a secure link to set a new password.</p>'+
+          '<button class="btn-primary" id="pfReset">Email me a reset link</button>'+
+        '</div>'+
+        '<div class="pa-card">'+
+          '<div class="pf-cardsec" style="'+eyebrow+'">Appearance</div>'+
+          '<div class="ap-seg" id="pfTheme">'+
+            ['light','dark','system'].map(t=>'<button data-theme="'+t+'" class="'+(THEME===t?'on':'')+'">'+cap(t)+'</button>').join('')+
+          '</div>'+
+          '<p style="font-size:12.5px;color:var(--text2);margin:10px 0 0;line-height:1.5">Just for you, on this device — nobody else\'s view changes. System follows your computer\'s setting. The apps shown inside the portal (Metrics, Comms, Planning) still render in their own light theme.</p>'+
+        '</div>'+
+      '</div>'+
     '</div>'+
-    '<p style="font-size:12.5px;color:var(--text2);margin:10px 0 22px;line-height:1.5">Just for you, on this device — nobody else\'s view changes. System follows your computer\'s setting. The apps shown inside the portal (Metrics, Comms, Planning) still render in their own light theme.</p>'+
-    '<p style="font-size:12.5px;color:var(--text2);margin:12px 0 22px;line-height:1.5">Your name is yours to edit. Role and campus are set by an administrator.</p>'+
-    '<div class="eyebrow" style="letter-spacing:.13em;text-transform:uppercase;color:var(--text2);font-size:11px;font-weight:700;margin-bottom:6px">Password</div>'+
-    '<p style="font-size:13px;color:var(--text2);margin:0 0 12px">We\'ll email you a secure link to set a new password.</p>'+
-    '<button class="btn-primary" id="pfReset">Email me a reset link</button>'+
-    '<div id="pfNote" style="font-size:12.5px;margin-top:12px;color:var(--text2)"></div>');
+    '<div id="pfNote" style="font-size:12.5px;margin-top:14px;color:var(--text2)"></div>';
   /* photo upload — stored at avatars/<your user id>/<file>, which is the only
      folder the storage policy lets you write to. */
   const fileIn=document.getElementById('pfPhotoIn');
@@ -2120,7 +2154,7 @@ async function profileDrawer(){
     if(error){n.textContent="Uploaded, but couldn't save it to your profile — "+(error.message||'try again.');return;}
     ME.avatar_url=url;ADMIN.profs=null;
     document.getElementById('pfRing').innerHTML=avatarHtml(url,ME.name);
-    n.textContent='Photo updated.';render();
+    n.textContent='Photo updated.';renderNav();
   });
   const del=document.getElementById('pfPhotoDel');
   if(del)del.addEventListener('click',async()=>{
@@ -2130,7 +2164,7 @@ async function profileDrawer(){
     if(error){n.textContent="Couldn't remove — "+(error.message||'try again.');return;}
     ME.avatar_url=null;ADMIN.profs=null;
     document.getElementById('pfRing').innerHTML=avatarHtml(null,ME.name);
-    n.textContent='Photo removed.';render();
+    n.textContent='Photo removed.';renderNav();
   });
   document.getElementById('pfSaveName').addEventListener('click',async()=>{
     const v=document.getElementById('pfName').value.trim(),n=document.getElementById('pfNote');
@@ -2138,7 +2172,7 @@ async function profileDrawer(){
     const {data:{user}}=await sb.auth.getUser();
     const {error}=await sb.from('profiles').update({display_name:v}).eq('id',user.id);
     if(error){n.textContent="Couldn't save — "+(error.message||'try again.');return;}
-    ME.name=v;ADMIN.profs=null;n.textContent='Name updated.';render();
+    ME.name=v;ADMIN.profs=null;n.textContent='Name updated.';renderNav();
   });
   document.getElementById('pfReset').addEventListener('click',async()=>{
     const n=document.getElementById('pfNote');
