@@ -149,6 +149,12 @@ html.dark .pu-danger{background:transparent;border-color:#5c2a2a;color:#e88b8b}
 .pu-approw:hover{background:var(--fill)}
 .pu-appname{font-size:13px;display:flex;align-items:center;gap:6px;flex:1;min-width:0}
 .pu-yesno{font-size:12.5px;padding:3px 8px;flex:none}
+.pu-perms{display:flex;flex-wrap:wrap;gap:6px 18px;padding:0 8px 10px 8px;max-width:620px}
+.pu-perms[hidden]{display:none}
+.pu-perm{display:flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer}
+.pu-perm input{margin:0;width:14px;height:14px;flex:none;cursor:pointer}
+.pu-perm-tag{font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--gathering-d)}
+.pu-perm-ov{font-weight:500}
 .pu-app{border-radius:7px}
 .pu-campuses{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:2px 8px 10px 8px;max-width:620px}
 .pu-campuses[hidden]{display:none}
@@ -1275,6 +1281,36 @@ function pageAdmin(){
       '</tbody></table></div>':'')+
     '<p style="font-size:12.5px;color:var(--text2);margin-top:14px;max-width:620px;line-height:1.5">Changing a role or campus here applies everywhere the Mosaic account is used — the portal, Metrics, and anything added later. Campus applies to staff, leaders and volunteers; admins see all campuses.</p>';
 }
+/* The rail calls Metrics 'numbers'; the permission tables call it 'metrics'.
+   Everything else matches. Without this the Metrics row would quietly show no
+   permissions at all, which reads as "this app has none" rather than a typo. */
+const APP_KEY={numbers:'metrics'};
+const appKeyFor=id=>APP_KEY[id]||id;
+/* What this person can actually do in an app: what their role grants by
+   default, with any per-person entry in section_permissions winning. Mirrors
+   can() in Supabase so the screen and the database agree. */
+function effectiveAppPerms(appKey,role,permOverrides){
+  return (ADMIN.appPerms||[]).filter(p=>p.app_key===appKey).map(p=>{
+    const def=(ADMIN.appDefaults||[]).some(d=>d.role===role&&d.app_key===appKey&&d.perm_key===p.perm_key&&d.granted);
+    const ov=(permOverrides||[]).find(o=>o.app_key===appKey&&o.perm_key===p.perm_key);
+    return {perm_key:p.perm_key,label:p.label,granted:ov?ov.granted:def,overridden:!!ov};
+  });
+}
+/* The named permissions inside one app, as tickboxes. A tick that differs
+   from what the role gives is marked, so an exception is visible as an
+   exception rather than looking like the default. */
+function puPermRow(sectionId,role,permOverrides,appOn){
+  const key=appKeyFor(sectionId);
+  const perms=effectiveAppPerms(key,role,permOverrides);
+  if(!perms.length)return '';
+  return '<div class="pu-perms" data-permrow="'+esc(sectionId)+'"'+(appOn?'':' hidden')+'>'+
+    perms.map(p=>'<label class="pu-perm'+(p.overridden?' pu-perm-ov':'')+'">'+
+      '<input type="checkbox" data-perm data-papp="'+esc(key)+'" data-pkey="'+esc(p.perm_key)+'"'+(p.granted?' checked':'')+'>'+
+      '<span>'+esc(p.label||p.perm_key)+'</span>'+
+      (p.overridden?'<span class="pu-perm-tag">changed</span>':'')+
+    '</label>').join('')+
+  '</div>';
+}
 /* The campuses a person can see inside one app: chips for the ones they have,
    a dropdown to add another. Hidden until the app itself is ticked, and never
    shown for admins — they see every campus everywhere. */
@@ -1352,6 +1388,8 @@ async function paUserPage(id){
      say yes to an app, then choose which campuses inside it. Admins see every
      campus everywhere, so they get no picker. */
   const {data:uacRows}=await sb.from('user_app_campuses').select('app_key,campus_id').eq('user_id',id);
+  const {data:spRows}=await sb.from('section_permissions').select('app_key,perm_key,granted').eq('user_id',id);
+  let permOv=spRows||[];
   const appCampuses={};(uacRows||[]).forEach(r=>{(appCampuses[r.app_key]=appCampuses[r.app_key]||[]).push(r.campus_id);});
   /* Their campuses, used as the fallback for an app with none chosen and as
      the basis for the campus_ids Save writes. */
@@ -1397,6 +1435,7 @@ async function paUserPage(id){
             '<option value="no"'+(secs.includes(s.id)?'':' selected')+'>No</option>'+
           '</select></div>'+
         puCampusRow(s.id,appCampuses[s.id]||[],ADMIN.campuses||[],isAdminUser,secs.includes(s.id),campusIds)+
+        puPermRow(s.id,(p.role||'volunteer'),permOv,secs.includes(s.id))+
       '</div>').join('')+
     '</div>'+
     '<p class="pu-note">Say yes to an app, then choose which campuses this person sees inside it. Leaving it on every campus is fine for someone who works across all of them.<br>'+
@@ -1504,8 +1543,11 @@ async function paUserPage(id){
   host.addEventListener('change',e=>{
     const cb=e.target.closest('select.pu-yesno[data-app]');
     if(cb){
-      const row=document.querySelector('#auBody [data-campusrow="'+cb.dataset.app+'"]');
-      if(row){if(cb.value==='yes')row.removeAttribute('hidden');else row.setAttribute('hidden','');}
+      const on=cb.value==='yes';
+      ['[data-campusrow="','[data-permrow="'].forEach(sel=>{
+        const el=document.querySelector('#auBody '+sel+cb.dataset.app+'"]');
+        if(el){if(on)el.removeAttribute('hidden');else el.setAttribute('hidden','');}
+      });
       return;
     }
     const add=e.target.closest('[data-addcampus]');
@@ -1545,6 +1587,20 @@ async function paUserPage(id){
         if(e8){n.textContent="Apps saved, but the campuses didn't — "+(e8.message||'try again.');return;}
       }
     }
+    const role=p.role||'volunteer';
+    const wanted=[];
+    document.querySelectorAll('#auBody [data-perm]').forEach(cb=>{
+      const ak=cb.dataset.papp, pk=cb.dataset.pkey;
+      const def=(ADMIN.appDefaults||[]).some(d=>d.role===role&&d.app_key===ak&&d.perm_key===pk&&d.granted);
+      if(cb.checked!==def)wanted.push({user_id:id,app_key:ak,perm_key:pk,granted:cb.checked});
+    });
+    const {error:e9}=await sb.from('section_permissions').delete().eq('user_id',id);
+    if(e9){n.textContent="Apps saved, but the permissions didn't — "+(e9.message||'try again.');return;}
+    if(wanted.length){
+      const {error:e10}=await sb.from('section_permissions').insert(wanted);
+      if(e10){n.textContent="Apps saved, but the permissions didn't — "+(e10.message||'try again.');return;}
+    }
+    permOv=wanted.map(r=>({app_key:r.app_key,perm_key:r.perm_key,granted:r.granted}));
     p.app_access=app;p.campus_ids=camIds;
     n.textContent='Permissions saved.';
     if(S.section==='admin')render();
@@ -1554,6 +1610,7 @@ async function paUserPage(id){
     const {error:e4}=await sb.from('profiles').update({app_access:null,campus_ids:null}).eq('id',id);
     if(e4){n.textContent="Couldn't reset — "+(e4.message||'try again.');return;}
     await sb.from('user_app_campuses').delete().eq('user_id',id);
+    await sb.from('section_permissions').delete().eq('user_id',id);
     p.app_access=null;p.campus_ids=null;
     n.textContent='Back to the role defaults.';
     paUserPage(id);if(S.section==='admin')render();
