@@ -583,7 +583,18 @@ function renderNav(){
   document.getElementById('nav').innerHTML=out.join('');
   const _who=document.getElementById('who'),_av=document.querySelector('.rail-foot .avatar');
   const _nm=(typeof ME!=='undefined'&&ME.name)?ME.name:'';
-  if(_nm){_who.textContent=_nm;if(_av)_av.textContent=_nm.charAt(0).toUpperCase();}
+  if(_nm){
+    _who.textContent=_nm;
+    if(_av){
+      if(typeof ME!=='undefined'&&ME.avatar_url){
+        _av.innerHTML='<img src="'+esc(ME.avatar_url)+'" alt="" style="width:24px;height:24px;border-radius:50%;object-fit:cover;display:block">';
+        _av.style.background='none';
+      } else {
+        _av.innerHTML=_nm.charAt(0).toUpperCase();
+        _av.style.background='';
+      }
+    }
+  }
 }
 
 /* ============================ pages ============================ */
@@ -1817,7 +1828,15 @@ async function enterPortal(){
   if(want&&ROLES[S.role].sections.includes(want))S.section=want;
   const who=document.getElementById("who"),av=document.querySelector(".rail-foot .avatar");
   if(who)who.textContent=ME.name;
-  if(av)av.textContent=(ME.name||"?").charAt(0).toUpperCase();
+  if(av){
+    if(ME.avatar_url){
+      av.innerHTML='<img src="'+esc(ME.avatar_url)+'" alt="" style="width:24px;height:24px;border-radius:50%;object-fit:cover;display:block">';
+      av.style.background='none';
+    } else {
+      av.textContent=(ME.name||"?").charAt(0).toUpperCase();
+      av.style.background='';
+    }
+  }
   $g("gate").classList.add("hide");
   if(!BOOTED){BOOTED=true;await loadLive();render();}
 }
