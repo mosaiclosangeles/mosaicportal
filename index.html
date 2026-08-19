@@ -144,18 +144,19 @@ html.dark .pu-danger{background:transparent;border-color:#5c2a2a;color:#e88b8b}
 .au-fields .kv{padding:11px 20px}
 .au-foot{padding:14px 20px;border-top:1px solid var(--separator)}
 /* per-app campus access */
-.pu-apps{display:flex;flex-direction:column;gap:2px}
+.pu-apps{display:flex;flex-direction:column;gap:2px;max-width:620px}
 .pu-approw{display:flex;align-items:center;gap:12px;padding:6px 8px;border-radius:7px}
 .pu-approw:hover{background:var(--fill)}
 .pu-appname{font-size:13px;display:flex;align-items:center;gap:6px;flex:1;min-width:0}
 .pu-yesno{font-size:12.5px;padding:3px 8px;flex:none}
 .pu-app{border-radius:7px}
-.pu-campuses{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:2px 8px 9px 31px}
+.pu-campuses{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:2px 8px 10px 8px;max-width:620px}
 .pu-campuses[hidden]{display:none}
 .pu-chip{display:inline-flex;align-items:center;gap:4px;background:var(--fill);border:1px solid var(--hairline);border-radius:999px;padding:3px 8px 3px 11px;font-size:12.5px}
 .pu-chip button{line-height:1;font-size:14px;color:var(--text2);background:none;border:none;padding:0 0 0 2px;cursor:pointer;font-family:inherit}
 .pu-chip button:hover{color:var(--text)}
 .pu-chip-none{font-size:12.5px;color:var(--text2)}
+.pu-chip-locked{opacity:.75}
 .pu-chip-main{background:var(--gathering-t);border-color:var(--gathering)}
 .pu-chip-tag{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--gathering-d);margin-left:3px}
 html.dark .pu-chip-main{background:var(--fill);border-color:var(--gathering)}
@@ -1279,8 +1280,10 @@ function pageAdmin(){
    taking it away here would just contradict that. "Add campus" offers the
    rest. Admins see everything, so they get a plain statement instead. */
 function campusChips(selectedIds,allCampuses,mainId,isAdminUser){
-  if(isAdminUser)return '<div class="pu-campuses" data-campuschips><span class="pu-chip-none">Every campus</span></div>';
   const cams=allCampuses.slice().sort((a,b)=>a.name.localeCompare(b.name));
+  if(isAdminUser)
+    return '<div class="pu-campuses" data-campuschips>'+
+      cams.map(c=>'<span class="pu-chip pu-chip-locked">'+esc(c.name)+'</span>').join('')+'</div>';
   const ids=selectedIds&&selectedIds.length?selectedIds.slice():(mainId?[mainId]:[]);
   const sel=cams.filter(c=>ids.includes(c.id));
   const avail=cams.filter(c=>!ids.includes(c.id));
@@ -1303,8 +1306,14 @@ function campusChips(selectedIds,allCampuses,mainId,isAdminUser){
    a dropdown to add another. Hidden until the app itself is ticked, and never
    shown for admins — they see every campus everywhere. */
 function puCampusRow(appKey,selectedIds,allCampuses,isAdminUser,appOn){
-  if(isAdminUser)return '';
   const cams=allCampuses.slice().sort((a,b)=>a.name.localeCompare(b.name));
+  /* An admin has every campus in every app. Show them all rather than an
+     empty space - saying yes to an app should always show which campuses
+     it covers - but with no × and no Add, because there is nothing to change. */
+  if(isAdminUser)
+    return '<div class="pu-campuses" data-campusrow="'+esc(appKey)+'"'+(appOn?'':' hidden')+'>'+
+      cams.map(c=>'<span class="pu-chip pu-chip-locked">'+esc(c.name)+'</span>').join('')+
+      '<span class="pu-chip-none">every campus — admins are not limited</span></div>';
   const sel=cams.filter(c=>selectedIds.includes(c.id));
   const avail=cams.filter(c=>!selectedIds.includes(c.id));
   const chips=sel.length
