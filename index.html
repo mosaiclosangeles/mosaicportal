@@ -145,6 +145,10 @@ html.dark .pu-danger{background:transparent;border-color:#5c2a2a;color:#e88b8b}
 .au-foot{padding:14px 20px;border-top:1px solid var(--separator)}
 /* per-app campus access */
 .pu-apps{display:flex;flex-direction:column;gap:2px}
+.pu-approw{display:flex;align-items:center;gap:12px;padding:6px 8px;border-radius:7px}
+.pu-approw:hover{background:var(--fill)}
+.pu-appname{font-size:13px;display:flex;align-items:center;gap:6px;flex:1;min-width:0}
+.pu-yesno{font-size:12.5px;padding:3px 8px;flex:none}
 .pu-app{border-radius:7px}
 .pu-campuses{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:2px 8px 9px 31px}
 .pu-campuses[hidden]{display:none}
@@ -1400,8 +1404,11 @@ async function paUserPage(id){
     '<div class="pu-sec">App access</div>'+
     '<div class="pu-apps">'+PERM_SECTIONS.map(s=>
       '<div class="pu-app" data-approw="'+s.id+'">'+
-        '<label class="pu-check"><input type="checkbox" data-app="'+s.id+'"'+(secs.includes(s.id)?' checked':'')+'>'+
-        '<span>'+esc(s.label)+'</span>'+(s.restricted?'<span class="pu-lock">'+ic('lock')+'</span>':'')+'</label>'+
+        '<div class="pu-approw"><span class="pu-appname">'+esc(s.label)+(s.restricted?'<span class="pu-lock">'+ic('lock')+'</span>':'')+'</span>'+
+          '<select class="pu-yesno" data-app="'+esc(s.id)+'" aria-label="'+esc(s.label)+' access">'+
+            '<option value="yes"'+(secs.includes(s.id)?' selected':'')+'>Yes</option>'+
+            '<option value="no"'+(secs.includes(s.id)?'':' selected')+'>No</option>'+
+          '</select></div>'+
         puCampusRow(s.id,appCampuses[s.id]||[],ADMIN.campuses||[],isAdminUser,secs.includes(s.id))+
       '</div>').join('')+
     '</div>'+
@@ -1512,14 +1519,14 @@ async function paUserPage(id){
   const redrawCampusRow=key=>{
     const row=document.querySelector('#auBody [data-campusrow="'+key+'"]');
     if(!row)return;
-    const on=document.querySelector('#auBody [data-app="'+key+'"]');
-    row.outerHTML=puCampusRow(key,appCampuses[key]||[],ADMIN.campuses||[],isAdminUser,!!(on&&on.checked));
+    const on=document.querySelector('#auBody select.pu-yesno[data-app="'+key+'"]');
+    row.outerHTML=puCampusRow(key,appCampuses[key]||[],ADMIN.campuses||[],isAdminUser,!!(on&&on.value==='yes'));
   };
   host.addEventListener('change',e=>{
-    const cb=e.target.closest('input[type="checkbox"][data-app]');
+    const cb=e.target.closest('select.pu-yesno[data-app]');
     if(cb){
       const row=document.querySelector('#auBody [data-campusrow="'+cb.dataset.app+'"]');
-      if(row){if(cb.checked)row.removeAttribute('hidden');else row.setAttribute('hidden','');}
+      if(row){if(cb.value==='yes')row.removeAttribute('hidden');else row.setAttribute('hidden','');}
       return;
     }
     const add=e.target.closest('[data-addcampus]');
@@ -1552,7 +1559,7 @@ async function paUserPage(id){
   document.getElementById('puSave').addEventListener('click',async()=>{
     const n=document.getElementById('puNote');
     const app={};
-    document.querySelectorAll('#auBody input[type="checkbox"][data-app]').forEach(cb=>{app[cb.dataset.app]=cb.checked;});
+    document.querySelectorAll('#auBody select.pu-yesno[data-app]').forEach(sel=>{app[sel.dataset.app]=(sel.value==='yes');});
     const camIds=campusIds.slice();
     const {error:e3}=await sb.from('profiles').update({app_access:app,campus_ids:camIds}).eq('id',id);
     if(e3){n.textContent="Couldn't save — "+(e3.message||'try again.');return;}
