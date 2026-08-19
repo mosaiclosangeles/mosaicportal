@@ -61,9 +61,11 @@
    (width/height/object-fit). Miss either and a full-size photo spills across
    the page - which it has done twice. Showing a photo somewhere new means
    adding that class to BOTH selector lists below and nothing else. */
+/* With no photo we show initials on the same blue as the primary button
+   (--gathering), not a grey disc - the grey initials were too faint to read. */
 .avatar,.pa-av,.um-head .um-av,.pf-av .ring,.au-ring{
-  border-radius:50%;background:#e2e2e0;overflow:hidden;flex:none;
-  display:flex;align-items:center;justify-content:center;font-weight:600;color:#5c5c5c}
+  border-radius:50%;background:var(--gathering);overflow:hidden;flex:none;
+  display:flex;align-items:center;justify-content:center;font-weight:600;color:#fff}
 .avatar img,.pa-av img,.um-head .um-av img,.pf-av .ring img,.au-ring img{
   width:100%;height:100%;object-fit:cover;display:block}
 /* sizes only - everything else is shared above */
@@ -88,7 +90,8 @@ html.dark .pa-table td,html.dark .rp-table td{border-top-color:var(--separator)}
 html.dark .pa-bar input,html.dark .pa-bar select,html.dark .pa-in,html.dark .pa-table select,html.dark .gate-card input{background:#242422;border-color:var(--hairline);color:var(--text)}
 html.dark .um-item,html.dark .um-name,html.dark .gate-card h1,html.dark .gate-brand .name{color:var(--text)}
 html.dark .um-item:hover{background:var(--fill)}
-html.dark .um-role,html.dark .pa-av,html.dark .avatar,html.dark .pf-av .ring,html.dark .um-head .um-av{background:var(--fill);color:var(--text2)}
+html.dark .um-role{background:var(--fill);color:var(--text2)}
+/* the initials keep their blue in dark mode - white on it reads fine on both */
 html.dark .um-head,html.dark .um-sep{border-color:var(--separator);background:none}
 html.dark .btn-primary,html.dark .gate-btn{background:#f2f2f0;color:#151514}
 html.dark .gate-brand .mark,html.dark .brand-mark{background:#f2f2f0}
