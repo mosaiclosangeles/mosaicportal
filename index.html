@@ -1373,7 +1373,8 @@ async function paUserPage(id){
         puCampusRow(s.id,appCampuses[s.id]||[],ADMIN.campuses||[],isAdminUser,secs.includes(s.id))+
       '</div>').join('')+
     '</div>'+
-    '<p class="pu-note">Say yes to an app, then choose which campuses this person sees inside it. Leaving it on every campus is fine for someone who works across all of them.</p>'+
+    '<p class="pu-note">Say yes to an app, then choose which campuses this person sees inside it. Leaving it on every campus is fine for someone who works across all of them.<br>'+
+      '<strong>Turning an app off takes effect straight away.</strong> The campus choice is saved here but the apps don\'t read it yet, so it doesn\'t limit what anyone can see — treat it as a note of what you intend, not a restriction that\'s in place.</p>'+
 
     '<div class="pu-sec">Campus access</div>'+
     '<div class="pu-grid">'+(ADMIN.campuses||[]).map(c=>
