@@ -1719,7 +1719,10 @@ const umPop=document.createElement("div");umPop.className="um-pop";document.body
 function umClose(){umPop.classList.remove("open");}
 function umHtml(){
   const isAdmin=ME.role==="admin";
-  return '<div class="um-head"><div class="um-name">'+esc(ME.name||"")+'</div><div class="um-mail">'+esc(ME.email||"")+'</div>'+
+  const umAv=ME.avatar_url
+    ? '<img src="'+esc(ME.avatar_url)+'" alt="" style="width:36px;height:36px;border-radius:50%;object-fit:cover;flex:none;display:block">'
+    : '<div style="width:36px;height:36px;border-radius:50%;background:#4f7fd1;color:#fff;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;flex:none">'+esc((ME.name||'?').split(' ').map(w=>w[0]||'').slice(0,2).join('').toUpperCase())+'</div>';
+  return '<div class="um-head"><div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">'+umAv+'<div style="min-width:0"><div class="um-name">'+esc(ME.name||"")+'</div><div class="um-mail">'+esc(ME.email||"")+'</div></div></div>'+
     '<span class="um-role">'+(isAdmin?"Admin · all campuses":esc(cap(ME.role||"")))+(ME.preview?" · viewing as staff":"")+"</span></div>"+
     '<button class="um-item" data-profile="1">'+ic("info")+'Profile</button>'+
     (isAdmin?'<button class="um-item" data-go="admin">'+ic("settings")+'Admin</button>'+
