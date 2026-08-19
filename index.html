@@ -183,7 +183,11 @@ html.dark .pa-name{color:var(--text)}
 .rp-card .rp-role{font-size:11.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;margin-bottom:6px}
 .rp-card p{margin:0;font-size:12.5px;color:#5c5c5c;line-height:1.5}
 .rp-table{width:100%;border-collapse:collapse;font-size:13.5px}
-.rp-table th{text-align:left;font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;font-weight:500;padding:12px 16px;background:#fafaf9;white-space:nowrap}
+/* The table scrolls inside its own card so the role headings stay put while
+   you read down the permissions — sticky only works against a scrolling
+   ancestor, which is what .rp-scroll is for. */
+.rp-scroll{overflow:auto;max-height:calc(100vh - 300px)}
+.rp-table th{text-align:left;font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;font-weight:500;padding:12px 16px;background:#fafaf9;white-space:nowrap;position:sticky;top:0;z-index:2}
 .rp-table td{padding:9px 16px;border-top:1px solid #f0f0f0}
 .rp-table tr.rp-sec td{background:#fafaf9;font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:#8a8a8a;font-weight:500;padding:9px 16px}
 .rp-yes{color:#0c6e4e;font-weight:600}
@@ -1035,11 +1039,21 @@ const SECTION_LABEL=id=>{const s=SECTIONS.find(x=>x.id===id);return s?s.label:id
 function adminName(p){const n=p.display_name||p.full_name||'—';return n.includes('@')?prettyNameFromEmail(n):n;}
 async function loadAdmin(){
   if(ADMIN.loading)return;ADMIN.loading=true;
-  const [r1,r2,r3]=await Promise.all([
+  /* r4-r6 are the permission registry: the apps, the named permissions inside
+     each, and which of them a role gets by default. Roles & permissions reads
+     these so the table describes what the database actually says, rather than
+     a list kept in step by hand. */
+  const [r1,r2,r3,r4,r5,r6]=await Promise.all([
     sb.from('profiles').select('id,display_name,full_name,role,campus_id,avatar_url,app_access,campus_ids,archived_at'),
     sb.from('campuses').select('id,name,parent_campus_id'),
-    sb.from('pending_invites').select('id,email,name,role,campus_id,created_at').order('created_at')
+    sb.from('pending_invites').select('id,email,name,role,campus_id,created_at').order('created_at'),
+    sb.from('apps').select('key,name').order('name'),
+    sb.from('app_permissions').select('app_key,perm_key,label').order('app_key'),
+    sb.from('role_app_defaults').select('role,app_key,perm_key,granted')
   ]);
+  ADMIN.apps=r4.data||[];
+  ADMIN.appPerms=r5.data||[];
+  ADMIN.appDefaults=r6.data||[];
   ADMIN.err=(r1.error&&r1.error.message)||(r2.error&&r2.error.message)||null;
   ADMIN.profs=r1.data||[];
   ADMIN.pending=r3.data||[];
@@ -1132,13 +1146,36 @@ function rpCell(v){
   if(v==='own')return '<span class="rp-lim">Own campus</span>';
   return esc(v);
 }
+/* The permission rows come from the database: one group per app, one row per
+   named permission, a tick where that role has it by default. RP_ROLES and
+   ROLE_LIST are in the same order, which is what keeps the ticks under the
+   right heading. If the registry hasn't loaded we fall back to the written
+   table rather than showing an empty grid. */
+function rolesTableRows(){
+  const perms=ADMIN.appPerms||[], defaults=ADMIN.appDefaults||[];
+  if(!perms.length)return null;
+  const cols=ROLE_LIST.length+1;
+  return (ADMIN.apps||[]).map(a=>{
+    const mine=perms.filter(p=>p.app_key===a.key);
+    if(!mine.length)return '';
+    return '<tr class="rp-sec"><td colspan="'+cols+'">'+esc(a.name)+'</td></tr>'+
+      mine.map(p=>'<tr><td>'+esc(p.label||p.perm_key)+'</td>'+
+        ROLE_LIST.map(role=>'<td>'+(defaults.some(d=>d.role===role&&d.app_key===a.key&&d.perm_key===p.perm_key&&d.granted)
+          ?'<span class="rp-yes">✓</span>':'<span class="rp-no">—</span>')+'</td>').join('')+
+      '</tr>').join('');
+  }).join('');
+}
 function pageAdminRoles(){
+  const live=rolesTableRows();
+  const body=live!==null&&live.trim()
+    ? live
+    : RP_SECTIONS.map(sec=>'<tr class="rp-sec"><td colspan="5">'+esc(sec.title)+'</td></tr>'+
+        sec.rows.map(row=>'<tr><td>'+esc(row[0])+'</td>'+row.slice(1).map(v=>'<td>'+rpCell(v)+'</td>').join('')+'</tr>').join('')
+      ).join('');
   return '<div class="rp-desc">'+RP_ROLES.map(r=>'<div class="rp-card"><div class="rp-role" style="color:'+r.color+'">'+esc(r.name)+'</div><p>'+esc(r.desc)+'</p></div>').join('')+'</div>'+
-    '<div class="pa-card" style="overflow-x:auto"><table class="rp-table"><thead><tr><th>Permission</th>'+
+    '<div class="pa-card rp-scroll"><table class="rp-table"><thead><tr><th>Permission</th>'+
     RP_ROLES.map(r=>'<th style="color:'+r.color+'">'+esc(r.name)+'</th>').join('')+'</tr></thead><tbody>'+
-    RP_SECTIONS.map(sec=>'<tr class="rp-sec"><td colspan="5">'+esc(sec.title)+'</td></tr>'+
-      sec.rows.map(row=>'<tr><td>'+esc(row[0])+'</td>'+row.slice(1).map(v=>'<td>'+rpCell(v)+'</td>').join('')+'</tr>').join('')
-    ).join('')+'</tbody></table></div>'+
+    body+'</tbody></table></div>'+
     '<p style="font-size:12.5px;color:var(--text2);margin-top:14px;max-width:640px;line-height:1.5">A reference, not a control panel — change someone\'s access by changing their role on the Users tab. Section visibility is enforced by the portal; campus scope and who can edit what are enforced by the database itself, so the rules hold no matter which app you\'re in.</p>';
 }
 function pageAdminFeedback(){
