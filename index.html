@@ -1305,28 +1305,31 @@ function campusChips(selectedIds,allCampuses,mainId,isAdminUser){
 /* The campuses a person can see inside one app: chips for the ones they have,
    a dropdown to add another. Hidden until the app itself is ticked, and never
    shown for admins — they see every campus everywhere. */
-function puCampusRow(appKey,selectedIds,allCampuses,isAdminUser,appOn){
+function puCampusRow(appKey,selectedIds,allCampuses,isAdminUser,appOn,personCampusIds){
+  const wrap=inner=>'<div class="pu-campuses" data-campusrow="'+esc(appKey)+'"'+(appOn?'':' hidden')+'>'+inner+'</div>';
+  /* Admins are not limited anywhere, so one short line - repeating every
+     campus under all eight apps says the same thing eight times. */
+  if(isAdminUser)return wrap('<span class="pu-chip-none">All campuses</span>');
   const cams=allCampuses.slice().sort((a,b)=>a.name.localeCompare(b.name));
-  /* An admin has every campus in every app. Show them all rather than an
-     empty space - saying yes to an app should always show which campuses
-     it covers - but with no × and no Add, because there is nothing to change. */
-  if(isAdminUser)
-    return '<div class="pu-campuses" data-campusrow="'+esc(appKey)+'"'+(appOn?'':' hidden')+'>'+
-      cams.map(c=>'<span class="pu-chip pu-chip-locked">'+esc(c.name)+'</span>').join('')+
-      '<span class="pu-chip-none">every campus — admins are not limited</span></div>';
-  const sel=cams.filter(c=>selectedIds.includes(c.id));
-  const avail=cams.filter(c=>!selectedIds.includes(c.id));
+  /* With nothing chosen for this app, the person sees the campuses they have
+     under Campus access below - not every campus. Saying "Every campus" here
+     contradicted that section and overstated what they can reach. */
+  const inherited=!selectedIds||!selectedIds.length;
+  const ids=inherited?(personCampusIds||[]):selectedIds;
+  const sel=cams.filter(c=>ids.includes(c.id));
+  const avail=cams.filter(c=>!ids.includes(c.id));
   const chips=sel.length
-    ? sel.map(c=>'<span class="pu-chip">'+esc(c.name)+
-        '<button type="button" data-rmcampus data-capp="'+esc(appKey)+'" data-cid="'+esc(c.id)+'" aria-label="Remove '+esc(c.name)+'">×</button></span>').join('')
-    : '<span class="pu-chip-none">Every campus</span>';
+    ? sel.map(c=>'<span class="pu-chip'+(inherited?' pu-chip-locked':'')+'">'+esc(c.name)+
+        (inherited?'':'<button type="button" data-rmcampus data-capp="'+esc(appKey)+'" data-cid="'+esc(c.id)+'" aria-label="Remove '+esc(c.name)+'">×</button>')+
+      '</span>').join('')+(inherited?'<span class="pu-chip-none">same as Campus access</span>':'')
+    : '<span class="pu-chip-none">No campus set — add one below</span>';
   const add=avail.length
     ? '<select class="pu-addcampus" data-addcampus data-capp="'+esc(appKey)+'">'+
         '<option value="">+ Add campus</option>'+
         avail.map(c=>'<option value="'+esc(c.id)+'">'+esc(c.name)+'</option>').join('')+
       '</select>'
     : '';
-  return '<div class="pu-campuses" data-campusrow="'+esc(appKey)+'"'+(appOn?'':' hidden')+'>'+chips+add+'</div>';
+  return wrap(chips+add);
 }
 function paNote(msg,err){const n=document.getElementById('paNote');if(!n)return;n.style.display='flex';n.style.borderColor=err?'var(--red)':'var(--hairline)';n.innerHTML=ic('info')+'<div>'+esc(msg)+'</div>';clearTimeout(paNote._t);paNote._t=setTimeout(()=>{const x=document.getElementById('paNote');if(x)x.style.display='none';},4500);}
 async function paSaveRole(id,next){
@@ -1418,7 +1421,7 @@ async function paUserPage(id){
             '<option value="yes"'+(secs.includes(s.id)?' selected':'')+'>Yes</option>'+
             '<option value="no"'+(secs.includes(s.id)?'':' selected')+'>No</option>'+
           '</select></div>'+
-        puCampusRow(s.id,appCampuses[s.id]||[],ADMIN.campuses||[],isAdminUser,secs.includes(s.id))+
+        puCampusRow(s.id,appCampuses[s.id]||[],ADMIN.campuses||[],isAdminUser,secs.includes(s.id),campusIds)+
       '</div>').join('')+
     '</div>'+
     '<p class="pu-note">Say yes to an app, then choose which campuses this person sees inside it. Leaving it on every campus is fine for someone who works across all of them.<br>'+
@@ -1524,12 +1527,15 @@ async function paUserPage(id){
   const redrawCampusChips=()=>{
     const el=document.querySelector('#auBody [data-campuschips]');
     if(el)el.outerHTML=campusChips(campusIds,ADMIN.campuses||[],p.campus_id,isAdminUser);
+    /* any app still inheriting has to follow the change, or the page would
+       show a campus list the section above no longer agrees with */
+    PERM_SECTIONS.forEach(s=>{if(!(appCampuses[s.id]||[]).length)redrawCampusRow(s.id);});
   };
   const redrawCampusRow=key=>{
     const row=document.querySelector('#auBody [data-campusrow="'+key+'"]');
     if(!row)return;
     const on=document.querySelector('#auBody select.pu-yesno[data-app="'+key+'"]');
-    row.outerHTML=puCampusRow(key,appCampuses[key]||[],ADMIN.campuses||[],isAdminUser,!!(on&&on.value==='yes'));
+    row.outerHTML=puCampusRow(key,appCampuses[key]||[],ADMIN.campuses||[],isAdminUser,!!(on&&on.value==='yes'),campusIds);
   };
   host.addEventListener('change',e=>{
     const cb=e.target.closest('select.pu-yesno[data-app]');
@@ -2177,7 +2183,14 @@ function loadTheme(){
 }
 if(window.matchMedia)window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if(THEME==='system')applyTheme();});
 const initialsOf=n=>{const p=String(n||"").trim().split(/\s+/).filter(Boolean);return !p.length?"?":(p.length===1?p[0].slice(0,2):p[0][0]+p[p.length-1][0]).toUpperCase();};
-function avatarHtml(url,name){return url?'<img src="'+esc(url)+'" alt="">':esc(initialsOf(name));}
+/* If the photo file has gone (deleted from storage, bad URL), fall back to
+   the initials rather than leaving a broken-image icon in the circle. */
+function avatarHtml(url,name){
+  const ini=esc(initialsOf(name));
+  return url
+    ? '<img src="'+esc(url)+'" alt="" onerror="if(this.parentNode)this.parentNode.textContent=\''+ini.replace(/'/g,"\\'")+'\'">'
+    : ini;
+}
 function umHtml(){
   const isAdmin=ME.role==="admin";
   return '<div class="um-head"><span class="um-av">'+avatarHtml(ME.avatar_url,ME.name)+'</span>'+
