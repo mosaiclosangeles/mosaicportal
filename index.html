@@ -114,6 +114,17 @@ html.dark .row:hover{background:var(--fill)}
 html.dark .pu-danger{background:transparent;border-color:#5c2a2a;color:#e88b8b}
 .pu-lock{margin-left:auto;color:var(--text3);display:inline-flex}
 .pu-lock svg{width:12px;height:12px}
+/* per-app campus access */
+.pu-apps{display:flex;flex-direction:column;gap:2px}
+.pu-app{border-radius:7px}
+.pu-campuses{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:2px 8px 9px 31px}
+.pu-campuses[hidden]{display:none}
+.pu-chip{display:inline-flex;align-items:center;gap:4px;background:var(--fill);border:1px solid var(--hairline);border-radius:999px;padding:3px 8px 3px 11px;font-size:12.5px}
+.pu-chip button{line-height:1;font-size:14px;color:var(--text2);background:none;border:none;padding:0 0 0 2px;cursor:pointer;font-family:inherit}
+.pu-chip button:hover{color:var(--text)}
+.pu-chip-none{font-size:12.5px;color:var(--text2)}
+.pu-addcampus{font-size:12.5px;color:var(--text2);border:1px dashed var(--hairline);border-radius:999px;padding:3px 9px;background:none;cursor:pointer;font-family:inherit}
+html.dark .pu-chip,html.dark .pu-addcampus{background:var(--fill);border-color:var(--separator);color:var(--text2)}
 html.dark .pa-pill{background:var(--fill);color:var(--text2)}
 html.dark .pu-check:hover{background:var(--fill)}
 .ap-seg{display:inline-flex;gap:2px;background:var(--fill);border-radius:9px;padding:3px}
@@ -1191,6 +1202,26 @@ function pageAdmin(){
       '</tbody></table></div>':'')+
     '<p style="font-size:12.5px;color:var(--text2);margin-top:14px;max-width:620px;line-height:1.5">Changing a role or campus here applies everywhere the Mosaic account is used — the portal, Metrics, and anything added later. Campus applies to staff, leaders and volunteers; admins see all campuses.</p>';
 }
+/* The campuses a person can see inside one app: chips for the ones they have,
+   a dropdown to add another. Hidden until the app itself is ticked, and never
+   shown for admins — they see every campus everywhere. */
+function puCampusRow(appKey,selectedIds,allCampuses,isAdminUser,appOn){
+  if(isAdminUser)return '';
+  const cams=allCampuses.slice().sort((a,b)=>a.name.localeCompare(b.name));
+  const sel=cams.filter(c=>selectedIds.includes(c.id));
+  const avail=cams.filter(c=>!selectedIds.includes(c.id));
+  const chips=sel.length
+    ? sel.map(c=>'<span class="pu-chip">'+esc(c.name)+
+        '<button type="button" data-rmcampus data-app="'+esc(appKey)+'" data-cid="'+esc(c.id)+'" aria-label="Remove '+esc(c.name)+'">×</button></span>').join('')
+    : '<span class="pu-chip-none">Every campus</span>';
+  const add=avail.length
+    ? '<select class="pu-addcampus" data-addcampus data-app="'+esc(appKey)+'">'+
+        '<option value="">+ Add campus</option>'+
+        avail.map(c=>'<option value="'+esc(c.id)+'">'+esc(c.name)+'</option>').join('')+
+      '</select>'
+    : '';
+  return '<div class="pu-campuses" data-campusrow="'+esc(appKey)+'"'+(appOn?'':' hidden')+'>'+chips+add+'</div>';
+}
 function paNote(msg,err){const n=document.getElementById('paNote');if(!n)return;n.style.display='flex';n.style.borderColor=err?'var(--red)':'var(--hairline)';n.innerHTML=ic('info')+'<div>'+esc(msg)+'</div>';clearTimeout(paNote._t);paNote._t=setTimeout(()=>{const x=document.getElementById('paNote');if(x)x.style.display='none';},4500);}
 async function paSaveRole(id,next){
   const p=ADMIN.profs.find(x=>x.id===id);if(!p||p.role===next)return true;
@@ -1225,6 +1256,11 @@ async function paUserDrawer(id){
   const fdt=ts=>{if(!ts)return '—';const d=new Date(ts);return isNaN(d)?'—':d.toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'});};
   const secs=sectionsFor(p), cams=campusesFor(p);
   const isAdminUser=p.role==='admin';
+  /* Per-app campus access (Paola's tables) sits behind the App access tick:
+     say yes to an app, then choose which campuses inside it. Admins see every
+     campus everywhere, so they get no picker. */
+  const {data:uacRows}=await sb.from('user_app_campuses').select('app_key,campus_id').eq('user_id',id);
+  const appCampuses={};(uacRows||[]).forEach(r=>{(appCampuses[r.app_key]=appCampuses[r.app_key]||[]).push(r.campus_id);});
   const roleOpts=ROLE_LIST.map(r=>'<option value="'+r+'"'+(r===p.role?' selected':'')+'>'+cap(r)+'</option>').join('');
   const camOpts='<option value="">Select a campus</option>'+(ADMIN.campuses||[]).map(c=>'<option value="'+esc(c.id)+'"'+(c.id===p.campus_id?' selected':'')+'>'+esc(c.name)+'</option>').join('');
   const lastActive=u&&u.last_sign_in_at;
@@ -1249,10 +1285,14 @@ async function paUserDrawer(id){
     '<p class="pu-note">The role sets the defaults below. Anything you tick here is an override for this person only.</p>'+
 
     '<div class="pu-sec">App access</div>'+
-    '<div class="pu-grid">'+PERM_SECTIONS.map(s=>
-      '<label class="pu-check"><input type="checkbox" data-app="'+s.id+'"'+(secs.includes(s.id)?' checked':'')+'>'+
-      '<span>'+esc(s.label)+'</span>'+(s.restricted?'<span class="pu-lock">'+ic('lock')+'</span>':'')+'</label>').join('')+
+    '<div class="pu-apps">'+PERM_SECTIONS.map(s=>
+      '<div class="pu-app" data-approw="'+s.id+'">'+
+        '<label class="pu-check"><input type="checkbox" data-app="'+s.id+'"'+(secs.includes(s.id)?' checked':'')+'>'+
+        '<span>'+esc(s.label)+'</span>'+(s.restricted?'<span class="pu-lock">'+ic('lock')+'</span>':'')+'</label>'+
+        puCampusRow(s.id,appCampuses[s.id]||[],ADMIN.campuses||[],isAdminUser,secs.includes(s.id))+
+      '</div>').join('')+
     '</div>'+
+    '<p class="pu-note">Say yes to an app, then choose which campuses this person sees inside it. Leaving it on every campus is fine for someone who works across all of them.</p>'+
 
     '<div class="pu-sec">Campus access</div>'+
     '<div class="pu-grid">'+(ADMIN.campuses||[]).map(c=>
@@ -1350,6 +1390,35 @@ async function paUserDrawer(id){
     if(!ok){n.textContent="Couldn't remove — "+errMsg;return;}
     ADMIN.profs=null;closeDrawer();if(S.section==='admin')render();
   });
+  /* Per-app campuses are held here and written by Save, alongside everything
+     else in this drawer — one Save button, not two ways to save. */
+  const redrawCampusRow=key=>{
+    const row=document.querySelector('#drawerBody [data-campusrow="'+key+'"]');
+    if(!row)return;
+    const on=document.querySelector('#drawerBody [data-app="'+key+'"]');
+    row.outerHTML=puCampusRow(key,appCampuses[key]||[],ADMIN.campuses||[],isAdminUser,!!(on&&on.checked));
+  };
+  document.getElementById('drawerBody').addEventListener('change',e=>{
+    const cb=e.target.closest('[data-app]');
+    if(cb){
+      const row=document.querySelector('#drawerBody [data-campusrow="'+cb.dataset.app+'"]');
+      if(row){if(cb.checked)row.removeAttribute('hidden');else row.setAttribute('hidden','');}
+      return;
+    }
+    const add=e.target.closest('[data-addcampus]');
+    if(add&&add.value){
+      const key=add.dataset.app;
+      appCampuses[key]=(appCampuses[key]||[]).concat(add.value);
+      redrawCampusRow(key);
+    }
+  });
+  document.getElementById('drawerBody').addEventListener('click',e=>{
+    const rm=e.target.closest('[data-rmcampus]');
+    if(!rm)return;
+    const key=rm.dataset.app;
+    appCampuses[key]=(appCampuses[key]||[]).filter(x=>x!==rm.dataset.cid);
+    redrawCampusRow(key);
+  });
   document.getElementById('puSave').addEventListener('click',async()=>{
     const n=document.getElementById('puNote');
     const app={};
@@ -1357,6 +1426,16 @@ async function paUserDrawer(id){
     const camIds=[...document.querySelectorAll('#drawerBody [data-campus]')].filter(cb=>cb.checked).map(cb=>cb.dataset.campus);
     const {error:e3}=await sb.from('profiles').update({app_access:app,campus_ids:camIds}).eq('id',id);
     if(e3){n.textContent="Couldn't save — "+(e3.message||'try again.');return;}
+    if(!isAdminUser){
+      const rows=[];
+      Object.keys(appCampuses).forEach(k=>{if(app[k])(appCampuses[k]||[]).forEach(cid=>rows.push({user_id:id,app_key:k,campus_id:cid}));});
+      const {error:e7}=await sb.from('user_app_campuses').delete().eq('user_id',id);
+      if(e7){n.textContent="Apps saved, but the campuses didn't — "+(e7.message||'try again.');return;}
+      if(rows.length){
+        const {error:e8}=await sb.from('user_app_campuses').insert(rows);
+        if(e8){n.textContent="Apps saved, but the campuses didn't — "+(e8.message||'try again.');return;}
+      }
+    }
     p.app_access=app;p.campus_ids=camIds;
     n.textContent='Permissions saved.';
     if(S.section==='admin')render();
@@ -1365,6 +1444,7 @@ async function paUserDrawer(id){
     const n=document.getElementById('puNote');
     const {error:e4}=await sb.from('profiles').update({app_access:null,campus_ids:null}).eq('id',id);
     if(e4){n.textContent="Couldn't reset — "+(e4.message||'try again.');return;}
+    await sb.from('user_app_campuses').delete().eq('user_id',id);
     p.app_access=null;p.campus_ids=null;
     n.textContent='Back to the role defaults.';
     paUserDrawer(id);if(S.section==='admin')render();
