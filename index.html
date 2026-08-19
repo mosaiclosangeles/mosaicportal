@@ -114,6 +114,18 @@ html.dark .row:hover{background:var(--fill)}
 html.dark .pu-danger{background:transparent;border-color:#5c2a2a;color:#e88b8b}
 .pu-lock{margin-left:auto;color:var(--text3);display:inline-flex}
 .pu-lock svg{width:12px;height:12px}
+/* a person's own page in Admin */
+.au-card{margin:0 0 4px;max-width:620px;overflow:visible}
+.au-head{display:flex;gap:16px;align-items:center;padding:18px 20px}
+.au-ring{width:64px;height:64px;font-size:20px}
+.au-name{font-size:20px;font-weight:700;line-height:1.2}
+.au-arch{font-size:11.5px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;color:var(--text2);border:1px solid var(--hairline);border-radius:999px;padding:3px 9px;vertical-align:3px}
+.au-mail{font-size:13px;color:var(--text2);margin-top:3px}
+.au-photo{font-size:12px;color:var(--text2);text-decoration:underline;background:none;border:none;padding:0;margin:6px 12px 0 0;cursor:pointer;font-family:inherit}
+.au-photo:hover{color:var(--text)}
+.au-fields{border-top:1px solid var(--separator)}
+.au-fields .kv{padding:11px 20px}
+.au-foot{padding:14px 20px;border-top:1px solid var(--separator)}
 /* per-app campus access */
 .pu-apps{display:flex;flex-direction:column;gap:2px}
 .pu-app{border-radius:7px}
@@ -1212,10 +1224,10 @@ function puCampusRow(appKey,selectedIds,allCampuses,isAdminUser,appOn){
   const avail=cams.filter(c=>!selectedIds.includes(c.id));
   const chips=sel.length
     ? sel.map(c=>'<span class="pu-chip">'+esc(c.name)+
-        '<button type="button" data-rmcampus data-app="'+esc(appKey)+'" data-cid="'+esc(c.id)+'" aria-label="Remove '+esc(c.name)+'">×</button></span>').join('')
+        '<button type="button" data-rmcampus data-capp="'+esc(appKey)+'" data-cid="'+esc(c.id)+'" aria-label="Remove '+esc(c.name)+'">×</button></span>').join('')
     : '<span class="pu-chip-none">Every campus</span>';
   const add=avail.length
-    ? '<select class="pu-addcampus" data-addcampus data-app="'+esc(appKey)+'">'+
+    ? '<select class="pu-addcampus" data-addcampus data-capp="'+esc(appKey)+'">'+
         '<option value="">+ Add campus</option>'+
         avail.map(c=>'<option value="'+esc(c.id)+'">'+esc(c.name)+'</option>').join('')+
       '</select>'
@@ -1245,12 +1257,23 @@ async function paSaveCampus(id,next){
   p.campus_id=next||null;
   return 'Set '+adminName(p)+"'s campus to "+(next?campusName(next):'No campus')+'.';
 }
-async function paUserDrawer(id){
-  openDrawer('<div class="empty">Loading…</div>');
+/* The person's own page, not a slide-over: opened by clicking their name in
+   Admin, and Back returns to the list. paUserPage fills #auBody once the
+   profile has loaded. */
+function pageAdminUser(){
+  const id=S.adminUserId;
+  if(!id)return '<div class="empty">No one selected.</div>';
+  setTimeout(()=>paUserPage(id),0);
+  return '<button class="back" data-back="1">'+ic('left')+'Back</button>'+
+    '<div id="auBody"><div class="empty">Loading…</div></div>';
+}
+async function paUserPage(id){
+  const host=document.getElementById('auBody');
+  if(!host)return;
   const {data,error}=await sb.rpc('admin_get_user',{target:id});
   const u=Array.isArray(data)?data[0]:data;
   const p=ADMIN.profs.find(x=>x.id===id)||{};
-  if(error&&!p.id){document.getElementById('drawerBody').innerHTML='<div class="empty">Couldn\'t load this profile — '+esc((error&&error.message)||'not found')+'</div>';return;}
+  if(error&&!p.id){host.innerHTML='<div class="empty">Couldn\'t load this profile — '+esc((error&&error.message)||'not found')+'</div>';return;}
   const nm=adminName(Object.assign({},u||{},p));
   const email=(u&&u.email)||p.full_name||'';
   const fdt=ts=>{if(!ts)return '—';const d=new Date(ts);return isNaN(d)?'—':d.toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'});};
@@ -1264,24 +1287,29 @@ async function paUserDrawer(id){
   const roleOpts=ROLE_LIST.map(r=>'<option value="'+r+'"'+(r===p.role?' selected':'')+'>'+cap(r)+'</option>').join('');
   const camOpts='<option value="">Select a campus</option>'+(ADMIN.campuses||[]).map(c=>'<option value="'+esc(c.id)+'"'+(c.id===p.campus_id?' selected':'')+'>'+esc(c.name)+'</option>').join('');
   const lastActive=u&&u.last_sign_in_at;
-  document.getElementById('drawerBody').innerHTML=
-    '<div class="pu-head"><span class="ring" id="puRing">'+avatarHtml(p.avatar_url,nm)+'</span>'+
-      '<div style="min-width:0"><h2 style="margin:0">'+esc(nm)+(p.archived_at?' <span style="font-size:11.5px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;color:var(--text2);border:1px solid var(--hairline);border-radius:999px;padding:3px 9px;vertical-align:3px">Archived</span>':'')+'</h2><div class="sub" style="margin-top:2px">'+esc(email)+'</div>'+
-      '<button class="gate-ghost" id="puPhotoBtn" style="margin:8px 0 0;display:inline-block">'+(p.avatar_url?'Change photo':'Upload photo')+'</button>'+
-      (p.avatar_url?' <button class="gate-ghost" id="puPhotoDel" style="margin:0 0 0 10px;display:inline-block">Remove photo</button>':'')+
-      '<input type="file" id="puPhotoIn" accept="image/jpeg,image/png,image/webp,image/gif" style="display:none"></div></div>'+
-
-    '<div class="pu-sec">Account</div>'+
-    '<div class="kv"><span>Name</span><span><input id="puName" class="pa-in" style="width:180px;padding:6px 9px;font-size:13px;text-align:right" value="'+esc(nm)+'"></span></div>'+
-    '<div class="kv"><span>Last active</span><span>'+esc(lastActive?fdt(lastActive)+' ('+relDays(lastActive)+')':'Never signed in')+'</span></div>'+
-    '<div class="kv" style="border-bottom:0"><span>Joined</span><span>'+esc(fdt(u&&u.created_at))+'</span></div>'+
-    '<button class="btn-primary" id="puSaveName" style="margin-top:12px;padding:7px 13px;font-size:12.5px">Save name</button>'+
-
-    '<div class="pu-sec">Role</div>'+
-    '<div class="kv"><span>Role</span><span><select class="pa-role" data-id="'+esc(id)+'">'+roleOpts+'</select></span></div>'+
-    '<div class="kv" style="border-bottom:0"><span>Primary campus</span><span>'+
-      (isAdminUser?'<span style="color:var(--text2)">All campuses</span>'
-       :'<select class="pa-campus" data-id="'+esc(id)+'">'+camOpts+'</select>')+'</span></div>'+
+  host.innerHTML=
+    '<div class="pa-card au-card">'+
+      '<div class="au-head">'+
+        '<span class="ring au-ring" id="puRing">'+avatarHtml(p.avatar_url,nm)+'</span>'+
+        '<div style="min-width:0">'+
+          '<div class="au-name">'+esc(nm)+(p.archived_at?' <span class="au-arch">Archived</span>':'')+'</div>'+
+          '<div class="au-mail">'+esc(email)+'</div>'+
+          '<button class="au-photo" id="puPhotoBtn">'+(p.avatar_url?'Change photo':'Upload photo')+'</button>'+
+          (p.avatar_url?'<button class="au-photo" id="puPhotoDel">Remove photo</button>':'')+
+          '<input type="file" id="puPhotoIn" accept="image/jpeg,image/png,image/webp,image/gif" style="display:none">'+
+        '</div>'+
+      '</div>'+
+      '<div class="au-fields">'+
+        '<div class="kv"><span>Name</span><span><input id="puName" class="pa-in" style="width:180px;padding:6px 9px;font-size:13px;text-align:right" value="'+esc(nm)+'"></span></div>'+
+        '<div class="kv"><span>Role</span><span><select class="pa-role" data-id="'+esc(id)+'">'+roleOpts+'</select></span></div>'+
+        '<div class="kv"><span>Main campus</span><span>'+
+          (isAdminUser?'<span style="color:var(--text2)">All campuses</span>'
+           :'<select class="pa-campus" data-id="'+esc(id)+'">'+camOpts+'</select>')+'</span></div>'+
+        '<div class="kv"><span>Joined</span><span>'+esc(fdt(u&&u.created_at))+'</span></div>'+
+        '<div class="kv" style="border-bottom:0"><span>Last active</span><span>'+esc(lastActive?fdt(lastActive)+' ('+relDays(lastActive)+')':'Never signed in')+'</span></div>'+
+      '</div>'+
+      '<div class="au-foot"><button class="btn-primary" id="puSaveName" style="padding:7px 13px;font-size:12.5px">Save name</button></div>'+
+    '</div>'+
     '<p class="pu-note">The role sets the defaults below. Anything you tick here is an override for this person only.</p>'+
 
     '<div class="pu-sec">App access</div>'+
@@ -1369,7 +1397,7 @@ async function paUserDrawer(id){
     }catch(ex){errMsg=String((ex&&ex.message)||ex);}
     if(!ok){btn.disabled=false;btn.textContent=(toArchive?'Archive ':'Restore ')+nm;n.textContent="Couldn't "+(toArchive?'archive':'restore')+' — '+errMsg;return;}
     p.archived_at=toArchive?new Date().toISOString():null;
-    paUserDrawer(id);if(S.section==='admin')render();
+    paUserPage(id);if(S.section==='admin')render();
   });
   /* remove the account entirely */
   document.getElementById('puRemove').addEventListener('click',async()=>{
@@ -1388,42 +1416,42 @@ async function paUserDrawer(id){
     }catch(ex){errMsg=String((ex&&ex.message)||ex);}
     btn.disabled=false;btn.textContent='Remove '+nm;
     if(!ok){n.textContent="Couldn't remove — "+errMsg;return;}
-    ADMIN.profs=null;closeDrawer();if(S.section==='admin')render();
+    ADMIN.profs=null;S.section='admin';S.adminUserId=null;render();
   });
   /* Per-app campuses are held here and written by Save, alongside everything
      else in this drawer — one Save button, not two ways to save. */
   const redrawCampusRow=key=>{
-    const row=document.querySelector('#drawerBody [data-campusrow="'+key+'"]');
+    const row=document.querySelector('#auBody [data-campusrow="'+key+'"]');
     if(!row)return;
-    const on=document.querySelector('#drawerBody [data-app="'+key+'"]');
+    const on=document.querySelector('#auBody [data-app="'+key+'"]');
     row.outerHTML=puCampusRow(key,appCampuses[key]||[],ADMIN.campuses||[],isAdminUser,!!(on&&on.checked));
   };
-  document.getElementById('drawerBody').addEventListener('change',e=>{
-    const cb=e.target.closest('[data-app]');
+  host.addEventListener('change',e=>{
+    const cb=e.target.closest('input[type="checkbox"][data-app]');
     if(cb){
-      const row=document.querySelector('#drawerBody [data-campusrow="'+cb.dataset.app+'"]');
+      const row=document.querySelector('#auBody [data-campusrow="'+cb.dataset.app+'"]');
       if(row){if(cb.checked)row.removeAttribute('hidden');else row.setAttribute('hidden','');}
       return;
     }
     const add=e.target.closest('[data-addcampus]');
     if(add&&add.value){
-      const key=add.dataset.app;
+      const key=add.dataset.capp;
       appCampuses[key]=(appCampuses[key]||[]).concat(add.value);
       redrawCampusRow(key);
     }
   });
-  document.getElementById('drawerBody').addEventListener('click',e=>{
+  host.addEventListener('click',e=>{
     const rm=e.target.closest('[data-rmcampus]');
     if(!rm)return;
-    const key=rm.dataset.app;
+    const key=rm.dataset.capp;
     appCampuses[key]=(appCampuses[key]||[]).filter(x=>x!==rm.dataset.cid);
     redrawCampusRow(key);
   });
   document.getElementById('puSave').addEventListener('click',async()=>{
     const n=document.getElementById('puNote');
     const app={};
-    document.querySelectorAll('#drawerBody [data-app]').forEach(cb=>{app[cb.dataset.app]=cb.checked;});
-    const camIds=[...document.querySelectorAll('#drawerBody [data-campus]')].filter(cb=>cb.checked).map(cb=>cb.dataset.campus);
+    document.querySelectorAll('#auBody input[type="checkbox"][data-app]').forEach(cb=>{app[cb.dataset.app]=cb.checked;});
+    const camIds=[...document.querySelectorAll('#auBody [data-campus]')].filter(cb=>cb.checked).map(cb=>cb.dataset.campus);
     const {error:e3}=await sb.from('profiles').update({app_access:app,campus_ids:camIds}).eq('id',id);
     if(e3){n.textContent="Couldn't save — "+(e3.message||'try again.');return;}
     if(!isAdminUser){
@@ -1447,7 +1475,7 @@ async function paUserDrawer(id){
     await sb.from('user_app_campuses').delete().eq('user_id',id);
     p.app_access=null;p.campus_ids=null;
     n.textContent='Back to the role defaults.';
-    paUserDrawer(id);if(S.section==='admin')render();
+    paUserPage(id);if(S.section==='admin')render();
   });
   document.getElementById('paReset').addEventListener('click',async()=>{
     const n=document.getElementById('paResetNote');
@@ -1781,6 +1809,7 @@ function render(){
     : S.section==='budgets'?pageBudgets()
     : S.section==='giving'?pageGiving()
     : S.section==='admin'?pageAdmin()
+    : S.section==='admin-user'?pageAdminUser()
     : pageSettings();
   window.scrollTo(0,0);
   const ps=document.getElementById('paSearch');
@@ -1833,7 +1862,7 @@ document.addEventListener('click',e=>{
   if(t.dataset.newuser){ paInviteDrawer(); return; }
   if(t.dataset.fb){ feedbackDrawer(t.dataset.fb); return; }
   if(t.dataset.gp!==undefined){ S.goalsPath=t.dataset.gp; S.section='goals'; render(); return; }
-  if(t.dataset.user){ paUserDrawer(t.dataset.user); return; }
+  if(t.dataset.user){ S.from='admin'; S.adminUserId=t.dataset.user; S.section='admin-user'; render(); return; }
   if(t.dataset.pinv){ paInviteDrawer(t.dataset.pinv); return; }
   if(t.dataset.pinvsend){
     const v=(ADMIN.pending||[]).find(x=>x.id===t.dataset.pinvsend);if(!v)return;
@@ -2160,10 +2189,13 @@ document.addEventListener("click",e=>{
 });
 /* Admin table inline edits (delegated: the table re-renders) */
 document.addEventListener("change",async e=>{
+  /* Role and campus are edited both in the table and on a person's own page.
+     Re-render either way: changing someone to Admin removes the per-app campus
+     pickers, so the page has to redraw, not just the list. */
   const rs=e.target.closest("select.pa-role");
-  if(rs){const r=await paSaveRole(rs.dataset.id,rs.value);if(S.section==="admin")render();if(typeof r==="string")paNote(r);return;}
+  if(rs){const r=await paSaveRole(rs.dataset.id,rs.value);if(S.section==="admin"||S.section==="admin-user")render();if(typeof r==="string")paNote(r);return;}
   const cs=e.target.closest("select.pa-campus");
-  if(cs){const r=await paSaveCampus(cs.dataset.id,cs.value);if(S.section==="admin")render();if(typeof r==="string")paNote(r);return;}
+  if(cs){const r=await paSaveCampus(cs.dataset.id,cs.value);if(S.section==="admin"||S.section==="admin-user")render();if(typeof r==="string")paNote(r);return;}
 });
 let BOOTED=false;
 const PATH_SECTION={"/":"home","/home":"home","/calendar":"calendar","/comms":"comms","/pm":"planning","/planning":"planning","/metrics":"numbers","/numbers":"numbers","/goals":"goals","/budgets":"budgets","/giving":"giving","/settings":"settings","/admin":"admin"};
