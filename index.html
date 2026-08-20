@@ -625,6 +625,16 @@ const TYPES = {
   future: {label:'Future', hue:'var(--indigo)', tint:'var(--indigo-t)', deep:'var(--indigo-d)', solid:'var(--indigo-s)'},
   kids:   {label:'Kids', hue:'var(--magenta)', tint:'var(--magenta-t)', deep:'var(--magenta-d)', solid:'var(--magenta-s)'}
 };
+/* Campus tagging for the calendar, at data level — not shown as a filter yet,
+   just carried on every event object so a per-campus view can read it later
+   without re-deriving it. Planning-board items already say their own campus
+   (LA/NYC/Global); comms and the shared mailboxes don't, so those are read
+   off the title/subject the same way staff already write "NYC" into them.
+   CAMPUS_ID matches the real campuses table (used by the roles/permissions
+   work), so this can plug into that later instead of inventing its own ids. */
+const CAMPUS_ID={LA:'f05f780c-44e3-49ff-a179-1d324f2c27a3',NYC:'0b4da502-eff7-4931-b0bb-6f0f494cf19c'};
+const NYC_RE=/\bnyc\b|new york/i;
+function campusOf(text){return NYC_RE.test(text||'')?'NYC':'LA';}
 // status: done | scheduled | waiting | drafting
 /* ---- live data ----------------------------------------------------------
    EVENTS / CAMPAIGNS come from the planning board's queryable mirror
@@ -659,7 +669,7 @@ function mapLive(pis,ces){
       }
       return;
     }
-    if(r.date_end&&r.date_end!==r.date){CAMPAIGNS.push({title,start:r.date,end:r.date_end,type:'event'});return;}
+    if(r.date_end&&r.date_end!==r.date){CAMPAIGNS.push({title,start:r.date,end:r.date_end,type:'event',campus:r.campus});return;}
     const id='pm:'+r.id;
     EVENTS.push(Object.assign({},base,{id,date:r.date,status:(r.status==='Complete'||past)?'done':'scheduled'}));
     if(past&&!r.parent_id&&r.status&&r.status!=='Complete')CLOSEOUT++;
@@ -671,9 +681,10 @@ function mapLive(pis,ces){
   ATTN.sort((a,b)=>D(a.date)-D(b.date));
   ces.forEach(r=>{
     if(r.archived||!r.event_date)return;
+    const title=r.title||(r.type||'Comm');
     EVENTS.push({id:'ce:'+r.id,date:r.event_date,type:'comms',
       status:CE_STATUS[String(r.status||'').toLowerCase()]||'drafting',
-      title:r.title||(r.type||'Comm'),
+      title,campus:campusOf(title+' '+(r.subtitle||'')),
       detail:(r.subtitle||r.type||'')+(r.sender?' · '+r.sender:'')});
   });
   EVENTS.sort((a,b)=>D(a.date)-D(b.date));
@@ -718,7 +729,7 @@ async function loadCalendar(){
     (data.events||[]).forEach(e=>{
       EVENTS.push({id:e.id,date:e.date,dateEnd:(e.end&&e.end!==e.date)?e.end:null,
         title:e.title,type:KIND_TYPE[e.kind]||'other',status:'done',
-        detail:e.where||'',owner:'',campus:'',link:e.link||''});
+        detail:e.where||'',owner:'',campus:e.campus||campusOf(e.title),link:e.link||''});
     });
   }catch(_){/* the calendar is extra context; the board still stands on its own */}
 }
