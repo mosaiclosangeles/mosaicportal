@@ -1043,7 +1043,12 @@ function paPermissionsSection(globalRole,roleOverrides,permOverrides,appCampuses
           (perms.length?
             '<div><div style="'+lbl+'">Permissions</div>'+
             '<div style="display:flex;flex-wrap:wrap;gap:8px 20px">'+
-              perms.map(p=>'<label style="display:flex;align-items:center;gap:7px;font-size:13.5px"><input type="checkbox" data-perm data-app="'+esc(a.key)+'" data-perm-key="'+esc(p.perm_key)+'" '+(p.granted?'checked':'')+'>'+esc(p.label)+'</label>').join('')+
+              perms.map((p,i)=>{
+                const isView=i===0; // the first permission is always the app's View-type one, which just reflects Access above
+                return isView
+                  ? '<label style="display:flex;align-items:center;gap:7px;font-size:13.5px;color:var(--text2)"><input type="checkbox" checked disabled>'+esc(p.label)+' <span style="font-size:11px">(follows Access)</span></label>'
+                  : '<label style="display:flex;align-items:center;gap:7px;font-size:13.5px"><input type="checkbox" data-perm data-app="'+esc(a.key)+'" data-perm-key="'+esc(p.perm_key)+'" '+(p.granted?'checked':'')+'>'+esc(p.label)+'</label>';
+              }).join('')+
             '</div></div>'
           :'')+
         '</div>'
