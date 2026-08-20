@@ -621,7 +621,9 @@ const TYPES = {
   event: {label:'Events',hue:'var(--gathering)',tint:'var(--gathering-t)',deep:'var(--gathering-d)',solid:'var(--gathering-s)'},
   comms: {label:'Comms', hue:'var(--amber)',    tint:'var(--amber-t)',    deep:'var(--amber-d)',    solid:'var(--amber-s)'},
   other: {label:'Mosaic Calendar', hue:'var(--neutral)',  tint:'var(--neutral-t)',  deep:'var(--neutral-d)',  solid:'var(--neutral-s)'},
-  away:  {label:'Staff travel + PTO', hue:'var(--lime)', tint:'var(--lime-t)', deep:'var(--lime-d)', solid:'var(--lime-s)'}
+  away:  {label:'Staff travel + PTO', hue:'var(--lime)', tint:'var(--lime-t)', deep:'var(--lime-d)', solid:'var(--lime-s)'},
+  future: {label:'Future', hue:'var(--indigo)', tint:'var(--indigo-t)', deep:'var(--indigo-d)', solid:'var(--indigo-s)'},
+  kids:   {label:'Kids', hue:'var(--magenta)', tint:'var(--magenta-t)', deep:'var(--magenta-d)', solid:'var(--magenta-s)'}
 };
 // status: done | scheduled | waiting | drafting
 /* ---- live data ----------------------------------------------------------
@@ -712,9 +714,10 @@ async function loadCalendar(){
     ]);
     if(error||!data||!data.ok)return;
     CAL_ON=!!data.configured;
+    const KIND_TYPE={away:'away',future:'future',kids:'kids'};
     (data.events||[]).forEach(e=>{
       EVENTS.push({id:e.id,date:e.date,dateEnd:(e.end&&e.end!==e.date)?e.end:null,
-        title:e.title,type:e.kind==='away'?'away':'other',status:'done',
+        title:e.title,type:KIND_TYPE[e.kind]||'other',status:'done',
         detail:e.where||'',owner:'',campus:'',link:e.link||''});
     });
   }catch(_){/* the calendar is extra context; the board still stands on its own */}
@@ -767,7 +770,7 @@ const S = {
   view:'week',
   anchor:new Date(TODAY),
   month:new Date(TODAY.getFullYear(),TODAY.getMonth(),1),
-  filters:new Set(['event','comms','other','away']),
+  filters:new Set(['event','comms','other','away','future','kids']),
   role:'comms',
   forEveryone:false,
   tlShift:0,
@@ -970,10 +973,10 @@ function filterBar(){
     '<button class="chip '+(S.filters.has(k)?'on':'off')+'" data-filter="'+k+'">'+
     '<span class="swatch" style="background:'+TYPES[k].hue+'"></span>'+TYPES[k].label+'</button>').join('')+
     '<button class="chip" data-filter="__all">All</button></div>'+
-    ((S.filters.has('other')||S.filters.has('away'))
+    ((S.filters.has('other')||S.filters.has('away')||S.filters.has('future')||S.filters.has('kids'))
       ? '<div style="font-size:12px;color:var(--text2);margin:-8px 0 14px">'+
-        (CAL_ON?'Mosaic Calendar shows the shared staff calendar — meetings, rehearsals, birthdays and closures. Staff travel + PTO pulls the time-away entries out of it.'
-               :'The shared Mosaic Calendar isn\'t connected yet, so these two rows are empty.')+'</div>'
+        (CAL_ON?'Mosaic Calendar shows the shared staff calendar — meetings, rehearsals, birthdays and closures. Staff travel + PTO pulls the time-away entries out of it. Future and Kids show those teams\' shared calendars.'
+               :'The shared calendars aren\'t connected yet, so these rows are empty.')+'</div>'
       : '');
 }
 function legend(){
