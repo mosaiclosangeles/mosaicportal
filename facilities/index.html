@@ -312,6 +312,13 @@ function ic(n,s){return '<svg viewBox="0 0 24 24" fill="none" stroke="currentCol
 function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');
   clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('show'),2600);}
+/* Postgres refuses an RLS violation with its own wording; nobody needs to read that. */
+function why(err){
+  const m=(err&&err.message)||'';
+  if(/row-level security|violates row-level/i.test(m))
+    return "You don't have access to change this — ask an admin for approver access in the Portal.";
+  return m||'Something went wrong.';
+}
 
 /* ============================ dates ============================ */
 const MON=['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -777,7 +784,7 @@ async function decide(id,status){
     if(note)patch.decision_note=note;
   }
   const {error}=await sb.from('fac_requests').update(patch).eq('id',id);
-  if(error){toast("Couldn't save — "+error.message);return;}
+  if(error){toast("Couldn't save — "+why(error));return;}
   delete LINES[id];
   // Approving the request approves every resource still sitting at pending.
   if(status==='approved'){
@@ -793,7 +800,7 @@ async function decide(id,status){
 }
 async function setResourceStatus(lineId,status){
   const {error}=await sb.from('fac_request_resources').update({status}).eq('id',lineId);
-  if(error){toast("Couldn't save — "+error.message);return;}
+  if(error){toast("Couldn't save — "+why(error));return;}
   delete LINES[S.selected];toast('Saved.');hydrateDetail();
 }
 async function addComment(){
@@ -802,7 +809,7 @@ async function addComment(){
   const internal=$g('cmInternal')?$g('cmInternal').checked:false;
   const {error}=await sb.from('fac_request_comments')
     .insert({request_id:S.selected,author_id:ME.id,body,is_internal:internal});
-  if(error){toast("Couldn't save — "+error.message);return;}
+  if(error){toast("Couldn't save — "+why(error));return;}
   delete LINES[S.selected];hydrateDetail();
 }
 </script>
@@ -965,7 +972,7 @@ async function submitForm(){
     details:f.details,requester_notes:f.requester_notes.trim()||null,status:'submitted'
   }).select('id').single();
 
-  if(error){f.saving=false;render();$g('formNote').textContent="Couldn't submit — "+error.message;return;}
+  if(error){f.saving=false;render();$g('formNote').textContent="Couldn't submit — "+why(error);return;}
 
   const lines=Object.entries(f.resources).map(([resource_id,qty])=>({request_id:data.id,resource_id,qty}));
   if(lines.length){
@@ -1061,13 +1068,13 @@ async function addSpace(){
   const {error}=await sb.from('fac_spaces').insert({
     name,campus_id:$g('nsCampus').value,building:($g('nsBuilding').value||'').trim()||null,
     capacity:cap_===''?null:+cap_});
-  if(error){toast("Couldn't add it — "+error.message);return;}
+  if(error){toast("Couldn't add it — "+why(error));return;}
   await loadCatalog();render();toast('Space added.');
 }
 async function retireSpace(id){
   if(!confirm('Retire this space? It stays on past requests but nobody can book it again.'))return;
   const {error}=await sb.from('fac_spaces').update({active:false}).eq('id',id);
-  if(error){toast("Couldn't save — "+error.message);return;}
+  if(error){toast("Couldn't save — "+why(error));return;}
   await loadCatalog();render();toast('Space retired.');
 }
 

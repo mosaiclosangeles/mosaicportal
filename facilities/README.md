@@ -65,6 +65,14 @@ RLS enforces all of it in the database, not just the UI: you can always read the
 requests you submitted, `view_all` opens the rest, `approve` is what lets a row
 change status, and internal notes are invisible without it.
 
+Verified against the live database (Aug 2026, in a rolled-back transaction):
+
+| Acting as | Requests visible | Notes visible | Approving |
+|---|---|---|---|
+| admin | both test rows | both, internal included | allowed |
+| staff | both test rows | public only | refused by RLS |
+| leader | own row only | public only | n/a |
+
 ## Going live
 
 1. Cloudflare → **Workers & Pages → Create → Pages → Connect to Git** → this repo.
