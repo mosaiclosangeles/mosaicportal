@@ -380,7 +380,8 @@ const P = {
   info:'M12 9h.01M11 12h1v4h1M12 3a9 9 0 100 18 9 9 0 000-18',
   wallet:'M3 8a2 2 0 012-2h14a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2zM3 10.5h18M16.5 14.5h2',
   heart:'M12 20l-7.1-7.1a4 4 0 015.7-5.6l1.4 1.4 1.4-1.4a4 4 0 015.7 5.6z',
-  lock:'M6 11a2 2 0 012-2h8a2 2 0 012 2v6a2 2 0 01-2 2H8a2 2 0 01-2-2zM9 9V7a3 3 0 016 0v2'
+  lock:'M6 11a2 2 0 012-2h8a2 2 0 012 2v6a2 2 0 01-2 2H8a2 2 0 01-2-2zM9 9V7a3 3 0 016 0v2',
+  door:'M4 21h16M6 21V5a2 2 0 012-2h8a2 2 0 012 2v16M14 12h.01'
 };
 function ic(n,s){return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"'+(s?' style="'+s+'"':'')+'><path d="'+P[n]+'"/></svg>';}
 document.getElementById('drawerClose').innerHTML = ic('x');
@@ -494,6 +495,7 @@ const SECTIONS = [
   {group:'WORK'},
   {id:'comms',label:'Communication',icon:'mail',h:'var(--amber)',t:'var(--amber-t)',url:'https://comms.mosaic.org'},
   {id:'planning',label:'Planning',icon:'board',h:'var(--milestone)',t:'var(--milestone-t)',url:'https://pm.mosaic.org'},
+  {id:'facilities',label:'Facilities',icon:'door',h:'var(--comms)',t:'var(--comms-t)',url:'https://facilities.mosaic.org'},
   {group:'MEASURE'},
   {id:'numbers',label:'Metrics',icon:'chart',h:'var(--session)',t:'var(--session-t)',url:'https://metrics.mosaic.org'},
   {id:'goals',label:'Goals',icon:'target',beta:true,h:'var(--magenta)',t:'var(--magenta-t)',url:'https://mosaic-hub.replit.app/'},
@@ -504,10 +506,10 @@ const SECTIONS = [
 ];
 const PALETTE = ['--neutral','--red','--milestone','--amber','--lime','--session','--gathering','--indigo','--comms','--magenta'];
 const ROLES = {
-  comms:{name:'Comms / staff',sections:['home','calendar','comms','planning','numbers','goals','settings']},
-  leadership:{name:'Leadership',sections:['home','calendar','comms','planning','numbers','goals','budgets','giving','settings','admin']},
-  ops:{name:'Ops / event management',sections:['home','calendar','planning','settings']},
-  volunteer:{name:'Volunteer lead',sections:['home','calendar','settings']}
+  comms:{name:'Comms / staff',sections:['home','calendar','comms','planning','facilities','numbers','goals','settings']},
+  leadership:{name:'Leadership',sections:['home','calendar','comms','planning','facilities','numbers','goals','budgets','giving','settings','admin']},
+  ops:{name:'Ops / event management',sections:['home','calendar','planning','facilities','settings']},
+  volunteer:{name:'Volunteer lead',sections:['home','calendar','facilities','settings']}
 };
 const BUDGETS=[
   {k:'Facilities — NYC',b:72000,a:51400},
@@ -1818,7 +1820,7 @@ document.addEventListener("change",async e=>{
   if(cs){const r=await paSaveCampus(cs.dataset.id,cs.value);if(S.section==="admin")render();if(typeof r==="string")paNote(r);return;}
 });
 let BOOTED=false;
-const PATH_SECTION={"/":"home","/home":"home","/calendar":"calendar","/comms":"comms","/pm":"planning","/planning":"planning","/metrics":"numbers","/numbers":"numbers","/goals":"goals","/budgets":"budgets","/giving":"giving","/settings":"settings","/admin":"admin"};
+const PATH_SECTION={"/":"home","/home":"home","/calendar":"calendar","/comms":"comms","/pm":"planning","/planning":"planning","/facilities":"facilities","/metrics":"numbers","/numbers":"numbers","/goals":"goals","/budgets":"budgets","/giving":"giving","/settings":"settings","/admin":"admin"};
 async function enterPortal(){
   const {data:{user}}=await sb.auth.getUser();
   if(!user)return;

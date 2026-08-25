@@ -8,6 +8,7 @@ The staff portal for Mosaic — one front door for the tools the team already us
 | Metrics | [metrics.mosaic.org](https://metrics.mosaic.org) | `mosaic-metrics` · Supabase `Mosaic Metrics` (`iknjgrltglwupxjtegfh`) |
 | Comms | [comms.mosaic.org](https://comms.mosaic.org) | `mosaic-comm` · Supabase `mosaic-comm` (`yrviwbqhjcrlxgozrgay`) |
 | Planning Board | [pm.mosaic.org](https://pm.mosaic.org) | `mosaicprojectmanagement` · Supabase `mosaic-comm` |
+| Facilities | [facilities.mosaic.org](https://facilities.mosaic.org) | `facilities/` in this repo, pending its own repo · Supabase `Mosaic Metrics`, `fac_*` tables |
 | Goals | [mosaic-hub.replit.app](https://mosaic-hub.replit.app) | `goaltrackerv2` (Replit) |
 
 ## What this repo is
