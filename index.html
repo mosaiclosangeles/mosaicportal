@@ -1278,7 +1278,6 @@ function pageAdminCampuses(){
   const ppl=n=>n+' '+(n===1?'person':'people');
   const locsFor=id=>(ADMIN.campusLocations||[]).filter(l=>l.campus_id===id).sort((a,b)=>a.location.localeCompare(b.location));
   const timesFor=locId=>(ADMIN.serviceTimes||[]).filter(t=>t.location_id===locId);
-  const isAdmin=ME.role==='admin';
   const cardHtml=c=>{
     const locations=locsFor(c.id);
     const people=(ADMIN.profs||[]).filter(p=>!p.archived_at&&p.campus_id===c.id).sort((a,b)=>adminName(a).localeCompare(adminName(b)));
@@ -1300,12 +1299,12 @@ function pageAdminCampuses(){
             '<div class="cc-loc"><span>'+esc(l.location)+'</span>'+
             (canEdit?'<span class="cc-loc-right"><button class="btn-ghost" data-deactivateloc="'+esc(l.id)+'">Deactivate</button></span>':'')+
             '</div>'+
-            (isAdmin?'<div class="cc-times">'+
-              times.map(t=>'<span class="pu-chip">'+esc(t.service_label)+'<button type="button" data-rmtime="'+esc(t.id)+'" aria-label="Remove '+esc(t.service_label)+'">×</button></span>').join('')+
-              '<span class="cc-addtime" data-addtimefor="'+esc(l.id)+'" data-campusfor="'+esc(c.id)+'">'+
+            (times.length||canEdit?'<div class="cc-times">'+
+              times.map(t=>'<span class="pu-chip">'+esc(t.service_label)+(canEdit?'<button type="button" data-rmtime="'+esc(t.id)+'" aria-label="Remove '+esc(t.service_label)+'">×</button>':'')+'</span>').join('')+
+              (canEdit?'<span class="cc-addtime" data-addtimefor="'+esc(l.id)+'" data-campusfor="'+esc(c.id)+'">'+
                 '<input type="text" placeholder="e.g. 9:30 AM">'+
                 '<button class="btn-ghost" data-addtime="'+esc(l.id)+'">Add</button>'+
-              '</span></div>'
+              '</span>':'')+'</div>'
             :'')+
           '</div>';
         }).join('')+
@@ -1314,7 +1313,7 @@ function pageAdminCampuses(){
           '<button class="btn-ghost" data-addloc="'+esc(c.id)+'">Add location</button>'+
         '</div>'
         :(ME.role==='staff'?'<p style="font-size:12px;color:var(--text3);margin:8px 0 0">You can edit locations for your own campus, not this one.</p>':''))+
-        '<button class="btn-ghost" style="margin-top:14px" data-editcampus="'+esc(c.id)+'">Rename campus</button>'+
+        (ME.role==='admin'?'<button class="btn-ghost" style="margin-top:14px" data-editcampus="'+esc(c.id)+'">Rename campus</button>':'')+
       '</div>'+
     '</details>';
   };
@@ -1365,7 +1364,7 @@ function pageAdmin(){
     return '<div class="page-head"><div><h1>Admin</h1><div class="sub">What each role can reach across the portal</div></div></div>'+tabs+pageAdminRoles();
   if(ADMIN.tab==='campuses')
     return '<div class="page-head"><div><h1>Admin</h1><div class="sub">Every campus, and who\'s assigned to each</div></div>'+
-      '<button class="btn-primary" data-newcampus="1">New campus</button></div>'+tabs+pageAdminCampuses();
+      (ME.role==='admin'?'<button class="btn-primary" data-newcampus="1">New campus</button>':'')+'</div>'+tabs+pageAdminCampuses();
   const head='<div class="page-head"><div><h1>Admin</h1><div class="sub">User management · every app, one account list</div></div>'+
     '<button class="btn-primary" data-newuser="1">New user</button></div>'+tabs;
   if(!ADMIN.profs&&!ADMIN.err){loadAdmin();return head+'<div class="empty">Loading users…</div>';}
