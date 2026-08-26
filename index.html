@@ -1292,7 +1292,8 @@ function pageAdminCampuses(){
     const usersOpen=ADMIN.campusUsersOpen.has(c.id);
     const canEdit=canEditLocations(c.id);
     return '<details class="cc-card" data-campus="'+esc(c.id)+'"'+(ADMIN.campusOpen.has(c.id)?' open':'')+'>'+
-      '<summary class="cc-head"><span class="cc-name">'+esc(c.name)+(c.active===false?' <span class="au-arch">Inactive</span>':'')+'</span><span class="cc-chev">'+ic('down','width:16px;height:16px')+'</span></summary>'+
+      '<summary class="cc-head"><span class="cc-name">'+esc(c.name)+'</span><span class="cc-chev">'+ic('down','width:16px;height:16px')+'</span></summary>'+
+      (c.active===false?'<div class="cc-kv"><span>Status</span><span><span class="au-arch">Inactive</span></span></div>':'')+
       '<div class="cc-kv"><span>Locations</span><span>'+(locations.length?locations.map(l=>esc(l.location)).join(' · '):'<span style="font-weight:400;color:var(--text3)">None currently meeting</span>')+'</span></div>'+
       '<div class="cc-kv"><span>Users assigned</span><span>'+
         (total?'<button type="button" class="linkout" data-toggleusers="'+esc(c.id)+'">'+ppl(total)+'</button>':ppl(total))+
