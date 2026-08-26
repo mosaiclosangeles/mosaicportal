@@ -469,6 +469,8 @@ h2{font-size:16px;font-weight:600;letter-spacing:-.015em;margin:0 0 6px}
 .cc-addtime button,.cc-addloc button{font-size:12.5px;white-space:nowrap}
 .cc-inactive-toggle{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--text2);margin-bottom:14px;cursor:pointer}
 .cc-inactive-toggle input{cursor:pointer}
+.cc-users{padding:2px 0 12px}
+.cc-user{display:flex;align-items:center;justify-content:space-between;padding:6px 0;font-size:13px}
 button.linkout{font-family:inherit;letter-spacing:inherit;background:none;border:0;padding:0;cursor:pointer}
 button.linkout:hover{text-decoration:underline}
 .linkout{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--gathering);margin-top:16px}
@@ -1095,7 +1097,7 @@ function campusSortIndex(name){
   const onlineIdx=CAMPUS_ORDER.indexOf('Mosaic Online');
   return onlineIdx>=0?onlineIdx-0.5:CAMPUS_ORDER.length;
 }
-const ADMIN={profs:null,campuses:null,pending:null,err:null,fb:null,fbErr:null,q:'',role:'all',loading:false,tab:'users',campusOpen:new Set(),showInactiveCampuses:false};
+const ADMIN={profs:null,campuses:null,pending:null,err:null,fb:null,fbErr:null,q:'',role:'all',loading:false,tab:'users',campusOpen:new Set(),showInactiveCampuses:false,campusUsersOpen:new Set()};
 const ROLE_LIST=['admin','staff','leader','volunteer'];
 const SECTION_LABEL=id=>{const s=SECTIONS.find(x=>x.id===id);return s?s.label:id;};
 function adminName(p){const n=p.display_name||p.full_name||'—';return n.includes('@')?prettyNameFromEmail(n):n;}
@@ -1278,12 +1280,17 @@ function pageAdminCampuses(){
   const isAdmin=ME.role==='admin';
   const cards=camps.map(c=>{
     const locations=locsFor(c.id);
-    const total=userCount(c.id);
+    const people=(ADMIN.profs||[]).filter(p=>!p.archived_at&&p.campus_id===c.id).sort((a,b)=>adminName(a).localeCompare(adminName(b)));
+    const total=people.length;
+    const usersOpen=ADMIN.campusUsersOpen.has(c.id);
     const canEdit=canEditLocations(c.id);
     return '<details class="cc-card" data-campus="'+esc(c.id)+'"'+(ADMIN.campusOpen.has(c.id)?' open':'')+'>'+
       '<summary class="cc-head"><span class="cc-name">'+esc(c.name)+(c.active===false?' <span class="au-arch">Inactive</span>':'')+'</span><span class="cc-chev">'+ic('down','width:16px;height:16px')+'</span></summary>'+
       '<div class="cc-kv"><span>Locations</span><span>'+(locations.length?locations.map(l=>esc(l.location)).join(' · '):'<span style="font-weight:400;color:var(--text3)">None currently meeting</span>')+'</span></div>'+
-      '<div class="cc-kv"><span>Users assigned</span><span>'+ppl(total)+'</span></div>'+
+      '<div class="cc-kv"><span>Users assigned</span><span>'+
+        (total?'<button type="button" class="linkout" data-toggleusers="'+esc(c.id)+'">'+ppl(total)+'</button>':ppl(total))+
+      '</span></div>'+
+      (usersOpen&&total?'<div class="cc-users">'+people.map(p=>'<div class="cc-user"><span>'+esc(adminName(p))+'</span><span class="pa-pill">'+esc(cap(p.role))+'</span></div>').join('')+'</div>':'')+
       '<div class="cc-body">'+
         locations.map(l=>{
           const times=timesFor(l.id);
@@ -2135,7 +2142,7 @@ function render(){
 
 /* ============================ events ============================ */
 document.addEventListener('click',e=>{
-  const t=e.target.closest('[data-go],[data-view],[data-nav],[data-filter],[data-ev],[data-day],[data-task],[data-new],[data-pick],[data-everyone],[data-tl],[data-back],[data-logout],[data-preview],[data-profile],[data-fb],[data-newuser],[data-gp],[data-user],[data-pinv],[data-pinvsend],[data-pinvdel],[data-adtab],[data-theme],[data-newcampus],[data-editcampus],[data-addloc],[data-deactivateloc],[data-addtime],[data-rmtime],[data-toggleinactivecampus]');
+  const t=e.target.closest('[data-go],[data-view],[data-nav],[data-filter],[data-ev],[data-day],[data-task],[data-new],[data-pick],[data-everyone],[data-tl],[data-back],[data-logout],[data-preview],[data-profile],[data-fb],[data-newuser],[data-gp],[data-user],[data-pinv],[data-pinvsend],[data-pinvdel],[data-adtab],[data-theme],[data-newcampus],[data-editcampus],[data-addloc],[data-deactivateloc],[data-addtime],[data-rmtime],[data-toggleinactivecampus],[data-toggleusers]');
   if(!t) return;
   if(t.dataset.logout){ (sb?sb.auth.signOut():Promise.resolve()).then(()=>location.reload()); return; }
   if(t.dataset.preview){
@@ -2168,6 +2175,13 @@ document.addEventListener('click',e=>{
   if(t.dataset.adtab){ ADMIN.tab=t.dataset.adtab; if(t.dataset.adtab==='feedback')ADMIN.fb=null; render(); return; }
   if(t.dataset.newuser){ paInviteDrawer(); return; }
   if(t.dataset.toggleinactivecampus!==undefined){ ADMIN.showInactiveCampuses=t.checked; render(); return; }
+  if(t.dataset.toggleusers){
+    document.querySelectorAll('.cc-card[open]').forEach(d=>{if(d.dataset.campus)ADMIN.campusOpen.add(d.dataset.campus);});
+    const id=t.dataset.toggleusers;
+    if(ADMIN.campusUsersOpen.has(id))ADMIN.campusUsersOpen.delete(id);else ADMIN.campusUsersOpen.add(id);
+    render();
+    return;
+  }
   if(t.dataset.newcampus){ paCampusDrawer(); return; }
   if(t.dataset.editcampus){ paCampusDrawer(t.dataset.editcampus); return; }
   if(t.dataset.addloc){
