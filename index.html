@@ -1078,7 +1078,22 @@ function pageEmbed(id){
 /* ---- Admin: user management for the whole app (same profiles the four
    apps share). Reads/writes the Metrics Supabase with the signed-in
    admin's own session — RLS enforces that only admins can. ---- */
-const ADMIN={profs:null,campuses:null,pending:null,err:null,fb:null,fbErr:null,q:'',role:'all',loading:false,tab:'users',campusOpen:new Set()};
+/* Campus display order isn't in the database, and Metrics itself doesn't sort by any
+   column there — it's a fixed list radiating out from LA: LA itself, then the rest of
+   the US, then Mexico (next in North America), Ecuador (rest of the Americas), London
+   (Europe), Online last. Paola set this on 26 Aug 2026 (this session). Atlanta shows
+   despite being marked inactive in the database — an intentional exception, per Paola,
+   not a bug to "fix" by hiding it. A new campus needs a human to slot it into this list
+   at the right geographic point; unrecognized names fall back to just before Online. */
+const CAMPUS_ORDER=['Los Angeles','Orange County','New York City','Chicago','Atlanta','Seattle','Mexico','Ecuador','London','Mosaic Online'];
+const CAMPUS_ALWAYS_SHOW=['Atlanta'];
+function campusSortIndex(name){
+  const i=CAMPUS_ORDER.indexOf(name);
+  if(i>=0)return i;
+  const onlineIdx=CAMPUS_ORDER.indexOf('Mosaic Online');
+  return onlineIdx>=0?onlineIdx-0.5:CAMPUS_ORDER.length;
+}
+const ADMIN={profs:null,campuses:null,pending:null,err:null,fb:null,fbErr:null,q:'',role:'all',loading:false,tab:'users',campusOpen:new Set(),showInactiveCampuses:false};
 const ROLE_LIST=['admin','staff','leader','volunteer'];
 const SECTION_LABEL=id=>{const s=SECTIONS.find(x=>x.id===id);return s?s.label:id;};
 function adminName(p){const n=p.display_name||p.full_name||'—';return n.includes('@')?prettyNameFromEmail(n):n;}
@@ -1090,7 +1105,7 @@ async function loadAdmin(){
      a list kept in step by hand. */
   const [r1,r2,r3,r4,r5,r6,r7,r8]=await Promise.all([
     sb.from('profiles').select('id,display_name,full_name,role,campus_id,avatar_url,app_access,campus_ids,archived_at'),
-    sb.from('campuses').select('id,name,parent_campus_id'),
+    sb.from('campuses').select('id,name,parent_campus_id,active'),
     sb.from('pending_invites').select('id,email,name,role,campus_id,created_at').order('created_at'),
     sb.from('apps').select('key,name').order('name'),
     sb.from('app_permissions').select('app_key,perm_key,label').order('app_key'),
@@ -1109,7 +1124,7 @@ async function loadAdmin(){
   ADMIN.err=(r1.error&&r1.error.message)||(r2.error&&r2.error.message)||null;
   ADMIN.profs=r1.data||[];
   ADMIN.pending=r3.data||[];
-  ADMIN.campuses=(r2.data||[]).filter(c=>!c.parent_campus_id).sort((a,b)=>a.name.localeCompare(b.name));
+  ADMIN.campuses=(r2.data||[]).filter(c=>!c.parent_campus_id).sort((a,b)=>campusSortIndex(a.name)-campusSortIndex(b.name));
   ADMIN.campusLocations=r7.data||[];
   ADMIN.serviceTimes=r8.data||[];
   ADMIN.loading=false;
@@ -1248,8 +1263,12 @@ function pageAdminRoles(){
     '<p style="font-size:12.5px;color:var(--text2);margin-top:14px;max-width:640px;line-height:1.5">A reference, not a control panel — change someone\'s access by changing their role on the Users tab. Section visibility is enforced by the portal; campus scope and who can edit what are enforced by the database itself, so the rules hold no matter which app you\'re in.</p>';
 }
 function pageAdminCampuses(){
-  const camps=(ADMIN.campuses||[]).slice().sort((a,b)=>a.name.localeCompare(b.name));
-  if(!camps.length)return '<div class="empty">No campuses yet.</div>';
+  const all=(ADMIN.campuses||[]).slice().sort((a,b)=>campusSortIndex(a.name)-campusSortIndex(b.name));
+  if(!all.length)return '<div class="empty">No campuses yet.</div>';
+  const camps=ADMIN.showInactiveCampuses?all:all.filter(c=>c.active!==false||CAMPUS_ALWAYS_SHOW.includes(c.name));
+  const hiddenCount=all.length-camps.length;
+  const toggle='<label class="cc-inactive-toggle"><input type="checkbox" data-toggleinactivecampus'+(ADMIN.showInactiveCampuses?' checked':'')+'> See inactive campuses'+(hiddenCount&&!ADMIN.showInactiveCampuses?' ('+hiddenCount+' hidden)':'')+'</label>';
+  if(!camps.length)return toggle+'<div class="empty">No active campuses.</div>';
   const userCount=id=>(ADMIN.profs||[]).filter(p=>!p.archived_at&&p.campus_id===id).length;
   const ppl=n=>n+' '+(n===1?'person':'people');
   const locsFor=id=>(ADMIN.campusLocations||[]).filter(l=>l.campus_id===id).sort((a,b)=>a.location.localeCompare(b.location));
@@ -1260,7 +1279,7 @@ function pageAdminCampuses(){
     const total=userCount(c.id);
     const canEdit=canEditLocations(c.id);
     return '<details class="cc-card" data-campus="'+esc(c.id)+'"'+(ADMIN.campusOpen.has(c.id)?' open':'')+'>'+
-      '<summary class="cc-head"><span class="cc-name">'+esc(c.name)+'</span><span class="cc-chev">'+ic('down','width:16px;height:16px')+'</span></summary>'+
+      '<summary class="cc-head"><span class="cc-name">'+esc(c.name)+(c.active===false?' <span class="au-arch">Inactive</span>':'')+'</span><span class="cc-chev">'+ic('down','width:16px;height:16px')+'</span></summary>'+
       '<div class="cc-kv"><span>Locations</span><span>'+(locations.length?locations.map(l=>esc(l.location)).join(' · '):'<span style="font-weight:400;color:var(--text3)">None currently meeting</span>')+'</span></div>'+
       '<div class="cc-kv"><span>Users assigned</span><span>'+ppl(total)+'</span></div>'+
       '<div class="cc-body">'+
