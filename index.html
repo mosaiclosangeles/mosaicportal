@@ -1145,17 +1145,9 @@ function canEditLocations(campusId){
   const mine=[ME.campus_id,...(ME.campus_ids||[])].filter(Boolean);
   return mine.includes(campusId);
 }
-// Mirrors ADMIN.campusOpen to exactly what's open on screen right now — replacing,
-// not just adding to, the set. Adding-only meant a card you'd since closed by hand
-// (native <details> toggling isn't caught by any handler) would silently pop back
-// open on the next unrelated re-render, since its id was never removed.
-function syncCampusOpenState(){
-  ADMIN.campusOpen=new Set(Array.from(document.querySelectorAll('.cc-card[open]')).map(d=>d.dataset.campus).filter(Boolean));
-}
-// Re-fetch after a location/gathering-time edit, keeping whichever campus
-// cards were open so adding a location doesn't collapse the card you're in.
+// Re-fetch after a location/gathering-time edit. ADMIN.campusOpen stays accurate on
+// its own (see the document-level 'toggle' listener), so this just needs fresh data.
 async function afterCampusEdit(){
-  syncCampusOpenState();
   await loadAdmin();
 }
 function campusName(id){const c=(ADMIN.campuses||[]).find(x=>x.id===id);return c?c.name:'—';}
@@ -2155,6 +2147,16 @@ function render(){
 }
 
 /* ============================ events ============================ */
+// Keep ADMIN.campusOpen an always-accurate mirror of which <details> cards are open,
+// so any re-render (renaming a campus, toggling inactive campuses, editing a location)
+// preserves exactly what's open right now — not a stale snapshot taken at whichever
+// other action last remembered to check. 'toggle' doesn't bubble in every browser, so
+// this listens in the capture phase, which still sees it regardless.
+document.addEventListener('toggle',e=>{
+  const d=e.target;
+  if(!(d instanceof HTMLElement)||!d.classList.contains('cc-card')||!d.dataset.campus)return;
+  if(d.open)ADMIN.campusOpen.add(d.dataset.campus);else ADMIN.campusOpen.delete(d.dataset.campus);
+},true);
 document.addEventListener('click',e=>{
   const t=e.target.closest('[data-go],[data-view],[data-nav],[data-filter],[data-ev],[data-day],[data-task],[data-new],[data-pick],[data-everyone],[data-tl],[data-back],[data-logout],[data-preview],[data-profile],[data-fb],[data-newuser],[data-gp],[data-user],[data-pinv],[data-pinvsend],[data-pinvdel],[data-adtab],[data-theme],[data-newcampus],[data-editcampus],[data-addloc],[data-deactivateloc],[data-addtime],[data-rmtime],[data-toggleinactivecampus],[data-toggleusers]');
   if(!t) return;
@@ -2190,7 +2192,6 @@ document.addEventListener('click',e=>{
   if(t.dataset.newuser){ paInviteDrawer(); return; }
   if(t.dataset.toggleinactivecampus!==undefined){ ADMIN.showInactiveCampuses=t.checked; render(); return; }
   if(t.dataset.toggleusers){
-    syncCampusOpenState();
     const id=t.dataset.toggleusers;
     if(ADMIN.campusUsersOpen.has(id))ADMIN.campusUsersOpen.delete(id);else ADMIN.campusUsersOpen.add(id);
     render();
