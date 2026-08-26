@@ -1143,10 +1143,17 @@ function canEditLocations(campusId){
   const mine=[ME.campus_id,...(ME.campus_ids||[])].filter(Boolean);
   return mine.includes(campusId);
 }
+// Mirrors ADMIN.campusOpen to exactly what's open on screen right now — replacing,
+// not just adding to, the set. Adding-only meant a card you'd since closed by hand
+// (native <details> toggling isn't caught by any handler) would silently pop back
+// open on the next unrelated re-render, since its id was never removed.
+function syncCampusOpenState(){
+  ADMIN.campusOpen=new Set(Array.from(document.querySelectorAll('.cc-card[open]')).map(d=>d.dataset.campus).filter(Boolean));
+}
 // Re-fetch after a location/gathering-time edit, keeping whichever campus
 // cards were open so adding a location doesn't collapse the card you're in.
 async function afterCampusEdit(){
-  document.querySelectorAll('.cc-card[open]').forEach(d=>{if(d.dataset.campus)ADMIN.campusOpen.add(d.dataset.campus);});
+  syncCampusOpenState();
   await loadAdmin();
 }
 function campusName(id){const c=(ADMIN.campuses||[]).find(x=>x.id===id);return c?c.name:'—';}
@@ -2176,7 +2183,7 @@ document.addEventListener('click',e=>{
   if(t.dataset.newuser){ paInviteDrawer(); return; }
   if(t.dataset.toggleinactivecampus!==undefined){ ADMIN.showInactiveCampuses=t.checked; render(); return; }
   if(t.dataset.toggleusers){
-    document.querySelectorAll('.cc-card[open]').forEach(d=>{if(d.dataset.campus)ADMIN.campusOpen.add(d.dataset.campus);});
+    syncCampusOpenState();
     const id=t.dataset.toggleusers;
     if(ADMIN.campusUsersOpen.has(id))ADMIN.campusUsersOpen.delete(id);else ADMIN.campusUsersOpen.add(id);
     render();
