@@ -467,6 +467,8 @@ h2{font-size:16px;font-weight:600;letter-spacing:-.015em;margin:0 0 6px}
 .cc-addtime input,.cc-addloc input{font-family:inherit;font-size:12.5px;border:1px solid var(--hairline);border-radius:999px;padding:5px 12px;width:120px;background:var(--surface);color:var(--text)}
 .cc-addloc input{width:180px}
 .cc-addtime button,.cc-addloc button{font-size:12.5px;white-space:nowrap}
+.cc-inactive-toggle{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--text2);margin-bottom:14px;cursor:pointer}
+.cc-inactive-toggle input{cursor:pointer}
 button.linkout{font-family:inherit;letter-spacing:inherit;background:none;border:0;padding:0;cursor:pointer}
 button.linkout:hover{text-decoration:underline}
 .linkout{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--gathering);margin-top:16px}
@@ -1307,7 +1309,7 @@ function pageAdminCampuses(){
       '</div>'+
     '</details>';
   }).join('');
-  return cards+
+  return toggle+cards+
     '<p style="font-size:12.5px;color:var(--text2);margin-top:4px;max-width:640px;line-height:1.5">'+
     'The campus itself (its name) is the same one used everywhere else in the portal — a person\'s primary campus on '+
     'the Users tab, and the per-app campus pickers on their profile. Locations are the same ones Metrics reads for '+
@@ -2133,7 +2135,7 @@ function render(){
 
 /* ============================ events ============================ */
 document.addEventListener('click',e=>{
-  const t=e.target.closest('[data-go],[data-view],[data-nav],[data-filter],[data-ev],[data-day],[data-task],[data-new],[data-pick],[data-everyone],[data-tl],[data-back],[data-logout],[data-preview],[data-profile],[data-fb],[data-newuser],[data-gp],[data-user],[data-pinv],[data-pinvsend],[data-pinvdel],[data-adtab],[data-theme],[data-newcampus],[data-editcampus],[data-addloc],[data-deactivateloc],[data-addtime],[data-rmtime]');
+  const t=e.target.closest('[data-go],[data-view],[data-nav],[data-filter],[data-ev],[data-day],[data-task],[data-new],[data-pick],[data-everyone],[data-tl],[data-back],[data-logout],[data-preview],[data-profile],[data-fb],[data-newuser],[data-gp],[data-user],[data-pinv],[data-pinvsend],[data-pinvdel],[data-adtab],[data-theme],[data-newcampus],[data-editcampus],[data-addloc],[data-deactivateloc],[data-addtime],[data-rmtime],[data-toggleinactivecampus]');
   if(!t) return;
   if(t.dataset.logout){ (sb?sb.auth.signOut():Promise.resolve()).then(()=>location.reload()); return; }
   if(t.dataset.preview){
@@ -2165,6 +2167,7 @@ document.addEventListener('click',e=>{
   }
   if(t.dataset.adtab){ ADMIN.tab=t.dataset.adtab; if(t.dataset.adtab==='feedback')ADMIN.fb=null; render(); return; }
   if(t.dataset.newuser){ paInviteDrawer(); return; }
+  if(t.dataset.toggleinactivecampus!==undefined){ ADMIN.showInactiveCampuses=t.checked; render(); return; }
   if(t.dataset.newcampus){ paCampusDrawer(); return; }
   if(t.dataset.editcampus){ paCampusDrawer(t.dataset.editcampus); return; }
   if(t.dataset.addloc){
