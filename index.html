@@ -457,9 +457,16 @@ h2{font-size:16px;font-weight:600;letter-spacing:-.015em;margin:0 0 6px}
 .cc-kv>span:first-child{width:120px;flex:none;font-size:10.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text2);padding-top:1px}
 .cc-kv>span:last-child{font-weight:600}
 .cc-body{border-top:1px solid var(--separator);margin-top:16px;padding-top:14px}
-.cc-loc{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--separator);font-size:13.5px}
-.cc-loc:last-of-type{border-bottom:0}
-.cc-loc-right{display:flex;align-items:center;gap:14px;font-size:12.5px}
+.cc-loc-block{padding:12px 0;border-bottom:1px solid var(--separator)}
+.cc-loc-block:last-of-type{border-bottom:0}
+.cc-loc{display:flex;align-items:center;justify-content:space-between;font-size:13.5px;font-weight:600}
+.cc-loc-right{display:flex;align-items:center;gap:14px;font-size:12.5px;font-weight:400}
+.cc-times{display:flex;flex-wrap:wrap;gap:7px;align-items:center;margin-top:10px}
+.cc-addtime,.cc-addloc{display:inline-flex;align-items:center;gap:7px}
+.cc-addloc{margin-top:14px}
+.cc-addtime input,.cc-addloc input{font-family:inherit;font-size:12.5px;border:1px solid var(--hairline);border-radius:999px;padding:5px 12px;width:120px;background:var(--surface);color:var(--text)}
+.cc-addloc input{width:180px}
+.cc-addtime button,.cc-addloc button{font-size:12.5px;white-space:nowrap}
 button.linkout{font-family:inherit;letter-spacing:inherit;background:none;border:0;padding:0;cursor:pointer}
 button.linkout:hover{text-decoration:underline}
 .linkout{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--gathering);margin-top:16px}
@@ -1071,7 +1078,7 @@ function pageEmbed(id){
 /* ---- Admin: user management for the whole app (same profiles the four
    apps share). Reads/writes the Metrics Supabase with the signed-in
    admin's own session — RLS enforces that only admins can. ---- */
-const ADMIN={profs:null,campuses:null,pending:null,err:null,fb:null,fbErr:null,q:'',role:'all',loading:false,tab:'users'};
+const ADMIN={profs:null,campuses:null,pending:null,err:null,fb:null,fbErr:null,q:'',role:'all',loading:false,tab:'users',campusOpen:new Set()};
 const ROLE_LIST=['admin','staff','leader','volunteer'];
 const SECTION_LABEL=id=>{const s=SECTIONS.find(x=>x.id===id);return s?s.label:id;};
 function adminName(p){const n=p.display_name||p.full_name||'—';return n.includes('@')?prettyNameFromEmail(n):n;}
@@ -1081,7 +1088,7 @@ async function loadAdmin(){
      each, and which of them a role gets by default. Roles & permissions reads
      these so the table describes what the database actually says, rather than
      a list kept in step by hand. */
-  const [r1,r2,r3,r4,r5,r6,r7]=await Promise.all([
+  const [r1,r2,r3,r4,r5,r6,r7,r8]=await Promise.all([
     sb.from('profiles').select('id,display_name,full_name,role,campus_id,avatar_url,app_access,campus_ids,archived_at'),
     sb.from('campuses').select('id,name,parent_campus_id'),
     sb.from('pending_invites').select('id,email,name,role,campus_id,created_at').order('created_at'),
@@ -1091,7 +1098,10 @@ async function loadAdmin(){
     // The real, attendance-tracked meeting locations per campus (same table Metrics
     // itself reads) — separate from, and richer than, the campuses table's own
     // parent/child rows, which exist only to scope portal permissions by sub-campus.
-    sb.from('campus_locations').select('campus_id,location,active').eq('active',true)
+    // Admins can write any campus's locations; staff only their own (my_campuses()).
+    sb.from('campus_locations').select('id,campus_id,location,active,note').eq('active',true),
+    // Gathering times per location — admin-write only, joined to a location by id.
+    sb.from('campus_service_times').select('id,campus_id,location_id,gathering_type,service_label,sort_order,active').eq('active',true).order('sort_order')
   ]);
   ADMIN.apps=r4.data||[];
   ADMIN.appPerms=r5.data||[];
@@ -1101,8 +1111,24 @@ async function loadAdmin(){
   ADMIN.pending=r3.data||[];
   ADMIN.campuses=(r2.data||[]).filter(c=>!c.parent_campus_id).sort((a,b)=>a.name.localeCompare(b.name));
   ADMIN.campusLocations=r7.data||[];
+  ADMIN.serviceTimes=r8.data||[];
   ADMIN.loading=false;
   if(S.section==='admin')render();
+}
+// Mirrors the campus_locations_write RLS policy: is_admin() OR (is_staff() AND
+// campus_id = ANY(my_campuses())) — so the UI never offers a control the database
+// would reject. Gathering times stay admin-only, matching campus_service_times_admin_write.
+function canEditLocations(campusId){
+  if(ME.role==='admin')return true;
+  if(ME.role!=='staff')return false;
+  const mine=[ME.campus_id,...(ME.campus_ids||[])].filter(Boolean);
+  return mine.includes(campusId);
+}
+// Re-fetch after a location/gathering-time edit, keeping whichever campus
+// cards were open so adding a location doesn't collapse the card you're in.
+async function afterCampusEdit(){
+  document.querySelectorAll('.cc-card[open]').forEach(d=>{if(d.dataset.campus)ADMIN.campusOpen.add(d.dataset.campus);});
+  await loadAdmin();
 }
 function campusName(id){const c=(ADMIN.campuses||[]).find(x=>x.id===id);return c?c.name:'—';}
 /* The sections a person can reach, and the campuses they can see, resolving
@@ -1226,25 +1252,49 @@ function pageAdminCampuses(){
   if(!camps.length)return '<div class="empty">No campuses yet.</div>';
   const userCount=id=>(ADMIN.profs||[]).filter(p=>!p.archived_at&&p.campus_id===id).length;
   const ppl=n=>n+' '+(n===1?'person':'people');
-  const locsFor=id=>(ADMIN.campusLocations||[]).filter(l=>l.campus_id===id).map(l=>l.location).sort();
+  const locsFor=id=>(ADMIN.campusLocations||[]).filter(l=>l.campus_id===id).sort((a,b)=>a.location.localeCompare(b.location));
+  const timesFor=locId=>(ADMIN.serviceTimes||[]).filter(t=>t.location_id===locId);
+  const isAdmin=ME.role==='admin';
   const cards=camps.map(c=>{
     const locations=locsFor(c.id);
     const total=userCount(c.id);
-    return '<details class="cc-card">'+
+    const canEdit=canEditLocations(c.id);
+    return '<details class="cc-card" data-campus="'+esc(c.id)+'"'+(ADMIN.campusOpen.has(c.id)?' open':'')+'>'+
       '<summary class="cc-head"><span class="cc-name">'+esc(c.name)+'</span><span class="cc-chev">'+ic('down','width:16px;height:16px')+'</span></summary>'+
-      '<div class="cc-kv"><span>Locations</span><span>'+(locations.length?locations.map(esc).join(' · '):'<span style="font-weight:400;color:var(--text3)">None currently meeting</span>')+'</span></div>'+
+      '<div class="cc-kv"><span>Locations</span><span>'+(locations.length?locations.map(l=>esc(l.location)).join(' · '):'<span style="font-weight:400;color:var(--text3)">None currently meeting</span>')+'</span></div>'+
       '<div class="cc-kv"><span>Users assigned</span><span>'+ppl(total)+'</span></div>'+
       '<div class="cc-body">'+
-        '<p style="font-size:12.5px;color:var(--text2);margin:0 0 12px;line-height:1.5">Locations come from actual attendance records in Metrics (the same source Metrics itself reads) — they update on their own as services happen and can\'t be edited here.</p>'+
-        '<button class="btn-ghost" data-editcampus="'+esc(c.id)+'">Rename campus</button>'+
+        locations.map(l=>{
+          const times=timesFor(l.id);
+          return '<div class="cc-loc-block">'+
+            '<div class="cc-loc"><span>'+esc(l.location)+'</span>'+
+            (canEdit?'<span class="cc-loc-right"><button class="btn-ghost" data-deactivateloc="'+esc(l.id)+'">Deactivate</button></span>':'')+
+            '</div>'+
+            (isAdmin?'<div class="cc-times">'+
+              times.map(t=>'<span class="pu-chip">'+esc(t.service_label)+'<button type="button" data-rmtime="'+esc(t.id)+'" aria-label="Remove '+esc(t.service_label)+'">×</button></span>').join('')+
+              '<span class="cc-addtime" data-addtimefor="'+esc(l.id)+'" data-campusfor="'+esc(c.id)+'">'+
+                '<input type="text" placeholder="e.g. 9:30 AM">'+
+                '<button class="btn-ghost" data-addtime="'+esc(l.id)+'">Add</button>'+
+              '</span></div>'
+            :'')+
+          '</div>';
+        }).join('')+
+        (canEdit?'<div class="cc-addloc" data-addlocfor="'+esc(c.id)+'">'+
+          '<input type="text" placeholder="e.g. South Pasadena">'+
+          '<button class="btn-ghost" data-addloc="'+esc(c.id)+'">Add location</button>'+
+        '</div>'
+        :(ME.role==='staff'?'<p style="font-size:12px;color:var(--text3);margin:8px 0 0">You can edit locations for your own campus, not this one.</p>':''))+
+        '<button class="btn-ghost" style="margin-top:14px" data-editcampus="'+esc(c.id)+'">Rename campus</button>'+
       '</div>'+
     '</details>';
   }).join('');
   return cards+
     '<p style="font-size:12.5px;color:var(--text2);margin-top:4px;max-width:640px;line-height:1.5">'+
     'The campus itself (its name) is the same one used everywhere else in the portal — a person\'s primary campus on '+
-    'the Users tab, and the per-app campus pickers on their profile. There\'s no delete here yet: a campus with people '+
-    'or history attached to it needs a real plan for where that goes, not a button.</p>';
+    'the Users tab, and the per-app campus pickers on their profile. Locations are the same ones Metrics reads for '+
+    'attendance; deactivating one here is the same as it going inactive there — it stops showing up, it isn\'t deleted. '+
+    'Gathering times are admin-only, matching the same rule in Metrics. There\'s no delete here yet for the campus '+
+    'itself: one with people or history attached needs a real plan for where that goes, not a button.</p>';
 }
 function pageAdminFeedback(){
   if(!ADMIN.fb&&!ADMIN.fbErr){loadFeedback();return '<div class="empty">Loading…</div>';}
@@ -2064,7 +2114,7 @@ function render(){
 
 /* ============================ events ============================ */
 document.addEventListener('click',e=>{
-  const t=e.target.closest('[data-go],[data-view],[data-nav],[data-filter],[data-ev],[data-day],[data-task],[data-new],[data-pick],[data-everyone],[data-tl],[data-back],[data-logout],[data-preview],[data-profile],[data-fb],[data-newuser],[data-gp],[data-user],[data-pinv],[data-pinvsend],[data-pinvdel],[data-adtab],[data-theme],[data-newcampus],[data-editcampus]');
+  const t=e.target.closest('[data-go],[data-view],[data-nav],[data-filter],[data-ev],[data-day],[data-task],[data-new],[data-pick],[data-everyone],[data-tl],[data-back],[data-logout],[data-preview],[data-profile],[data-fb],[data-newuser],[data-gp],[data-user],[data-pinv],[data-pinvsend],[data-pinvdel],[data-adtab],[data-theme],[data-newcampus],[data-editcampus],[data-addloc],[data-deactivateloc],[data-addtime],[data-rmtime]');
   if(!t) return;
   if(t.dataset.logout){ (sb?sb.auth.signOut():Promise.resolve()).then(()=>location.reload()); return; }
   if(t.dataset.preview){
@@ -2098,6 +2148,44 @@ document.addEventListener('click',e=>{
   if(t.dataset.newuser){ paInviteDrawer(); return; }
   if(t.dataset.newcampus){ paCampusDrawer(); return; }
   if(t.dataset.editcampus){ paCampusDrawer(t.dataset.editcampus); return; }
+  if(t.dataset.addloc){
+    const wrap=t.closest('[data-addlocfor]'), input=wrap.querySelector('input'), name=input.value.trim();
+    if(!name)return;
+    t.disabled=true;t.textContent='Adding…';
+    sb.from('campus_locations').insert({campus_id:t.dataset.addloc,location:name,active:true}).then(({error})=>{
+      if(error){t.disabled=false;t.textContent='Add location';alert("Couldn't add — "+(error.message||'try again.'));return;}
+      afterCampusEdit();
+    });
+    return;
+  }
+  if(t.dataset.deactivateloc){
+    t.disabled=true;t.textContent='Deactivating…';
+    sb.from('campus_locations').update({active:false}).eq('id',t.dataset.deactivateloc).then(({error})=>{
+      if(error){t.disabled=false;t.textContent='Deactivate';alert("Couldn't deactivate — "+(error.message||'try again.'));return;}
+      afterCampusEdit();
+    });
+    return;
+  }
+  if(t.dataset.addtime){
+    const wrap=t.closest('[data-addtimefor]'), input=wrap.querySelector('input'), label=input.value.trim();
+    if(!label)return;
+    const locId=wrap.dataset.addtimefor, campusId=wrap.dataset.campusfor;
+    const existing=(ADMIN.serviceTimes||[]).filter(x=>x.location_id===locId);
+    const sort_order=existing.length?Math.max(...existing.map(x=>x.sort_order))+1:0;
+    t.disabled=true;t.textContent='Adding…';
+    sb.from('campus_service_times').insert({campus_id:campusId,location_id:locId,gathering_type:'sunday',service_label:label,sort_order,active:true}).then(({error})=>{
+      if(error){t.disabled=false;t.textContent='Add';alert("Couldn't add — "+(error.message||'try again.'));return;}
+      afterCampusEdit();
+    });
+    return;
+  }
+  if(t.dataset.rmtime){
+    sb.from('campus_service_times').update({active:false}).eq('id',t.dataset.rmtime).then(({error})=>{
+      if(error){alert("Couldn't remove — "+(error.message||'try again.'));return;}
+      afterCampusEdit();
+    });
+    return;
+  }
   if(t.dataset.fb){ feedbackDrawer(t.dataset.fb); return; }
   if(t.dataset.gp!==undefined){ S.goalsPath=t.dataset.gp; S.section='goals'; render(); return; }
   if(t.dataset.user){ S.from='admin'; S.adminUserId=t.dataset.user; S.section='admin-user'; render(); return; }
