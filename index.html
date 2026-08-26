@@ -471,6 +471,8 @@ h2{font-size:16px;font-weight:600;letter-spacing:-.015em;margin:0 0 6px}
 .cc-inactive-toggle input{cursor:pointer}
 .cc-users{padding:2px 0 12px}
 .cc-user{display:flex;align-items:center;justify-content:space-between;padding:6px 0;font-size:13px}
+.cc-divider{display:flex;align-items:center;gap:12px;margin:22px 0 14px;color:var(--text2);font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase}
+.cc-divider::before,.cc-divider::after{content:'';flex:1;height:1px;background:var(--hairline)}
 button.linkout{font-family:inherit;letter-spacing:inherit;background:none;border:0;padding:0;cursor:pointer}
 button.linkout:hover{text-decoration:underline}
 .linkout{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--gathering);margin-top:16px}
@@ -1276,16 +1278,16 @@ function pageAdminRoles(){
 function pageAdminCampuses(){
   const all=(ADMIN.campuses||[]).slice().sort((a,b)=>campusSortIndex(a.name)-campusSortIndex(b.name));
   if(!all.length)return '<div class="empty">No campuses yet.</div>';
-  const camps=ADMIN.showInactiveCampuses?all:all.filter(c=>c.active!==false||CAMPUS_ALWAYS_SHOW.includes(c.name));
-  const hiddenCount=all.length-camps.length;
-  const toggle='<label class="cc-inactive-toggle"><input type="checkbox" data-toggleinactivecampus'+(ADMIN.showInactiveCampuses?' checked':'')+'> See inactive campuses'+(hiddenCount&&!ADMIN.showInactiveCampuses?' ('+hiddenCount+' hidden)':'')+'</label>';
-  if(!camps.length)return toggle+'<div class="empty">No active campuses.</div>';
+  const visible=all.filter(c=>c.active!==false||CAMPUS_ALWAYS_SHOW.includes(c.name));
+  const hidden=all.filter(c=>!visible.includes(c));
+  const toggle='<label class="cc-inactive-toggle"><input type="checkbox" data-toggleinactivecampus'+(ADMIN.showInactiveCampuses?' checked':'')+'> See inactive campuses'+(hidden.length&&!ADMIN.showInactiveCampuses?' ('+hidden.length+' hidden)':'')+'</label>';
+  if(!visible.length&&!(ADMIN.showInactiveCampuses&&hidden.length))return toggle+'<div class="empty">No active campuses.</div>';
   const userCount=id=>(ADMIN.profs||[]).filter(p=>!p.archived_at&&p.campus_id===id).length;
   const ppl=n=>n+' '+(n===1?'person':'people');
   const locsFor=id=>(ADMIN.campusLocations||[]).filter(l=>l.campus_id===id).sort((a,b)=>a.location.localeCompare(b.location));
   const timesFor=locId=>(ADMIN.serviceTimes||[]).filter(t=>t.location_id===locId);
   const isAdmin=ME.role==='admin';
-  const cards=camps.map(c=>{
+  const cardHtml=c=>{
     const locations=locsFor(c.id);
     const people=(ADMIN.profs||[]).filter(p=>!p.archived_at&&p.campus_id===c.id).sort((a,b)=>adminName(a).localeCompare(adminName(b)));
     const total=people.length;
@@ -1323,8 +1325,12 @@ function pageAdminCampuses(){
         '<button class="btn-ghost" style="margin-top:14px" data-editcampus="'+esc(c.id)+'">Rename campus</button>'+
       '</div>'+
     '</details>';
-  }).join('');
-  return toggle+cards+
+  };
+  const cards=visible.map(cardHtml).join('');
+  const hiddenSection=(ADMIN.showInactiveCampuses&&hidden.length)
+    ?'<div class="cc-divider"><span>Inactive campuses</span></div>'+hidden.map(cardHtml).join('')
+    :'';
+  return toggle+cards+hiddenSection+
     '<p style="font-size:12.5px;color:var(--text2);margin-top:4px;max-width:640px;line-height:1.5">'+
     'The campus itself (its name) is the same one used everywhere else in the portal — a person\'s primary campus on '+
     'the Users tab, and the per-app campus pickers on their profile. Locations are the same ones Metrics reads for '+
