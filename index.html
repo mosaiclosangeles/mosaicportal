@@ -2010,20 +2010,37 @@ function paCampusDrawer(campusId){
       timezone=document.getElementById('ncTzOther').dataset.tz||(typed.includes('/')?typed:'');
       if(!timezone){btn.disabled=false;btn.textContent='Save';note.textContent='Pick a suggested time zone, or type the exact identifier (e.g. Asia/Tokyo).';return;}
     }
-    btn.textContent='Saving…';
     const fields={
       name,
       region_id,
       timezone,
       language:document.getElementById('ncLang').value.trim()||'English',
     };
+    // Slug and the CCB check only happen on create — renaming an existing
+    // campus doesn't touch either, same as Metrics: the slug is a stable
+    // identity set once, not something that should shift under a rename,
+    // and re-running the CCB check on every edit would be pointless (the
+    // campus, if it exists there, was already found the first time).
+    let ccbFlag='';
+    if(!c){
+      fields.slug=name.toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+      btn.textContent='Checking CCB…';
+      try{
+        const {data:ccb,error:ccbErr}=await sb.functions.invoke('check-ccb-campus',{body:{name}});
+        if(!ccbErr&&ccb){
+          if(ccb.matched){fields.ccb_campus_id=ccb.ccb_campus_id;}
+          else if(ccb.matched===false){ccbFlag=' No matching campus found in CCB — you may want to add it there too.';}
+        }
+      }catch(e){/* CCB check is best-effort; never blocks campus creation */}
+    }
+    btn.textContent='Saving…';
     const {error}=c
       ?await sb.from('campuses').update(fields).eq('id',c.id)
       :await sb.from('campuses').insert(fields);
     btn.disabled=false;btn.textContent='Save';
     if(error){note.textContent="Couldn't save — "+(error.message||'please try again.');return;}
-    note.textContent='Saved.';
-    ADMIN.campuses=null;setTimeout(()=>{closeDrawer();loadAdmin().then(()=>{if(S.section==='admin')render();});},700);
+    note.textContent='Saved.'+ccbFlag;
+    ADMIN.campuses=null;setTimeout(()=>{closeDrawer();loadAdmin().then(()=>{if(S.section==='admin')render();});},ccbFlag?2600:700);
   });
 }
 function money(n){return '$'+n.toLocaleString('en-US');}
