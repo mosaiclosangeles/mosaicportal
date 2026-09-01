@@ -1900,6 +1900,19 @@ function searchTimezones(query){
 // the dropdown when a region is picked — never blocks picking something else.
 const REGION_TZ_HINTS={'united states':'America/Los_Angeles','mexico':'America/Mexico_City','south america':'America/Guayaquil','europe':'Europe/London','online':'America/Los_Angeles'};
 const REGION_LANG_HINTS={'mexico':'Spanish','south america':'Spanish'};
+// Best-guess language for a campus name — the country's official/majority
+// language, used only to preselect the Language field when a known city is
+// typed. Kept in sync with mosaic-metrics' copy. Never blocks typing another
+// language by hand.
+const CAMPUS_LANG_HINTS={
+  'mexico city':'Spanish','mexico':'Spanish','quito':'Spanish','ecuador':'Spanish',
+  'bogotá':'Spanish','bogota':'Spanish','paris':'French','tokyo':'Japanese',
+  'berlin':'German','são paulo':'Portuguese','sao paulo':'Portuguese',
+  'seoul':'Korean','cairo':'Arabic','dubai':'Arabic',
+};
+function campusLangHint(campusName){
+  return CAMPUS_LANG_HINTS[campusName.trim().toLowerCase()]||null;
+}
 
 // Known city short-codes for the campus alias slug — real city/airport-style
 // abbreviations, not a literal first-three-letters rule (that would make New
@@ -1947,7 +1960,7 @@ function paCampusDrawer(campusId){
       '</div>'+
     '</div>'+
     '<div><label class="pa-lbl">Language</label><input id="ncLang" class="pa-in" type="text" list="ncLangList" value="'+esc((c&&c.language)||'English')+'">'+
-      '<datalist id="ncLangList"><option value="English"><option value="Spanish"></datalist>'+
+      '<datalist id="ncLangList"><option value="English"><option value="Spanish"><option value="French"><option value="Portuguese"><option value="German"><option value="Korean"><option value="Japanese"><option value="Arabic"></datalist>'+
     '</div>'+
     '</div>'+
     '<div style="display:flex;gap:10px;align-items:center;margin-top:18px"><button class="btn-primary" id="ncSave">Save</button></div>'+
@@ -1962,11 +1975,21 @@ function paCampusDrawer(campusId){
     if(showOther)document.getElementById('ncTzOther').focus();
   });
   document.getElementById('ncLang').addEventListener('input',()=>{langTouched=true;});
+  // The campus name (city) is the more specific guess — Paris implies French
+  // even inside a "Europe" region that's mostly English/German elsewhere —
+  // so it wins over the region's hint whenever both are available.
+  const applyLangHint=()=>{
+    if(langTouched)return;
+    const nameHint=campusLangHint(document.getElementById('ncName').value);
+    const regionKey=document.getElementById('ncRegion').value.trim().toLowerCase();
+    document.getElementById('ncLang').value=nameHint||REGION_LANG_HINTS[regionKey]||'English';
+  };
+  document.getElementById('ncName').addEventListener('input',applyLangHint);
   document.getElementById('ncRegion').addEventListener('input',()=>{
     const key=document.getElementById('ncRegion').value.trim().toLowerCase();
     const hint=REGION_TZ_HINTS[key]||null;
     if(!tzTouched&&hint)document.getElementById('ncTz').value=hint;
-    if(!langTouched)document.getElementById('ncLang').value=REGION_LANG_HINTS[key]||'English';
+    applyLangHint();
   });
 
   // "Other…" search: type a city/country, pick a match — same "Zone Time
