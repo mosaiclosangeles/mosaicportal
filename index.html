@@ -1899,7 +1899,7 @@ const TIMEZONE_WORLD=[
   {label:'Korea Time (Seoul)',tz:'Asia/Seoul',q:'korea'},
   {label:'Western Australia Time (Perth)',tz:'Australia/Perth',q:'australia'},
   {label:'Australian Central Time (Adelaide)',tz:'Australia/Adelaide',q:'australia'},
-  {label:'Australian Eastern Time (Sydney)',tz:'Australia/Sydney',q:'australia melbourne brisbane'},
+  {label:'Australian Eastern Time (Sydney)',tz:'Australia/Sydney',q:'australia melbourne brisbane sidney'},
   {label:'New Zealand Time (Auckland)',tz:'Pacific/Auckland',q:'new zealand'},
 ];
 function searchTimezones(query){
@@ -1939,6 +1939,8 @@ function campusLangHint(campusName){
 const CAMPUS_TZ_OVERRIDES={
   'mexico':'America/Mexico_City','ecuador':'America/Guayaquil',
   'toronto':'America/New_York','vancouver':'America/Los_Angeles',
+  'quebec':'America/New_York','quebec city':'America/New_York',
+  'montreal':'America/New_York','ottawa':'America/New_York',
 };
 function normalizeCityName(s){
   return s.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
@@ -1995,7 +1997,7 @@ function paCampusDrawer(campusId){
     (c?'':'<div class="sub">Add it here and it\'s immediately available as a primary campus, and in every per-app campus picker.</div>')+
     '<div style="display:flex;flex-direction:column;gap:12px;margin-top:16px">'+
     '<div><label class="pa-lbl">Name</label><input id="ncName" class="pa-in" type="text" placeholder="e.g. Seattle" value="'+esc((c&&c.name)||'')+'"></div>'+
-    '<div><label class="pa-lbl">Region</label><input id="ncRegion" class="pa-in" type="text" list="ncRegionList" placeholder="e.g. Asia — type a new one if it\'s not listed" value="'+esc(curRegionName)+'">'+
+    '<div><label class="pa-lbl">Region</label><input id="ncRegion" class="pa-in" type="text" list="ncRegionList" placeholder="e.g. Asia — type a new one if it\'s not listed" value="'+esc(curRegionName)+'" autocomplete="off" name="mosaic-nc-field-2" data-lpignore="true" data-1p-ignore="true">'+
       '<datalist id="ncRegionList">'+regions.map(r=>'<option value="'+esc(r.name)+'">').join('')+'</datalist>'+
     '</div>'+
     '<div><label class="pa-lbl">Time zone</label><select id="ncTz" class="pa-in">'+campusTimezoneOptions((c&&c.timezone)||'America/Los_Angeles')+'</select>'+
