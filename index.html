@@ -1853,6 +1853,17 @@ const TIMEZONE_OPTIONS=[
   {label:'Greenwich Mean Time (London)',tz:'Europe/London'},
 ];
 const TIMEZONE_OTHER='__other__';
+// Language field mirrors the Time zone field's own pattern (a <select> of the
+// common ones + an "Other…" free-text slot) so the two controls open and
+// behave the same way instead of one being a native select and the other a
+// plain text/datalist input. Kept in sync with mosaic-metrics' copy.
+const LANGUAGE_OPTIONS=['English','Spanish','French','Portuguese','German','Korean','Japanese','Arabic'];
+const LANGUAGE_OTHER='__other_lang__';
+function campusLanguageOptions(selected){
+  const known=LANGUAGE_OPTIONS.includes(selected);
+  return LANGUAGE_OPTIONS.map(l=>'<option value="'+esc(l)+'"'+(l===selected?' selected':'')+'>'+esc(l)+'</option>').join('')
+    +'<option value="'+LANGUAGE_OTHER+'"'+(!known&&selected?' selected':'')+'>Other…</option>';
+}
 // Broader world list for the "Other…" search box — same "Zone Time (place)"
 // naming as TIMEZONE_OPTIONS, so a match never looks different from the
 // common ones. `q` holds extra search terms (city/country names) a label
@@ -1960,6 +1971,8 @@ function paCampusDrawer(campusId){
   const regions=ADMIN.regions||[];
   const curRegionName=(c&&c.region_id)?(regions.find(r=>r.id===c.region_id)||{}).name||'':'';
   const tzIsOther=!!(c&&c.timezone&&!TIMEZONE_OPTIONS.some(o=>o.tz===c.timezone));
+  const curLang=(c&&c.language)||'English';
+  const langIsOther=!LANGUAGE_OPTIONS.includes(curLang);
   openDrawer('<h2 style="margin-top:0">'+(c?'Rename campus':'New campus')+'</h2>'+
     (c?'':'<div class="sub">Add it here and it\'s immediately available as a primary campus, and in every per-app campus picker.</div>')+
     '<div style="display:flex;flex-direction:column;gap:12px;margin-top:16px">'+
@@ -1973,8 +1986,10 @@ function paCampusDrawer(campusId){
         '<div id="ncTzOtherPop" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:#fff;border:1px solid #e6e6e5;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.12),0 2px 8px rgba(0,0,0,.08);padding:6px;z-index:70;max-height:280px;overflow:auto"></div>'+
       '</div>'+
     '</div>'+
-    '<div><label class="pa-lbl">Language</label><input id="ncLang" class="pa-in" type="text" list="ncLangList" value="'+esc((c&&c.language)||'English')+'">'+
-      '<datalist id="ncLangList"><option value="English"><option value="Spanish"><option value="French"><option value="Portuguese"><option value="German"><option value="Korean"><option value="Japanese"><option value="Arabic"></datalist>'+
+    '<div><label class="pa-lbl">Language</label><select id="ncLang" class="pa-in">'+campusLanguageOptions(curLang)+'</select>'+
+      '<div id="ncLangOtherWrap" style="'+(langIsOther?'':'display:none;')+'margin-top:6px">'+
+        '<input id="ncLangOther" class="pa-in" type="text" placeholder="Type a language…" value="'+(langIsOther?esc(curLang):'')+'">'+
+      '</div>'+
     '</div>'+
     '</div>'+
     '<div style="display:flex;gap:10px;align-items:center;margin-top:18px"><button class="btn-primary" id="ncSave">Save</button></div>'+
@@ -1988,7 +2003,13 @@ function paCampusDrawer(campusId){
     document.getElementById('ncTzOtherWrap').style.display=showOther?'':'none';
     if(showOther)document.getElementById('ncTzOther').focus();
   });
-  document.getElementById('ncLang').addEventListener('input',()=>{langTouched=true;});
+  document.getElementById('ncLang').addEventListener('change',()=>{
+    langTouched=true;
+    const showOther=document.getElementById('ncLang').value===LANGUAGE_OTHER;
+    document.getElementById('ncLangOtherWrap').style.display=showOther?'':'none';
+    if(showOther)document.getElementById('ncLangOther').focus();
+  });
+  document.getElementById('ncLangOther').addEventListener('input',()=>{langTouched=true;});
   // Sets the time zone field, using the "Other" search slot when the zone
   // isn't one of the 7 common ones (e.g. Europe/Paris) so it still shows the
   // real "Zone Time (place)" label instead of a blank/raw select value.
@@ -2004,6 +2025,18 @@ function paCampusDrawer(campusId){
     document.getElementById('ncTzOther').value=match?match.label:tz;
     document.getElementById('ncTzOther').dataset.tz=tz;
   };
+  // Same pattern for Language: pick it from the list when it's one of the
+  // 8 common ones, otherwise drop it into the "Other" free-text slot.
+  const setLang=lang=>{
+    if(LANGUAGE_OPTIONS.includes(lang)){
+      document.getElementById('ncLang').value=lang;
+      document.getElementById('ncLangOtherWrap').style.display='none';
+      return;
+    }
+    document.getElementById('ncLang').value=LANGUAGE_OTHER;
+    document.getElementById('ncLangOtherWrap').style.display='';
+    document.getElementById('ncLangOther').value=lang;
+  };
   // The campus name (city) is the more specific guess — Paris implies French
   // and its own zone even inside a "Europe" region that's mostly
   // English/German/London elsewhere — so it wins over the region's hint
@@ -2012,7 +2045,7 @@ function paCampusDrawer(campusId){
     if(langTouched)return;
     const nameHint=campusLangHint(document.getElementById('ncName').value);
     const regionKey=document.getElementById('ncRegion').value.trim().toLowerCase();
-    document.getElementById('ncLang').value=nameHint||REGION_LANG_HINTS[regionKey]||'English';
+    setLang(nameHint||REGION_LANG_HINTS[regionKey]||'English');
   };
   const applyTzHint=()=>{
     if(tzTouched)return;
@@ -2088,11 +2121,13 @@ function paCampusDrawer(campusId){
       timezone=document.getElementById('ncTzOther').dataset.tz||(typed.includes('/')?typed:'');
       if(!timezone){btn.disabled=false;btn.textContent='Save';note.textContent='Pick a suggested time zone, or type the exact identifier (e.g. Asia/Tokyo).';return;}
     }
+    let language=document.getElementById('ncLang').value;
+    if(language===LANGUAGE_OTHER)language=document.getElementById('ncLangOther').value.trim()||'English';
     const fields={
       name,
       region_id,
       timezone,
-      language:document.getElementById('ncLang').value.trim()||'English',
+      language,
     };
     // Slug and the CCB check only happen on create — renaming an existing
     // campus doesn't touch either, same as Metrics: the slug is a stable
