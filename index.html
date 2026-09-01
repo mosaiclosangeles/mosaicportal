@@ -1905,10 +1905,12 @@ const REGION_LANG_HINTS={'mexico':'Spanish','south america':'Spanish'};
 // abbreviations, not a literal first-three-letters rule (that would make New
 // York City "new" instead of NYC). Matched case-insensitively against the
 // whole campus name. A name not in this list falls back to the first three
-// letters of its first word. Kept in sync with mosaic-metrics' copy.
+// letters of its first word. Kept in sync with mosaic-metrics' copy. Most
+// campuses get one code; a value can be an array to add more than one alias
+// (Ecuador keeps both its city code and its ISO country code).
 const CAMPUS_SHORT_CODES={
   'los angeles':'LAX','new york city':'NYC','new york':'NYC','chicago':'CHI',
-  'mexico city':'MEX','mexico':'MEX','quito':'UIO','ecuador':'UIO',
+  'mexico city':'MEX','mexico':'MEX','quito':'UIO','ecuador':['UIO','ECU'],
   'london':'LON','seattle':'SEA','orange county':'OCA','atlanta':'ATL',
   'paris':'PAR','tokyo':'TYO','sydney':'SYD','berlin':'BER','toronto':'YTO',
   'nairobi':'NBO','mumbai':'BOM','são paulo':'SAO','sao paulo':'SAO',
@@ -1916,10 +1918,10 @@ const CAMPUS_SHORT_CODES={
   'vancouver':'YVR','bogotá':'BOG','bogota':'BOG','manila':'MNL',
   'miami':'MIA','houston':'HOU','guayaquil':'GYE',
 };
-function campusShortCode(campusName){
+function campusShortCodes(campusName){
   const known=CAMPUS_SHORT_CODES[campusName.trim().toLowerCase()];
-  if(known)return known.toLowerCase();
-  return campusName.trim().split(/\s+/)[0].toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,3);
+  if(known)return (Array.isArray(known)?known:[known]).map(c=>c.toLowerCase());
+  return [campusName.trim().split(/\s+/)[0].toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,3)];
 }
 function campusTimezoneOptions(selected){
   const known=TIMEZONE_OPTIONS.some(o=>o.tz===selected);
@@ -2060,15 +2062,15 @@ function paCampusDrawer(campusId){
       :await sb.from('campuses').insert(fields).select('id').single();
     btn.disabled=false;btn.textContent='Save';
     if(error){note.textContent="Couldn't save — "+(error.message||'please try again.');return;}
-    // Best-effort short-code alias — a real city/airport-style abbreviation
-    // from CAMPUS_SHORT_CODES (Seattle -> sea, New York City -> nyc), falling
-    // back to the first three letters of the first word for a city not yet in
-    // that list. Silently skipped if it collides with another campus's alias,
-    // or if it's identical to the real slug (a name three letters long
-    // already) — never blocks campus creation.
+    // Best-effort short-code alias(es) — real city/airport-style abbreviations
+    // from CAMPUS_SHORT_CODES (Seattle -> sea, New York City -> nyc; Ecuador
+    // gets both uio and ecu), falling back to the first three letters of the
+    // first word for a city not yet in that list. Each is silently skipped if
+    // it collides with another campus's alias, or is identical to the real
+    // slug — never blocks campus creation.
     if(!c&&saved){
-      const shortCode=campusShortCode(name);
-      if(shortCode&&shortCode!==fields.slug){
+      for(const shortCode of campusShortCodes(name)){
+        if(!shortCode||shortCode===fields.slug)continue;
         try{await sb.from('campus_slug_aliases').insert({campus_id:saved.id,alias_slug:shortCode});}
         catch(e){/* best-effort; a collision or failure here never blocks campus creation */}
       }
