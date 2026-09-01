@@ -1997,7 +1997,7 @@ function paCampusDrawer(campusId){
     (c?'':'<div class="sub">Add it here and it\'s immediately available as a primary campus, and in every per-app campus picker.</div>')+
     '<div style="display:flex;flex-direction:column;gap:12px;margin-top:16px">'+
     '<div><label class="pa-lbl">Name</label><input id="ncName" class="pa-in" type="text" placeholder="e.g. Seattle" value="'+esc((c&&c.name)||'')+'"></div>'+
-    '<div><label class="pa-lbl">Region</label><input id="ncRegion" class="pa-in" type="text" list="ncRegionList" placeholder="e.g. Asia — type a new one if it\'s not listed" value="'+esc(curRegionName)+'" autocomplete="off" name="mosaic-nc-field-2" data-lpignore="true" data-1p-ignore="true">'+
+    '<div><label class="pa-lbl">Region</label><input id="ncRegion" class="pa-in" type="text" list="ncRegionList" placeholder="e.g. Asia — type a new one if it\'s not listed" value="'+esc(curRegionName)+'" autocomplete="mosaic-no-autofill" name="mosaic-nc-field-2" data-lpignore="true" data-1p-ignore="true">'+
       '<datalist id="ncRegionList">'+regions.map(r=>'<option value="'+esc(r.name)+'">').join('')+'</datalist>'+
     '</div>'+
     '<div><label class="pa-lbl">Time zone</label><select id="ncTz" class="pa-in">'+campusTimezoneOptions((c&&c.timezone)||'America/Los_Angeles')+'</select>'+
@@ -2069,10 +2069,23 @@ function paCampusDrawer(campusId){
   };
   const applyTzHint=()=>{
     if(tzTouched)return;
-    const nameHint=campusTzHint(document.getElementById('ncName').value);
+    const name=document.getElementById('ncName').value.trim();
+    const nameHint=campusTzHint(name);
     const regionKey=document.getElementById('ncRegion').value.trim().toLowerCase();
     const hint=nameHint||REGION_TZ_HINTS[regionKey];
-    if(hint)setTz(hint);
+    if(hint){setTz(hint);return;}
+    // A name has been typed but doesn't match any known city or region — drop
+    // into "Other" with an empty search box rather than silently leaving
+    // whatever an earlier, different name happened to match (a real, if
+    // confusing, bug: type "Dubai", then rename to "Quebec" before saving,
+    // and it stayed on Dubai's zone). Nothing typed yet keeps the plain
+    // Pacific Time default rather than popping "Other" open immediately.
+    if(name){
+      document.getElementById('ncTz').value=TIMEZONE_OTHER;
+      document.getElementById('ncTzOtherWrap').style.display='';
+      document.getElementById('ncTzOther').value='';
+      delete document.getElementById('ncTzOther').dataset.tz;
+    }
   };
   document.getElementById('ncName').addEventListener('input',()=>{applyTzHint();applyLangHint();});
   document.getElementById('ncRegion').addEventListener('input',()=>{applyTzHint();applyLangHint();});
