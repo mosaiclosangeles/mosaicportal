@@ -1880,7 +1880,8 @@ const TIMEZONE_WORLD=[
   {label:'Western European Time (Lisbon)',tz:'Europe/Lisbon',q:'portugal'},
   {label:'Greenwich Mean Time (London)',tz:'Europe/London',q:'uk united kingdom england ireland dublin'},
   {label:'Central European Time (Paris)',tz:'Europe/Paris',q:'france germany berlin madrid spain rome italy amsterdam netherlands brussels belgium vienna austria zurich switzerland warsaw poland stockholm sweden oslo norway copenhagen denmark'},
-  {label:'Eastern European Time (Athens)',tz:'Europe/Athens',q:'greece finland helsinki romania bucharest ukraine kyiv cairo egypt'},
+  {label:'Eastern European Time (Athens)',tz:'Europe/Athens',q:'greece finland helsinki romania bucharest ukraine kyiv'},
+  {label:'Eastern European Time (Cairo)',tz:'Africa/Cairo',q:'egypt'},
   {label:'Moscow Time (Moscow)',tz:'Europe/Moscow',q:'russia'},
   {label:'Turkey Time (Istanbul)',tz:'Europe/Istanbul',q:'turkey'},
   {label:'West Africa Time (Lagos)',tz:'Africa/Lagos',q:'nigeria'},
@@ -1926,17 +1927,34 @@ function campusLangHint(campusName){
 }
 // Same idea for time zone: a known city's own zone beats the region's coarse
 // fallback (Region "Europe" defaults to London, which would silently
-// overwrite a Paris/Berlin-specific pick otherwise). Kept in sync with
-// mosaic-metrics' copy.
-const CAMPUS_TZ_HINTS={
-  'mexico city':'America/Mexico_City','quito':'America/Guayaquil','ecuador':'America/Guayaquil',
-  'bogotá':'America/Bogota','bogota':'America/Bogota','paris':'Europe/Paris',
-  'berlin':'Europe/Berlin','são paulo':'America/Sao_Paulo','sao paulo':'America/Sao_Paulo',
-  'tokyo':'Asia/Tokyo','seoul':'Asia/Seoul','cairo':'Africa/Cairo','dubai':'Asia/Dubai',
-  'london':'Europe/London',
+// overwrite a Paris/Berlin-specific pick otherwise). Rather than hand-listing
+// cities (easy to miss one, as Sydney was), this matches the campus name
+// straight against every city already named in TIMEZONE_OPTIONS/
+// TIMEZONE_WORLD — the same master list the "Other…" search already covers —
+// so any of those ~35 world cities works automatically. Only a few true
+// exceptions need an override: a campus named after a country rather than
+// its city (Mexico, Ecuador), or a city that isn't any label's parenthetical
+// (Toronto, Vancouver ride on the generic "US & Canada" zones). Kept in sync
+// with mosaic-metrics' copy.
+const CAMPUS_TZ_OVERRIDES={
+  'mexico':'America/Mexico_City','ecuador':'America/Guayaquil',
+  'toronto':'America/New_York','vancouver':'America/Los_Angeles',
 };
+function normalizeCityName(s){
+  return s.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+}
 function campusTzHint(campusName){
-  return CAMPUS_TZ_HINTS[campusName.trim().toLowerCase()]||null;
+  const key=normalizeCityName(campusName);
+  if(!key)return null;
+  if(CAMPUS_TZ_OVERRIDES[key])return CAMPUS_TZ_OVERRIDES[key];
+  const all=TIMEZONE_OPTIONS.concat(TIMEZONE_WORLD);
+  const exact=all.find(o=>{
+    const m=o.label.match(/\(([^)]+)\)/);
+    return m&&normalizeCityName(m[1])===key;
+  });
+  if(exact)return exact.tz;
+  const partial=all.find(o=>o.q&&normalizeCityName(o.q).includes(key));
+  return partial?partial.tz:null;
 }
 
 // Known city short-codes for the campus alias slug — real city/airport-style
