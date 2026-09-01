@@ -322,7 +322,8 @@ html.dark .subnav button:hover,html.dark .subnav button.on{color:var(--text);bac
 .count{margin-left:auto;font-size:12px;color:var(--text3)}
 .rail-foot{margin-top:auto;border-top:1px solid var(--rail-active);padding-top:11px;
   display:flex;align-items:center;gap:9px}
-.avatar{width:24px;height:24px;font-size:10px;font-weight:500}
+.avatar{width:24px;height:24px;border-radius:50%;background:#e2e2e0;font-size:10px;
+  font-weight:500;display:flex;align-items:center;justify-content:center;flex:none;overflow:hidden}
 .who{font-size:12.5px;color:var(--text2)}
 
 /* ---------- main ---------- */
@@ -433,6 +434,7 @@ h2{font-size:16px;font-weight:600;letter-spacing:-.015em;margin:0 0 6px}
 .drawer.open{transform:none}
 .drawer-close{position:absolute;top:16px;right:18px;color:var(--text2)}
 .drawer-close svg{width:18px;height:18px}
+[data-av-wrap]:hover .av-overlay{opacity:1!important}
 .tag{font-size:11px;padding:3px 8px;border-radius:6px;background:var(--fill);color:#4a4a4a;margin-right:5px}
 .kv{display:flex;justify-content:space-between;font-size:13px;padding:8px 0;border-bottom:1px solid var(--separator)}
 .kv span:first-child{color:var(--text2)}
@@ -1099,7 +1101,7 @@ function campusSortIndex(name){
   const onlineIdx=CAMPUS_ORDER.indexOf('Mosaic Online');
   return onlineIdx>=0?onlineIdx-0.5:CAMPUS_ORDER.length;
 }
-const ADMIN={profs:null,campuses:null,pending:null,err:null,fb:null,fbErr:null,q:'',role:'all',loading:false,tab:'users',campusOpen:new Set(),showInactiveCampuses:false,campusUsersOpen:new Set(),regions:null};
+const ADMIN={profs:null,campuses:null,pending:null,err:null,fb:null,fbErr:null,q:'',role:'all',loading:false,tab:'users',apps:null,appPerms:null,appDefaults:null,campusOpen:new Set(),showInactiveCampuses:false,campusUsersOpen:new Set(),regions:null};
 const ROLE_LIST=['admin','staff','leader','volunteer'];
 const SECTION_LABEL=id=>{const s=SECTIONS.find(x=>x.id===id);return s?s.label:id;};
 function adminName(p){const n=p.display_name||p.full_name||'—';return n.includes('@')?prettyNameFromEmail(n):n;}
@@ -1114,7 +1116,7 @@ async function loadAdmin(){
     sb.from('campuses').select('id,name,parent_campus_id,active,region_id,timezone,language'),
     sb.from('pending_invites').select('id,email,name,role,campus_id,created_at').order('created_at'),
     sb.from('apps').select('key,name').order('name'),
-    sb.from('app_permissions').select('app_key,perm_key,label').order('app_key'),
+    sb.from('app_permissions').select('app_key,perm_key,label,sort_order').order('app_key').order('sort_order'),
     sb.from('role_app_defaults').select('role,app_key,perm_key,granted'),
     // The real, attendance-tracked meeting locations per campus (same table Metrics
     // itself reads) — separate from, and richer than, the campuses table's own
@@ -1138,6 +1140,26 @@ async function loadAdmin(){
   ADMIN.regions=r9.data||[];
   ADMIN.loading=false;
   if(S.section==='admin')render();
+}
+/* Effective permissions for one user, one app: start from the role that
+   applies (a section_role_overrides row for this app if set, else the
+   person's global role), grant whatever role_app_defaults says for it,
+   then let any per-permission row in section_permissions override that
+   field specifically. Returns [{perm_key,label,granted}]. */
+function effectiveAppPerms(appKey,globalRole,roleOverride,permOverrides){
+  const effRole=roleOverride||globalRole;
+  const perms=(ADMIN.appPerms||[]).filter(p=>p.app_key===appKey);
+  return perms.map(p=>{
+    const def=(ADMIN.appDefaults||[]).some(d=>d.role===effRole&&d.app_key===appKey&&d.perm_key===p.perm_key&&d.granted);
+    const ov=(permOverrides||[]).find(o=>o.app_key===appKey&&o.perm_key===p.perm_key);
+    return {perm_key:p.perm_key,label:p.label,granted:ov?ov.granted:def,overridden:!!ov};
+  });
+}
+function appHasAccess(appKey,globalRole,roleOverride,permOverrides){
+  return effectiveAppPerms(appKey,globalRole,roleOverride,permOverrides).some(p=>p.granted);
+}
+function roleDefaultHasAny(appKey,role){
+  return (ADMIN.appDefaults||[]).some(d=>d.role===role&&d.app_key===appKey&&d.granted);
 }
 // Mirrors the campus_locations_write RLS policy: is_admin() OR (is_staff() AND
 // campus_id = ANY(my_campuses())) — so the UI never offers a control the database
@@ -1484,6 +1506,23 @@ function puCampusRow(appKey,selectedIds,allCampuses,isAdminUser,appOn,personCamp
   return wrap(chips+add);
 }
 function paNote(msg,err){const n=document.getElementById('paNote');if(!n)return;n.style.display='flex';n.style.borderColor=err?'var(--red)':'var(--hairline)';n.innerHTML=ic('info')+'<div>'+esc(msg)+'</div>';clearTimeout(paNote._t);paNote._t=setTimeout(()=>{const x=document.getElementById('paNote');if(x)x.style.display='none';},4500);}
+async function paSaveGlobalRole(id,next){
+  const note=document.getElementById('paRoleNote');
+  const result=await paSaveRole(id,next);
+  if(result===false)return;
+  if(typeof result==='string'){
+    // Setting the global role resets this person back to that role's normal
+    // access everywhere — any per-app exceptions they had are cleared, so
+    // there's nothing left over contradicting the role just assigned. An
+    // admin can still carve out new per-app exceptions afterward.
+    await Promise.all([
+      sb.from('section_role_overrides').delete().eq('user_id',id),
+      sb.from('section_permissions').delete().eq('user_id',id)
+    ]);
+    if(note)note.textContent=result;
+    if(S.section==='admin-user'&&S.adminUserId===id)render();
+  }
+}
 async function paSaveRole(id,next){
   const p=ADMIN.profs.find(x=>x.id===id);if(!p||p.role===next)return true;
   const who=adminName(p);
