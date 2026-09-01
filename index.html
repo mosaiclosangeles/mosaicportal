@@ -1853,6 +1853,49 @@ const TIMEZONE_OPTIONS=[
   {label:'Greenwich Mean Time (London)',tz:'Europe/London'},
 ];
 const TIMEZONE_OTHER='__other__';
+// Broader world list for the "Other…" search box — same "Zone Time (place)"
+// naming as TIMEZONE_OPTIONS, so a match never looks different from the
+// common ones. `q` holds extra search terms (city/country names) a label
+// alone wouldn't catch — typing "paris" or "france" both find CET.
+const TIMEZONE_WORLD=[
+  {label:'Alaska Time (Anchorage)',tz:'America/Anchorage',q:'alaska'},
+  {label:'Hawaii Time (Honolulu)',tz:'Pacific/Honolulu',q:'hawaii'},
+  {label:'Atlantic Time (Halifax)',tz:'America/Halifax',q:'canada nova scotia'},
+  {label:'Brasília Time (São Paulo)',tz:'America/Sao_Paulo',q:'brazil brasilia rio de janeiro'},
+  {label:'Argentina Time (Buenos Aires)',tz:'America/Argentina/Buenos_Aires',q:'argentina'},
+  {label:'Colombia Time (Bogotá)',tz:'America/Bogota',q:'colombia bogota'},
+  {label:'Peru Time (Lima)',tz:'America/Lima',q:'peru'},
+  {label:'Chile Time (Santiago)',tz:'America/Santiago',q:'chile'},
+  {label:'Western European Time (Lisbon)',tz:'Europe/Lisbon',q:'portugal'},
+  {label:'Greenwich Mean Time (London)',tz:'Europe/London',q:'uk united kingdom england ireland dublin'},
+  {label:'Central European Time (Paris)',tz:'Europe/Paris',q:'france germany berlin madrid spain rome italy amsterdam netherlands brussels belgium vienna austria zurich switzerland warsaw poland stockholm sweden oslo norway copenhagen denmark'},
+  {label:'Eastern European Time (Athens)',tz:'Europe/Athens',q:'greece finland helsinki romania bucharest ukraine kyiv cairo egypt'},
+  {label:'Moscow Time (Moscow)',tz:'Europe/Moscow',q:'russia'},
+  {label:'Turkey Time (Istanbul)',tz:'Europe/Istanbul',q:'turkey'},
+  {label:'West Africa Time (Lagos)',tz:'Africa/Lagos',q:'nigeria'},
+  {label:'Central Africa Time (Johannesburg)',tz:'Africa/Johannesburg',q:'south africa'},
+  {label:'East Africa Time (Nairobi)',tz:'Africa/Nairobi',q:'kenya ethiopia addis ababa'},
+  {label:'Israel Time (Jerusalem)',tz:'Asia/Jerusalem',q:'israel tel aviv'},
+  {label:'Gulf Time (Dubai)',tz:'Asia/Dubai',q:'uae abu dhabi'},
+  {label:'Arabia Time (Riyadh)',tz:'Asia/Riyadh',q:'saudi arabia qatar'},
+  {label:'India Time (Mumbai)',tz:'Asia/Kolkata',q:'india delhi bangalore kolkata new delhi'},
+  {label:'Pakistan Time (Karachi)',tz:'Asia/Karachi',q:'pakistan'},
+  {label:'Indochina Time (Bangkok)',tz:'Asia/Bangkok',q:'thailand vietnam hanoi'},
+  {label:'China Time (Shanghai)',tz:'Asia/Shanghai',q:'china beijing'},
+  {label:'Singapore Time (Singapore)',tz:'Asia/Singapore',q:'malaysia kuala lumpur'},
+  {label:'Japan Time (Tokyo)',tz:'Asia/Tokyo',q:'japan'},
+  {label:'Korea Time (Seoul)',tz:'Asia/Seoul',q:'korea'},
+  {label:'Western Australia Time (Perth)',tz:'Australia/Perth',q:'australia'},
+  {label:'Australian Central Time (Adelaide)',tz:'Australia/Adelaide',q:'australia'},
+  {label:'Australian Eastern Time (Sydney)',tz:'Australia/Sydney',q:'australia melbourne brisbane'},
+  {label:'New Zealand Time (Auckland)',tz:'Pacific/Auckland',q:'new zealand'},
+];
+function searchTimezones(query){
+  const q=query.trim().toLowerCase();
+  if(!q)return[];
+  const all=TIMEZONE_OPTIONS.concat(TIMEZONE_WORLD);
+  return all.filter(o=>o.label.toLowerCase().includes(q)||(o.q&&o.q.includes(q))).slice(0,8);
+}
 // Best-guess time zone/language for a region name, used only to preselect
 // the dropdown when a region is picked — never blocks picking something else.
 const REGION_TZ_HINTS={'united states':'America/Los_Angeles','mexico':'America/Mexico_City','south america':'America/Guayaquil','europe':'Europe/London','online':'America/Los_Angeles'};
@@ -1875,7 +1918,10 @@ function paCampusDrawer(campusId){
       '<datalist id="ncRegionList">'+regions.map(r=>'<option value="'+esc(r.name)+'">').join('')+'</datalist>'+
     '</div>'+
     '<div><label class="pa-lbl">Time zone</label><select id="ncTz" class="pa-in">'+campusTimezoneOptions((c&&c.timezone)||'America/Los_Angeles')+'</select>'+
-      '<input id="ncTzOther" class="pa-in" type="text" placeholder="e.g. Asia/Tokyo" style="'+(tzIsOther?'':'display:none;')+'margin-top:6px" value="'+(tzIsOther?esc(c.timezone):'')+'">'+
+      '<div id="ncTzOtherWrap" style="position:relative;'+(tzIsOther?'':'display:none;')+'margin-top:6px">'+
+        '<input id="ncTzOther" class="pa-in" type="text" placeholder="Type a city or country…" value="'+(tzIsOther?esc(c.timezone):'')+'">'+
+        '<div id="ncTzOtherPop" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:#fff;border:1px solid #e6e6e5;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.12),0 2px 8px rgba(0,0,0,.08);padding:6px;z-index:70;max-height:280px;overflow:auto"></div>'+
+      '</div>'+
     '</div>'+
     '<div><label class="pa-lbl">Language</label><input id="ncLang" class="pa-in" type="text" list="ncLangList" value="'+esc((c&&c.language)||'English')+'">'+
       '<datalist id="ncLangList"><option value="English"><option value="Spanish"></datalist>'+
@@ -1888,7 +1934,9 @@ function paCampusDrawer(campusId){
   let tzTouched=false,langTouched=false;
   document.getElementById('ncTz').addEventListener('change',()=>{
     tzTouched=true;
-    document.getElementById('ncTzOther').style.display=document.getElementById('ncTz').value===TIMEZONE_OTHER?'':'none';
+    const showOther=document.getElementById('ncTz').value===TIMEZONE_OTHER;
+    document.getElementById('ncTzOtherWrap').style.display=showOther?'':'none';
+    if(showOther)document.getElementById('ncTzOther').focus();
   });
   document.getElementById('ncLang').addEventListener('input',()=>{langTouched=true;});
   document.getElementById('ncRegion').addEventListener('input',()=>{
@@ -1896,6 +1944,30 @@ function paCampusDrawer(campusId){
     const hint=REGION_TZ_HINTS[key]||null;
     if(!tzTouched&&hint)document.getElementById('ncTz').value=hint;
     if(!langTouched)document.getElementById('ncLang').value=REGION_LANG_HINTS[key]||'English';
+  });
+
+  // "Other…" search: type a city/country, pick a match — same "Zone Time
+  // (place)" labels as the main list, never a raw IANA string to read.
+  document.getElementById('ncTzOther').addEventListener('input',()=>{
+    delete document.getElementById('ncTzOther').dataset.tz;
+    const matches=searchTimezones(document.getElementById('ncTzOther').value);
+    const pop=document.getElementById('ncTzOtherPop');
+    if(!matches.length){pop.style.display='none';return;}
+    pop.innerHTML=matches.map((m,i)=>'<div class="tz-sugg" data-tz-idx="'+i+'" style="padding:7px 8px;border-radius:8px;font-size:13.5px;cursor:pointer">'+esc(m.label)+'</div>').join('');
+    pop.style.display='';
+    pop.querySelectorAll('[data-tz-idx]').forEach(row=>{
+      row.addEventListener('mouseenter',()=>{row.style.background='#f5f5f4';});
+      row.addEventListener('mouseleave',()=>{row.style.background='';});
+      row.addEventListener('click',()=>{
+        const m=matches[Number(row.dataset.tzIdx)];
+        document.getElementById('ncTzOther').value=m.label;
+        document.getElementById('ncTzOther').dataset.tz=m.tz;
+        pop.style.display='none';
+      });
+    });
+  });
+  document.addEventListener('click',e=>{
+    if(!e.target.closest('#ncTzOtherWrap'))document.getElementById('ncTzOtherPop').style.display='none';
   });
   document.getElementById('ncSave').addEventListener('click',async()=>{
     const name=document.getElementById('ncName').value.trim();
@@ -1928,9 +2000,17 @@ function paCampusDrawer(campusId){
         region_id=newRegion.id;
       }
     }
+    let timezone=document.getElementById('ncTz').value;
+    if(timezone===TIMEZONE_OTHER){
+      const typed=document.getElementById('ncTzOther').value.trim();
+      // A picked suggestion carries the real IANA id in data-tz; typing without
+      // picking one is only valid if it's already an exact identifier (has a
+      // "/", e.g. Asia/Tokyo) — otherwise "Paris" would silently save as a
+      // literal, invalid time zone string.
+      timezone=document.getElementById('ncTzOther').dataset.tz||(typed.includes('/')?typed:'');
+      if(!timezone){btn.disabled=false;btn.textContent='Save';note.textContent='Pick a suggested time zone, or type the exact identifier (e.g. Asia/Tokyo).';return;}
+    }
     btn.textContent='Saving…';
-    const tzSel=document.getElementById('ncTz').value;
-    const timezone=(tzSel===TIMEZONE_OTHER?document.getElementById('ncTzOther').value.trim():tzSel)||'America/Los_Angeles';
     const fields={
       name,
       region_id,
