@@ -1101,7 +1101,7 @@ function campusSortIndex(name){
   const onlineIdx=CAMPUS_ORDER.indexOf('Mosaic Online');
   return onlineIdx>=0?onlineIdx-0.5:CAMPUS_ORDER.length;
 }
-const ADMIN={profs:null,campuses:null,pending:null,err:null,fb:null,fbErr:null,q:'',role:'all',loading:false,tab:'users',apps:null,appPerms:null,appDefaults:null,campusOpen:new Set(),showInactiveCampuses:false,campusUsersOpen:new Set()};
+const ADMIN={profs:null,campuses:null,pending:null,err:null,fb:null,fbErr:null,q:'',role:'all',loading:false,tab:'users',apps:null,appPerms:null,appDefaults:null,campusOpen:new Set(),showInactiveCampuses:false,campusUsersOpen:new Set(),regions:null};
 const ROLE_LIST=['admin','staff','leader','volunteer'];
 const SECTION_LABEL=id=>{const s=SECTIONS.find(x=>x.id===id);return s?s.label:id;};
 function adminName(p){const n=p.display_name||p.full_name||'—';return n.includes('@')?prettyNameFromEmail(n):n;}
@@ -1111,9 +1111,9 @@ async function loadAdmin(){
      each, and which of them a role gets by default. Roles & permissions reads
      these so the table describes what the database actually says, rather than
      a list kept in step by hand. */
-  const [r1,r2,r3,r4,r5,r6,r7,r8]=await Promise.all([
+  const [r1,r2,r3,r4,r5,r6,r7,r8,r9]=await Promise.all([
     sb.from('profiles').select('id,display_name,full_name,role,campus_id,avatar_url,app_access,campus_ids,archived_at'),
-    sb.from('campuses').select('id,name,parent_campus_id,active'),
+    sb.from('campuses').select('id,name,parent_campus_id,active,region_id,timezone,language'),
     sb.from('pending_invites').select('id,email,name,role,campus_id,created_at').order('created_at'),
     sb.from('apps').select('key,name').order('name'),
     sb.from('app_permissions').select('app_key,perm_key,label,sort_order').order('app_key').order('sort_order'),
@@ -1124,7 +1124,9 @@ async function loadAdmin(){
     // Admins can write any campus's locations; staff only their own (my_campuses()).
     sb.from('campus_locations').select('id,campus_id,location,active,note').eq('active',true),
     // Gathering times per location — admin-write only, joined to a location by id.
-    sb.from('campus_service_times').select('id,campus_id,location_id,gathering_type,service_label,sort_order,active').eq('active',true).order('sort_order')
+    sb.from('campus_service_times').select('id,campus_id,location_id,gathering_type,service_label,sort_order,active').eq('active',true).order('sort_order'),
+    // Regions group campuses for reporting — ordered closest-to-LA first (see campus_regions).
+    sb.from('campus_regions').select('id,name,sort_order').order('sort_order')
   ]);
   ADMIN.apps=r4.data||[];
   ADMIN.appPerms=r5.data||[];
@@ -1135,6 +1137,7 @@ async function loadAdmin(){
   ADMIN.campuses=(r2.data||[]).filter(c=>!c.parent_campus_id).sort((a,b)=>campusSortIndex(a.name)-campusSortIndex(b.name));
   ADMIN.campusLocations=r7.data||[];
   ADMIN.serviceTimes=r8.data||[];
+  ADMIN.regions=r9.data||[];
   ADMIN.loading=false;
   if(S.section==='admin')render();
 }
@@ -1874,26 +1877,368 @@ function paInviteDrawer(pendingId){
   });
 }
 
+// Named time zones for the campuses Mosaic actually has today — standard
+// labels ("Pacific Time (US & Canada)") instead of raw IANA strings, which
+// nobody reads at a glance. "Other" is the escape hatch for whatever comes
+// next (a real IANA identifier, typed by hand) rather than trying to
+// enumerate every zone on earth up front.
+const TIMEZONE_OPTIONS=[
+  {label:'Pacific Time (US & Canada)',tz:'America/Los_Angeles'},
+  {label:'Mountain Time (US & Canada)',tz:'America/Denver'},
+  {label:'Central Time (US & Canada)',tz:'America/Chicago'},
+  {label:'Eastern Time (US & Canada)',tz:'America/New_York'},
+  {label:'Central Time (Mexico City)',tz:'America/Mexico_City'},
+  {label:'Ecuador Time (Quito)',tz:'America/Guayaquil'},
+  {label:'Greenwich Mean Time (London)',tz:'Europe/London'},
+];
+const TIMEZONE_OTHER='__other__';
+// Language field mirrors the Time zone field's own pattern (a <select> of the
+// common ones + an "Other…" free-text slot) so the two controls open and
+// behave the same way instead of one being a native select and the other a
+// plain text/datalist input. Kept in sync with mosaic-metrics' copy.
+const LANGUAGE_OPTIONS=['English','Spanish','French','Portuguese','German','Korean','Japanese','Arabic'];
+const LANGUAGE_OTHER='__other_lang__';
+function campusLanguageOptions(selected){
+  const known=LANGUAGE_OPTIONS.includes(selected);
+  return LANGUAGE_OPTIONS.map(l=>'<option value="'+esc(l)+'"'+(l===selected?' selected':'')+'>'+esc(l)+'</option>').join('')
+    +'<option value="'+LANGUAGE_OTHER+'"'+(!known&&selected?' selected':'')+'>Other…</option>';
+}
+// Broader world list for the "Other…" search box — same "Zone Time (place)"
+// naming as TIMEZONE_OPTIONS, so a match never looks different from the
+// common ones. `q` holds extra search terms (city/country names) a label
+// alone wouldn't catch — typing "paris" or "france" both find CET.
+const TIMEZONE_WORLD=[
+  {label:'Alaska Time (Anchorage)',tz:'America/Anchorage',q:'alaska'},
+  {label:'Hawaii Time (Honolulu)',tz:'Pacific/Honolulu',q:'hawaii'},
+  {label:'Atlantic Time (Halifax)',tz:'America/Halifax',q:'canada nova scotia'},
+  {label:'Brasília Time (São Paulo)',tz:'America/Sao_Paulo',q:'brazil brasilia rio de janeiro'},
+  {label:'Argentina Time (Buenos Aires)',tz:'America/Argentina/Buenos_Aires',q:'argentina'},
+  {label:'Colombia Time (Bogotá)',tz:'America/Bogota',q:'colombia bogota'},
+  {label:'Peru Time (Lima)',tz:'America/Lima',q:'peru'},
+  {label:'Chile Time (Santiago)',tz:'America/Santiago',q:'chile'},
+  {label:'Western European Time (Lisbon)',tz:'Europe/Lisbon',q:'portugal'},
+  {label:'Greenwich Mean Time (London)',tz:'Europe/London',q:'uk united kingdom england ireland dublin'},
+  {label:'Central European Time (Paris)',tz:'Europe/Paris',q:'france germany berlin madrid spain rome italy amsterdam netherlands brussels belgium vienna austria zurich switzerland warsaw poland stockholm sweden oslo norway copenhagen denmark'},
+  {label:'Eastern European Time (Athens)',tz:'Europe/Athens',q:'greece finland helsinki romania bucharest ukraine kyiv'},
+  {label:'Eastern European Time (Cairo)',tz:'Africa/Cairo',q:'egypt'},
+  {label:'Moscow Time (Moscow)',tz:'Europe/Moscow',q:'russia'},
+  {label:'Turkey Time (Istanbul)',tz:'Europe/Istanbul',q:'turkey'},
+  {label:'West Africa Time (Lagos)',tz:'Africa/Lagos',q:'nigeria'},
+  {label:'Central Africa Time (Johannesburg)',tz:'Africa/Johannesburg',q:'south africa'},
+  {label:'East Africa Time (Nairobi)',tz:'Africa/Nairobi',q:'kenya ethiopia addis ababa'},
+  {label:'Israel Time (Jerusalem)',tz:'Asia/Jerusalem',q:'israel tel aviv'},
+  {label:'Gulf Time (Dubai)',tz:'Asia/Dubai',q:'uae abu dhabi'},
+  {label:'Arabia Time (Riyadh)',tz:'Asia/Riyadh',q:'saudi arabia qatar'},
+  {label:'India Time (Mumbai)',tz:'Asia/Kolkata',q:'india delhi bangalore kolkata new delhi'},
+  {label:'Pakistan Time (Karachi)',tz:'Asia/Karachi',q:'pakistan'},
+  {label:'Indochina Time (Bangkok)',tz:'Asia/Bangkok',q:'thailand vietnam hanoi'},
+  {label:'China Time (Shanghai)',tz:'Asia/Shanghai',q:'china beijing'},
+  {label:'Singapore Time (Singapore)',tz:'Asia/Singapore',q:'malaysia kuala lumpur'},
+  {label:'Japan Time (Tokyo)',tz:'Asia/Tokyo',q:'japan'},
+  {label:'Korea Time (Seoul)',tz:'Asia/Seoul',q:'korea'},
+  {label:'Western Australia Time (Perth)',tz:'Australia/Perth',q:'australia'},
+  {label:'Australian Central Time (Adelaide)',tz:'Australia/Adelaide',q:'australia'},
+  {label:'Australian Eastern Time (Sydney)',tz:'Australia/Sydney',q:'australia melbourne brisbane sidney'},
+  {label:'New Zealand Time (Auckland)',tz:'Pacific/Auckland',q:'new zealand'},
+];
+function searchTimezones(query){
+  const q=query.trim().toLowerCase();
+  if(!q)return[];
+  const all=TIMEZONE_OPTIONS.concat(TIMEZONE_WORLD);
+  return all.filter(o=>o.label.toLowerCase().includes(q)||(o.q&&o.q.includes(q))).slice(0,8);
+}
+// Best-guess time zone/language for a region name, used only to preselect
+// the dropdown when a region is picked — never blocks picking something else.
+const REGION_TZ_HINTS={'united states':'America/Los_Angeles','mexico':'America/Mexico_City','south america':'America/Guayaquil','europe':'Europe/London','online':'America/Los_Angeles'};
+const REGION_LANG_HINTS={'mexico':'Spanish','south america':'Spanish'};
+// Best-guess language for a campus name — the country's official/majority
+// language, used only to preselect the Language field when a known city is
+// typed. Kept in sync with mosaic-metrics' copy. Never blocks typing another
+// language by hand.
+const CAMPUS_LANG_HINTS={
+  'mexico city':'Spanish','mexico':'Spanish','quito':'Spanish','ecuador':'Spanish',
+  'bogotá':'Spanish','bogota':'Spanish','paris':'French','tokyo':'Japanese',
+  'berlin':'German','são paulo':'Portuguese','sao paulo':'Portuguese',
+  'seoul':'Korean','cairo':'Arabic','dubai':'Arabic',
+};
+function campusLangHint(campusName){
+  return CAMPUS_LANG_HINTS[campusName.trim().toLowerCase()]||null;
+}
+// Same idea for time zone: a known city's own zone beats the region's coarse
+// fallback (Region "Europe" defaults to London, which would silently
+// overwrite a Paris/Berlin-specific pick otherwise). Rather than hand-listing
+// cities (easy to miss one, as Sydney was), this matches the campus name
+// straight against every city already named in TIMEZONE_OPTIONS/
+// TIMEZONE_WORLD — the same master list the "Other…" search already covers —
+// so any of those ~35 world cities works automatically. Only a few true
+// exceptions need an override: a campus named after a country rather than
+// its city (Mexico, Ecuador), or a city that isn't any label's parenthetical
+// (Toronto, Vancouver ride on the generic "US & Canada" zones). Kept in sync
+// with mosaic-metrics' copy.
+const CAMPUS_TZ_OVERRIDES={
+  'mexico':'America/Mexico_City','ecuador':'America/Guayaquil',
+  'toronto':'America/New_York','vancouver':'America/Los_Angeles',
+  'quebec':'America/New_York','quebec city':'America/New_York',
+  'montreal':'America/New_York','ottawa':'America/New_York',
+};
+function normalizeCityName(s){
+  return s.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+}
+function campusTzHint(campusName){
+  const key=normalizeCityName(campusName);
+  if(!key)return null;
+  if(CAMPUS_TZ_OVERRIDES[key])return CAMPUS_TZ_OVERRIDES[key];
+  const all=TIMEZONE_OPTIONS.concat(TIMEZONE_WORLD);
+  const exact=all.find(o=>{
+    const m=o.label.match(/\(([^)]+)\)/);
+    return m&&normalizeCityName(m[1])===key;
+  });
+  if(exact)return exact.tz;
+  const partial=all.find(o=>o.q&&normalizeCityName(o.q).includes(key));
+  return partial?partial.tz:null;
+}
+
+// Known city short-codes for the campus alias slug — real city/airport-style
+// abbreviations, not a literal first-three-letters rule (that would make New
+// York City "new" instead of NYC). Matched case-insensitively against the
+// whole campus name. A name not in this list falls back to the first three
+// letters of its first word. Kept in sync with mosaic-metrics' copy. Most
+// campuses get one code; a value can be an array to add more than one alias
+// (Ecuador keeps both its city code and its ISO country code).
+const CAMPUS_SHORT_CODES={
+  'los angeles':'LAX','new york city':'NYC','new york':'NYC','chicago':'CHI',
+  'mexico city':'MEX','mexico':'MEX','quito':'UIO','ecuador':['UIO','ECU'],
+  'london':'LON','seattle':'SEA','orange county':'OCA','atlanta':'ATL',
+  'paris':'PAR','tokyo':'TYO','sydney':'SYD','berlin':'BER','toronto':'YTO',
+  'nairobi':'NBO','mumbai':'BOM','são paulo':'SAO','sao paulo':'SAO',
+  'seoul':'SEL','cairo':'CAI','dubai':'DXB','singapore':'SIN',
+  'vancouver':'YVR','bogotá':'BOG','bogota':'BOG','manila':'MNL',
+  'miami':'MIA','houston':'HOU','guayaquil':'GYE',
+};
+function campusShortCodes(campusName){
+  const known=CAMPUS_SHORT_CODES[campusName.trim().toLowerCase()];
+  if(known)return (Array.isArray(known)?known:[known]).map(c=>c.toLowerCase());
+  return [campusName.trim().split(/\s+/)[0].toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,3)];
+}
+function campusTimezoneOptions(selected){
+  const known=TIMEZONE_OPTIONS.some(o=>o.tz===selected);
+  return TIMEZONE_OPTIONS.map(o=>'<option value="'+esc(o.tz)+'"'+(o.tz===selected?' selected':'')+'>'+esc(o.label)+'</option>').join('')
+    +'<option value="'+TIMEZONE_OTHER+'"'+(!known&&selected?' selected':'')+'>Other…</option>';
+}
 function paCampusDrawer(campusId){
   const c=campusId?(ADMIN.campuses||[]).find(x=>x.id===campusId):null;
+  const regions=ADMIN.regions||[];
+  const curRegionName=(c&&c.region_id)?(regions.find(r=>r.id===c.region_id)||{}).name||'':'';
+  const tzIsOther=!!(c&&c.timezone&&!TIMEZONE_OPTIONS.some(o=>o.tz===c.timezone));
+  const curLang=(c&&c.language)||'English';
+  const langIsOther=!LANGUAGE_OPTIONS.includes(curLang);
   openDrawer('<h2 style="margin-top:0">'+(c?'Rename campus':'New campus')+'</h2>'+
     (c?'':'<div class="sub">Add it here and it\'s immediately available as a primary campus, and in every per-app campus picker.</div>')+
     '<div style="display:flex;flex-direction:column;gap:12px;margin-top:16px">'+
-    '<div><label class="pa-lbl">Name</label><input id="ncName" class="pa-in" type="text" placeholder="e.g. Seattle" value="'+esc((c&&c.name)||'')+'"></div></div>'+
+    '<div><label class="pa-lbl">Name</label><input id="ncName" class="pa-in" type="text" placeholder="e.g. Seattle" value="'+esc((c&&c.name)||'')+'"></div>'+
+    '<div><label class="pa-lbl">Region</label><input id="ncRegion" class="pa-in" type="text" list="ncRegionList" placeholder="e.g. Asia — type a new one if it\'s not listed" value="'+esc(curRegionName)+'" autocomplete="mosaic-no-autofill" name="mosaic-nc-field-2" data-lpignore="true" data-1p-ignore="true">'+
+      '<datalist id="ncRegionList">'+regions.map(r=>'<option value="'+esc(r.name)+'">').join('')+'</datalist>'+
+    '</div>'+
+    '<div><label class="pa-lbl">Time zone</label><select id="ncTz" class="pa-in">'+campusTimezoneOptions((c&&c.timezone)||'America/Los_Angeles')+'</select>'+
+      '<div id="ncTzOtherWrap" style="position:relative;'+(tzIsOther?'':'display:none;')+'margin-top:6px">'+
+        '<input id="ncTzOther" class="pa-in" type="text" placeholder="Type a city or country…" value="'+(tzIsOther?esc(c.timezone):'')+'">'+
+        '<div id="ncTzOtherPop" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:#fff;border:1px solid #e6e6e5;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.12),0 2px 8px rgba(0,0,0,.08);padding:6px;z-index:70;max-height:280px;overflow:auto"></div>'+
+      '</div>'+
+    '</div>'+
+    '<div><label class="pa-lbl">Language</label><select id="ncLang" class="pa-in">'+campusLanguageOptions(curLang)+'</select>'+
+      '<div id="ncLangOtherWrap" style="'+(langIsOther?'':'display:none;')+'margin-top:6px">'+
+        '<input id="ncLangOther" class="pa-in" type="text" placeholder="Type a language…" value="'+(langIsOther?esc(curLang):'')+'">'+
+      '</div>'+
+    '</div>'+
+    '</div>'+
     '<div style="display:flex;gap:10px;align-items:center;margin-top:18px"><button class="btn-primary" id="ncSave">Save</button></div>'+
     '<div id="ncNote" style="font-size:12.5px;color:var(--text2);margin-top:10px"></div>');
+  // Region preselects the time zone/language to a best guess; changing either
+  // field by hand always works regardless — this is a nudge, not a restriction.
+  let tzTouched=false,langTouched=false;
+  document.getElementById('ncTz').addEventListener('change',()=>{
+    tzTouched=true;
+    const showOther=document.getElementById('ncTz').value===TIMEZONE_OTHER;
+    document.getElementById('ncTzOtherWrap').style.display=showOther?'':'none';
+    if(showOther)document.getElementById('ncTzOther').focus();
+  });
+  document.getElementById('ncLang').addEventListener('change',()=>{
+    langTouched=true;
+    const showOther=document.getElementById('ncLang').value===LANGUAGE_OTHER;
+    document.getElementById('ncLangOtherWrap').style.display=showOther?'':'none';
+    if(showOther)document.getElementById('ncLangOther').focus();
+  });
+  document.getElementById('ncLangOther').addEventListener('input',()=>{langTouched=true;});
+  // Sets the time zone field, using the "Other" search slot when the zone
+  // isn't one of the 7 common ones (e.g. Europe/Paris) so it still shows the
+  // real "Zone Time (place)" label instead of a blank/raw select value.
+  const setTz=tz=>{
+    if(TIMEZONE_OPTIONS.some(o=>o.tz===tz)){
+      document.getElementById('ncTz').value=tz;
+      document.getElementById('ncTzOtherWrap').style.display='none';
+      return;
+    }
+    const match=TIMEZONE_WORLD.find(o=>o.tz===tz);
+    document.getElementById('ncTz').value=TIMEZONE_OTHER;
+    document.getElementById('ncTzOtherWrap').style.display='';
+    document.getElementById('ncTzOther').value=match?match.label:tz;
+    document.getElementById('ncTzOther').dataset.tz=tz;
+  };
+  // Same pattern for Language: pick it from the list when it's one of the
+  // 8 common ones, otherwise drop it into the "Other" free-text slot.
+  const setLang=lang=>{
+    if(LANGUAGE_OPTIONS.includes(lang)){
+      document.getElementById('ncLang').value=lang;
+      document.getElementById('ncLangOtherWrap').style.display='none';
+      return;
+    }
+    document.getElementById('ncLang').value=LANGUAGE_OTHER;
+    document.getElementById('ncLangOtherWrap').style.display='';
+    document.getElementById('ncLangOther').value=lang;
+  };
+  // The campus name (city) is the more specific guess — Paris implies French
+  // and its own zone even inside a "Europe" region that's mostly
+  // English/German/London elsewhere — so it wins over the region's hint
+  // whenever both are available.
+  const applyLangHint=()=>{
+    if(langTouched)return;
+    const nameHint=campusLangHint(document.getElementById('ncName').value);
+    const regionKey=document.getElementById('ncRegion').value.trim().toLowerCase();
+    setLang(nameHint||REGION_LANG_HINTS[regionKey]||'English');
+  };
+  const applyTzHint=()=>{
+    if(tzTouched)return;
+    const name=document.getElementById('ncName').value.trim();
+    const nameHint=campusTzHint(name);
+    const regionKey=document.getElementById('ncRegion').value.trim().toLowerCase();
+    const hint=nameHint||REGION_TZ_HINTS[regionKey];
+    if(hint){setTz(hint);return;}
+    // A name has been typed but doesn't match any known city or region — drop
+    // into "Other" with an empty search box rather than silently leaving
+    // whatever an earlier, different name happened to match (a real, if
+    // confusing, bug: type "Dubai", then rename to "Quebec" before saving,
+    // and it stayed on Dubai's zone). Nothing typed yet keeps the plain
+    // Pacific Time default rather than popping "Other" open immediately.
+    if(name){
+      document.getElementById('ncTz').value=TIMEZONE_OTHER;
+      document.getElementById('ncTzOtherWrap').style.display='';
+      document.getElementById('ncTzOther').value='';
+      delete document.getElementById('ncTzOther').dataset.tz;
+    }
+  };
+  document.getElementById('ncName').addEventListener('input',()=>{applyTzHint();applyLangHint();});
+  document.getElementById('ncRegion').addEventListener('input',()=>{applyTzHint();applyLangHint();});
+
+  // "Other…" search: type a city/country, pick a match — same "Zone Time
+  // (place)" labels as the main list, never a raw IANA string to read.
+  document.getElementById('ncTzOther').addEventListener('input',()=>{
+    delete document.getElementById('ncTzOther').dataset.tz;
+    const matches=searchTimezones(document.getElementById('ncTzOther').value);
+    const pop=document.getElementById('ncTzOtherPop');
+    if(!matches.length){pop.style.display='none';return;}
+    pop.innerHTML=matches.map((m,i)=>'<div class="tz-sugg" data-tz-idx="'+i+'" style="padding:7px 8px;border-radius:8px;font-size:13.5px;cursor:pointer">'+esc(m.label)+'</div>').join('');
+    pop.style.display='';
+    pop.querySelectorAll('[data-tz-idx]').forEach(row=>{
+      row.addEventListener('mouseenter',()=>{row.style.background='#f5f5f4';});
+      row.addEventListener('mouseleave',()=>{row.style.background='';});
+      row.addEventListener('click',()=>{
+        const m=matches[Number(row.dataset.tzIdx)];
+        document.getElementById('ncTzOther').value=m.label;
+        document.getElementById('ncTzOther').dataset.tz=m.tz;
+        pop.style.display='none';
+      });
+    });
+  });
+  document.addEventListener('click',e=>{
+    if(!e.target.closest('#ncTzOtherWrap'))document.getElementById('ncTzOtherPop').style.display='none';
+  });
   document.getElementById('ncSave').addEventListener('click',async()=>{
     const name=document.getElementById('ncName').value.trim();
     const note=document.getElementById('ncNote');
     if(!name){note.textContent='Please enter a name.';return;}
     const btn=document.getElementById('ncSave');btn.disabled=true;btn.textContent='Saving…';
-    const {error}=c
-      ?await sb.from('campuses').update({name}).eq('id',c.id)
-      :await sb.from('campuses').insert({name});
+    // Region can be typed freehand — resolve to an existing row by name, or
+    // create one on the fly. New regions slot in just before "Online" (bumping
+    // it back one place) so Online stays last, per how regions are ordered;
+    // where exactly a new continent belongs relative to the others is not
+    // assumed beyond that.
+    const regionText=document.getElementById('ncRegion').value.trim();
+    let region_id=null;
+    if(regionText){
+      const existing=regions.find(r=>r.name.toLowerCase()===regionText.toLowerCase());
+      if(existing){
+        region_id=existing.id;
+      }else{
+        btn.textContent='Adding region…';
+        const online=regions.find(r=>r.name.toLowerCase()==='online');
+        const insertOrder=online?online.sort_order:(Math.max(0,...regions.map(r=>r.sort_order))+1);
+        if(online){
+          await sb.from('campus_regions').update({sort_order:online.sort_order+1}).eq('id',online.id);
+          online.sort_order+=1;
+        }
+        const {data:newRegion,error:regionErr}=await sb.from('campus_regions')
+          .insert({name:regionText,sort_order:insertOrder}).select('id,name,sort_order').single();
+        if(regionErr){btn.disabled=false;btn.textContent='Save';note.textContent="Couldn't add that region — "+(regionErr.message||'try again.');return;}
+        regions.push(newRegion);regions.sort((a,b)=>a.sort_order-b.sort_order);
+        region_id=newRegion.id;
+      }
+    }
+    let timezone=document.getElementById('ncTz').value;
+    if(timezone===TIMEZONE_OTHER){
+      const typed=document.getElementById('ncTzOther').value.trim();
+      // A picked suggestion carries the real IANA id in data-tz; typing without
+      // picking one is only valid if it's already an exact identifier (has a
+      // "/", e.g. Asia/Tokyo) — otherwise "Paris" would silently save as a
+      // literal, invalid time zone string.
+      timezone=document.getElementById('ncTzOther').dataset.tz||(typed.includes('/')?typed:'');
+      if(!timezone){btn.disabled=false;btn.textContent='Save';note.textContent='Pick a suggested time zone, or type the exact identifier (e.g. Asia/Tokyo).';return;}
+    }
+    let language=document.getElementById('ncLang').value;
+    if(language===LANGUAGE_OTHER)language=document.getElementById('ncLangOther').value.trim()||'English';
+    const fields={
+      name,
+      region_id,
+      timezone,
+      language,
+    };
+    // Slug and the CCB check only happen on create — renaming an existing
+    // campus doesn't touch either, same as Metrics: the slug is a stable
+    // identity set once, not something that should shift under a rename,
+    // and re-running the CCB check on every edit would be pointless (the
+    // campus, if it exists there, was already found the first time).
+    let ccbFlag='';
+    if(!c){
+      fields.slug=name.toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+      btn.textContent='Checking CCB…';
+      try{
+        const {data:ccb,error:ccbErr}=await sb.functions.invoke('check-ccb-campus',{body:{name}});
+        if(!ccbErr&&ccb){
+          if(ccb.matched){fields.ccb_campus_id=ccb.ccb_campus_id;}
+          else if(ccb.matched===false){ccbFlag=' No matching campus found in CCB — you may want to add it there too.';}
+        }
+      }catch(e){/* CCB check is best-effort; never blocks campus creation */}
+    }
+    btn.textContent='Saving…';
+    const {data:saved,error}=c
+      ?await sb.from('campuses').update(fields).eq('id',c.id)
+      :await sb.from('campuses').insert(fields).select('id').single();
     btn.disabled=false;btn.textContent='Save';
     if(error){note.textContent="Couldn't save — "+(error.message||'please try again.');return;}
-    note.textContent='Saved.';
-    ADMIN.campuses=null;setTimeout(()=>{closeDrawer();loadAdmin().then(()=>{if(S.section==='admin')render();});},700);
+    // Best-effort short-code alias(es) — real city/airport-style abbreviations
+    // from CAMPUS_SHORT_CODES (Seattle -> sea, New York City -> nyc; Ecuador
+    // gets both uio and ecu), falling back to the first three letters of the
+    // first word for a city not yet in that list. Each is silently skipped if
+    // it collides with another campus's alias, or is identical to the real
+    // slug — never blocks campus creation.
+    if(!c&&saved){
+      for(const shortCode of campusShortCodes(name)){
+        if(!shortCode||shortCode===fields.slug)continue;
+        try{await sb.from('campus_slug_aliases').insert({campus_id:saved.id,alias_slug:shortCode});}
+        catch(e){/* best-effort; a collision or failure here never blocks campus creation */}
+      }
+    }
+    note.textContent='Saved.'+ccbFlag;
+    ADMIN.campuses=null;setTimeout(()=>{closeDrawer();loadAdmin().then(()=>{if(S.section==='admin')render();});},ccbFlag?2600:700);
   });
 }
 function money(n){return '$'+n.toLocaleString('en-US');}
