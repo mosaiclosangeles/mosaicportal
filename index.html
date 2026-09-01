@@ -1099,7 +1099,7 @@ function campusSortIndex(name){
   const onlineIdx=CAMPUS_ORDER.indexOf('Mosaic Online');
   return onlineIdx>=0?onlineIdx-0.5:CAMPUS_ORDER.length;
 }
-const ADMIN={profs:null,campuses:null,pending:null,err:null,fb:null,fbErr:null,q:'',role:'all',loading:false,tab:'users',campusOpen:new Set(),showInactiveCampuses:false,campusUsersOpen:new Set()};
+const ADMIN={profs:null,campuses:null,pending:null,err:null,fb:null,fbErr:null,q:'',role:'all',loading:false,tab:'users',campusOpen:new Set(),showInactiveCampuses:false,campusUsersOpen:new Set(),regions:null};
 const ROLE_LIST=['admin','staff','leader','volunteer'];
 const SECTION_LABEL=id=>{const s=SECTIONS.find(x=>x.id===id);return s?s.label:id;};
 function adminName(p){const n=p.display_name||p.full_name||'—';return n.includes('@')?prettyNameFromEmail(n):n;}
@@ -1109,9 +1109,9 @@ async function loadAdmin(){
      each, and which of them a role gets by default. Roles & permissions reads
      these so the table describes what the database actually says, rather than
      a list kept in step by hand. */
-  const [r1,r2,r3,r4,r5,r6,r7,r8]=await Promise.all([
+  const [r1,r2,r3,r4,r5,r6,r7,r8,r9]=await Promise.all([
     sb.from('profiles').select('id,display_name,full_name,role,campus_id,avatar_url,app_access,campus_ids,archived_at'),
-    sb.from('campuses').select('id,name,parent_campus_id,active'),
+    sb.from('campuses').select('id,name,parent_campus_id,active,region_id,timezone,language'),
     sb.from('pending_invites').select('id,email,name,role,campus_id,created_at').order('created_at'),
     sb.from('apps').select('key,name').order('name'),
     sb.from('app_permissions').select('app_key,perm_key,label').order('app_key'),
@@ -1122,7 +1122,9 @@ async function loadAdmin(){
     // Admins can write any campus's locations; staff only their own (my_campuses()).
     sb.from('campus_locations').select('id,campus_id,location,active,note').eq('active',true),
     // Gathering times per location — admin-write only, joined to a location by id.
-    sb.from('campus_service_times').select('id,campus_id,location_id,gathering_type,service_label,sort_order,active').eq('active',true).order('sort_order')
+    sb.from('campus_service_times').select('id,campus_id,location_id,gathering_type,service_label,sort_order,active').eq('active',true).order('sort_order'),
+    // Regions group campuses for reporting — ordered closest-to-LA first (see campus_regions).
+    sb.from('campus_regions').select('id,name,sort_order').order('sort_order')
   ]);
   ADMIN.apps=r4.data||[];
   ADMIN.appPerms=r5.data||[];
@@ -1133,6 +1135,7 @@ async function loadAdmin(){
   ADMIN.campuses=(r2.data||[]).filter(c=>!c.parent_campus_id).sort((a,b)=>campusSortIndex(a.name)-campusSortIndex(b.name));
   ADMIN.campusLocations=r7.data||[];
   ADMIN.serviceTimes=r8.data||[];
+  ADMIN.regions=r9.data||[];
   ADMIN.loading=false;
   if(S.section==='admin')render();
 }
@@ -1835,22 +1838,94 @@ function paInviteDrawer(pendingId){
   });
 }
 
+// Time zones Mosaic actually has campuses in today, surfaced first in the
+// <datalist> so the common case is a couple keystrokes; typing anything else
+// searches the full IANA list (via Intl.supportedValuesOf where supported).
+const CAMPUS_TZ_COMMON=['America/Los_Angeles','America/Denver','America/Chicago','America/New_York','America/Mexico_City','America/Guayaquil','Europe/London'];
+// Best-guess time zone(s)/language for a region name, used only to pre-fill/reorder
+// the datalist when a region is picked — never blocks typing something else.
+const REGION_TZ_HINTS={'united states':['America/Los_Angeles','America/Denver','America/Chicago','America/New_York'],'mexico':['America/Mexico_City'],'south america':['America/Guayaquil'],'europe':['Europe/London'],'online':['America/Los_Angeles']};
+const REGION_LANG_HINTS={'mexico':'Spanish','south america':'Spanish'};
+function campusTimezoneDatalist(hints){
+  let all=[];
+  try{all=typeof Intl.supportedValuesOf==='function'?Intl.supportedValuesOf('timeZone'):[];}catch(e){all=[];}
+  const head=(hints&&hints.length?hints:CAMPUS_TZ_COMMON);
+  const ordered=head.concat(all.filter(z=>!head.includes(z)));
+  return ordered.map(z=>'<option value="'+esc(z)+'">').join('');
+}
 function paCampusDrawer(campusId){
   const c=campusId?(ADMIN.campuses||[]).find(x=>x.id===campusId):null;
+  const regions=ADMIN.regions||[];
+  const curRegionName=(c&&c.region_id)?(regions.find(r=>r.id===c.region_id)||{}).name||'':'';
   openDrawer('<h2 style="margin-top:0">'+(c?'Rename campus':'New campus')+'</h2>'+
     (c?'':'<div class="sub">Add it here and it\'s immediately available as a primary campus, and in every per-app campus picker.</div>')+
     '<div style="display:flex;flex-direction:column;gap:12px;margin-top:16px">'+
-    '<div><label class="pa-lbl">Name</label><input id="ncName" class="pa-in" type="text" placeholder="e.g. Seattle" value="'+esc((c&&c.name)||'')+'"></div></div>'+
+    '<div><label class="pa-lbl">Name</label><input id="ncName" class="pa-in" type="text" placeholder="e.g. Seattle" value="'+esc((c&&c.name)||'')+'"></div>'+
+    '<div><label class="pa-lbl">Region</label><input id="ncRegion" class="pa-in" type="text" list="ncRegionList" placeholder="e.g. Asia — type a new one if it\'s not listed" value="'+esc(curRegionName)+'">'+
+      '<datalist id="ncRegionList">'+regions.map(r=>'<option value="'+esc(r.name)+'">').join('')+'</datalist>'+
+    '</div>'+
+    '<div><label class="pa-lbl">Time zone</label><input id="ncTz" class="pa-in" type="text" list="ncTzList" value="'+esc((c&&c.timezone)||'America/Los_Angeles')+'">'+
+      '<datalist id="ncTzList">'+campusTimezoneDatalist(null)+'</datalist>'+
+    '</div>'+
+    '<div><label class="pa-lbl">Language</label><input id="ncLang" class="pa-in" type="text" list="ncLangList" value="'+esc((c&&c.language)||'English')+'">'+
+      '<datalist id="ncLangList"><option value="English"><option value="Spanish"></datalist>'+
+    '</div>'+
+    '</div>'+
     '<div style="display:flex;gap:10px;align-items:center;margin-top:18px"><button class="btn-primary" id="ncSave">Save</button></div>'+
     '<div id="ncNote" style="font-size:12.5px;color:var(--text2);margin-top:10px"></div>');
+  // Region narrows the time zone/language datalist to a best guess; typing in
+  // either field always works regardless — this is a nudge, not a restriction.
+  let tzTouched=false,langTouched=false;
+  document.getElementById('ncTz').addEventListener('input',()=>{tzTouched=true;});
+  document.getElementById('ncLang').addEventListener('input',()=>{langTouched=true;});
+  document.getElementById('ncRegion').addEventListener('input',()=>{
+    const key=document.getElementById('ncRegion').value.trim().toLowerCase();
+    const hints=REGION_TZ_HINTS[key]||null;
+    document.getElementById('ncTzList').innerHTML=campusTimezoneDatalist(hints);
+    if(!tzTouched&&hints&&hints[0])document.getElementById('ncTz').value=hints[0];
+    if(!langTouched)document.getElementById('ncLang').value=REGION_LANG_HINTS[key]||'English';
+  });
   document.getElementById('ncSave').addEventListener('click',async()=>{
     const name=document.getElementById('ncName').value.trim();
     const note=document.getElementById('ncNote');
     if(!name){note.textContent='Please enter a name.';return;}
     const btn=document.getElementById('ncSave');btn.disabled=true;btn.textContent='Saving…';
+    // Region can be typed freehand — resolve to an existing row by name, or
+    // create one on the fly. New regions slot in just before "Online" (bumping
+    // it back one place) so Online stays last, per how regions are ordered;
+    // where exactly a new continent belongs relative to the others is not
+    // assumed beyond that.
+    const regionText=document.getElementById('ncRegion').value.trim();
+    let region_id=null;
+    if(regionText){
+      const existing=regions.find(r=>r.name.toLowerCase()===regionText.toLowerCase());
+      if(existing){
+        region_id=existing.id;
+      }else{
+        btn.textContent='Adding region…';
+        const online=regions.find(r=>r.name.toLowerCase()==='online');
+        const insertOrder=online?online.sort_order:(Math.max(0,...regions.map(r=>r.sort_order))+1);
+        if(online){
+          await sb.from('campus_regions').update({sort_order:online.sort_order+1}).eq('id',online.id);
+          online.sort_order+=1;
+        }
+        const {data:newRegion,error:regionErr}=await sb.from('campus_regions')
+          .insert({name:regionText,sort_order:insertOrder}).select('id,name,sort_order').single();
+        if(regionErr){btn.disabled=false;btn.textContent='Save';note.textContent="Couldn't add that region — "+(regionErr.message||'try again.');return;}
+        regions.push(newRegion);regions.sort((a,b)=>a.sort_order-b.sort_order);
+        region_id=newRegion.id;
+      }
+    }
+    btn.textContent='Saving…';
+    const fields={
+      name,
+      region_id,
+      timezone:document.getElementById('ncTz').value.trim()||'America/Los_Angeles',
+      language:document.getElementById('ncLang').value.trim()||'English',
+    };
     const {error}=c
-      ?await sb.from('campuses').update({name}).eq('id',c.id)
-      :await sb.from('campuses').insert({name});
+      ?await sb.from('campuses').update(fields).eq('id',c.id)
+      :await sb.from('campuses').insert(fields);
     btn.disabled=false;btn.textContent='Save';
     if(error){note.textContent="Couldn't save — "+(error.message||'please try again.');return;}
     note.textContent='Saved.';
