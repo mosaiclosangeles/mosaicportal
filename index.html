@@ -1838,25 +1838,35 @@ function paInviteDrawer(pendingId){
   });
 }
 
-// Time zones Mosaic actually has campuses in today, surfaced first in the
-// <datalist> so the common case is a couple keystrokes; typing anything else
-// searches the full IANA list (via Intl.supportedValuesOf where supported).
-const CAMPUS_TZ_COMMON=['America/Los_Angeles','America/Denver','America/Chicago','America/New_York','America/Mexico_City','America/Guayaquil','Europe/London'];
-// Best-guess time zone(s)/language for a region name, used only to pre-fill/reorder
-// the datalist when a region is picked — never blocks typing something else.
-const REGION_TZ_HINTS={'united states':['America/Los_Angeles','America/Denver','America/Chicago','America/New_York'],'mexico':['America/Mexico_City'],'south america':['America/Guayaquil'],'europe':['Europe/London'],'online':['America/Los_Angeles']};
+// Named time zones for the campuses Mosaic actually has today — standard
+// labels ("Pacific Time (US & Canada)") instead of raw IANA strings, which
+// nobody reads at a glance. "Other" is the escape hatch for whatever comes
+// next (a real IANA identifier, typed by hand) rather than trying to
+// enumerate every zone on earth up front.
+const TIMEZONE_OPTIONS=[
+  {label:'Pacific Time (US & Canada)',tz:'America/Los_Angeles'},
+  {label:'Mountain Time (US & Canada)',tz:'America/Denver'},
+  {label:'Central Time (US & Canada)',tz:'America/Chicago'},
+  {label:'Eastern Time (US & Canada)',tz:'America/New_York'},
+  {label:'Mexico City',tz:'America/Mexico_City'},
+  {label:'Guayaquil (Ecuador)',tz:'America/Guayaquil'},
+  {label:'London',tz:'Europe/London'},
+];
+const TIMEZONE_OTHER='__other__';
+// Best-guess time zone/language for a region name, used only to preselect
+// the dropdown when a region is picked — never blocks picking something else.
+const REGION_TZ_HINTS={'united states':'America/Los_Angeles','mexico':'America/Mexico_City','south america':'America/Guayaquil','europe':'Europe/London','online':'America/Los_Angeles'};
 const REGION_LANG_HINTS={'mexico':'Spanish','south america':'Spanish'};
-function campusTimezoneDatalist(hints){
-  let all=[];
-  try{all=typeof Intl.supportedValuesOf==='function'?Intl.supportedValuesOf('timeZone'):[];}catch(e){all=[];}
-  const head=(hints&&hints.length?hints:CAMPUS_TZ_COMMON);
-  const ordered=head.concat(all.filter(z=>!head.includes(z)));
-  return ordered.map(z=>'<option value="'+esc(z)+'">').join('');
+function campusTimezoneOptions(selected){
+  const known=TIMEZONE_OPTIONS.some(o=>o.tz===selected);
+  return TIMEZONE_OPTIONS.map(o=>'<option value="'+esc(o.tz)+'"'+(o.tz===selected?' selected':'')+'>'+esc(o.label)+'</option>').join('')
+    +'<option value="'+TIMEZONE_OTHER+'"'+(!known&&selected?' selected':'')+'>Other…</option>';
 }
 function paCampusDrawer(campusId){
   const c=campusId?(ADMIN.campuses||[]).find(x=>x.id===campusId):null;
   const regions=ADMIN.regions||[];
   const curRegionName=(c&&c.region_id)?(regions.find(r=>r.id===c.region_id)||{}).name||'':'';
+  const tzIsOther=!!(c&&c.timezone&&!TIMEZONE_OPTIONS.some(o=>o.tz===c.timezone));
   openDrawer('<h2 style="margin-top:0">'+(c?'Rename campus':'New campus')+'</h2>'+
     (c?'':'<div class="sub">Add it here and it\'s immediately available as a primary campus, and in every per-app campus picker.</div>')+
     '<div style="display:flex;flex-direction:column;gap:12px;margin-top:16px">'+
@@ -1864,8 +1874,8 @@ function paCampusDrawer(campusId){
     '<div><label class="pa-lbl">Region</label><input id="ncRegion" class="pa-in" type="text" list="ncRegionList" placeholder="e.g. Asia — type a new one if it\'s not listed" value="'+esc(curRegionName)+'">'+
       '<datalist id="ncRegionList">'+regions.map(r=>'<option value="'+esc(r.name)+'">').join('')+'</datalist>'+
     '</div>'+
-    '<div><label class="pa-lbl">Time zone</label><input id="ncTz" class="pa-in" type="text" list="ncTzList" value="'+esc((c&&c.timezone)||'America/Los_Angeles')+'">'+
-      '<datalist id="ncTzList">'+campusTimezoneDatalist(null)+'</datalist>'+
+    '<div><label class="pa-lbl">Time zone</label><select id="ncTz" class="pa-in">'+campusTimezoneOptions((c&&c.timezone)||'America/Los_Angeles')+'</select>'+
+      '<input id="ncTzOther" class="pa-in" type="text" placeholder="e.g. Asia/Tokyo" style="'+(tzIsOther?'':'display:none;')+'margin-top:6px" value="'+(tzIsOther?esc(c.timezone):'')+'">'+
     '</div>'+
     '<div><label class="pa-lbl">Language</label><input id="ncLang" class="pa-in" type="text" list="ncLangList" value="'+esc((c&&c.language)||'English')+'">'+
       '<datalist id="ncLangList"><option value="English"><option value="Spanish"></datalist>'+
@@ -1873,16 +1883,18 @@ function paCampusDrawer(campusId){
     '</div>'+
     '<div style="display:flex;gap:10px;align-items:center;margin-top:18px"><button class="btn-primary" id="ncSave">Save</button></div>'+
     '<div id="ncNote" style="font-size:12.5px;color:var(--text2);margin-top:10px"></div>');
-  // Region narrows the time zone/language datalist to a best guess; typing in
-  // either field always works regardless — this is a nudge, not a restriction.
+  // Region preselects the time zone/language to a best guess; changing either
+  // field by hand always works regardless — this is a nudge, not a restriction.
   let tzTouched=false,langTouched=false;
-  document.getElementById('ncTz').addEventListener('input',()=>{tzTouched=true;});
+  document.getElementById('ncTz').addEventListener('change',()=>{
+    tzTouched=true;
+    document.getElementById('ncTzOther').style.display=document.getElementById('ncTz').value===TIMEZONE_OTHER?'':'none';
+  });
   document.getElementById('ncLang').addEventListener('input',()=>{langTouched=true;});
   document.getElementById('ncRegion').addEventListener('input',()=>{
     const key=document.getElementById('ncRegion').value.trim().toLowerCase();
-    const hints=REGION_TZ_HINTS[key]||null;
-    document.getElementById('ncTzList').innerHTML=campusTimezoneDatalist(hints);
-    if(!tzTouched&&hints&&hints[0])document.getElementById('ncTz').value=hints[0];
+    const hint=REGION_TZ_HINTS[key]||null;
+    if(!tzTouched&&hint)document.getElementById('ncTz').value=hint;
     if(!langTouched)document.getElementById('ncLang').value=REGION_LANG_HINTS[key]||'English';
   });
   document.getElementById('ncSave').addEventListener('click',async()=>{
@@ -1917,10 +1929,12 @@ function paCampusDrawer(campusId){
       }
     }
     btn.textContent='Saving…';
+    const tzSel=document.getElementById('ncTz').value;
+    const timezone=(tzSel===TIMEZONE_OTHER?document.getElementById('ncTzOther').value.trim():tzSel)||'America/Los_Angeles';
     const fields={
       name,
       region_id,
-      timezone:document.getElementById('ncTz').value.trim()||'America/Los_Angeles',
+      timezone,
       language:document.getElementById('ncLang').value.trim()||'English',
     };
     const {error}=c
