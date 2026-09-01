@@ -1900,6 +1900,27 @@ function searchTimezones(query){
 // the dropdown when a region is picked — never blocks picking something else.
 const REGION_TZ_HINTS={'united states':'America/Los_Angeles','mexico':'America/Mexico_City','south america':'America/Guayaquil','europe':'Europe/London','online':'America/Los_Angeles'};
 const REGION_LANG_HINTS={'mexico':'Spanish','south america':'Spanish'};
+
+// Known city short-codes for the campus alias slug — real city/airport-style
+// abbreviations, not a literal first-three-letters rule (that would make New
+// York City "new" instead of NYC). Matched case-insensitively against the
+// whole campus name. A name not in this list falls back to the first three
+// letters of its first word. Kept in sync with mosaic-metrics' copy.
+const CAMPUS_SHORT_CODES={
+  'los angeles':'LAX','new york city':'NYC','new york':'NYC','chicago':'CHI',
+  'mexico city':'MEX','mexico':'MEX','quito':'UIO','ecuador':'UIO',
+  'london':'LON','seattle':'SEA','orange county':'OCA','atlanta':'ATL',
+  'paris':'PAR','tokyo':'TYO','sydney':'SYD','berlin':'BER','toronto':'YTO',
+  'nairobi':'NBO','mumbai':'BOM','são paulo':'SAO','sao paulo':'SAO',
+  'seoul':'SEL','cairo':'CAI','dubai':'DXB','singapore':'SIN',
+  'vancouver':'YVR','bogotá':'BOG','bogota':'BOG','manila':'MNL',
+  'miami':'MIA','houston':'HOU','guayaquil':'GYE',
+};
+function campusShortCode(campusName){
+  const known=CAMPUS_SHORT_CODES[campusName.trim().toLowerCase()];
+  if(known)return known.toLowerCase();
+  return campusName.trim().split(/\s+/)[0].toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,3);
+}
 function campusTimezoneOptions(selected){
   const known=TIMEZONE_OPTIONS.some(o=>o.tz===selected);
   return TIMEZONE_OPTIONS.map(o=>'<option value="'+esc(o.tz)+'"'+(o.tz===selected?' selected':'')+'>'+esc(o.label)+'</option>').join('')
@@ -2034,11 +2055,24 @@ function paCampusDrawer(campusId){
       }catch(e){/* CCB check is best-effort; never blocks campus creation */}
     }
     btn.textContent='Saving…';
-    const {error}=c
+    const {data:saved,error}=c
       ?await sb.from('campuses').update(fields).eq('id',c.id)
-      :await sb.from('campuses').insert(fields);
+      :await sb.from('campuses').insert(fields).select('id').single();
     btn.disabled=false;btn.textContent='Save';
     if(error){note.textContent="Couldn't save — "+(error.message||'please try again.');return;}
+    // Best-effort short-code alias — a real city/airport-style abbreviation
+    // from CAMPUS_SHORT_CODES (Seattle -> sea, New York City -> nyc), falling
+    // back to the first three letters of the first word for a city not yet in
+    // that list. Silently skipped if it collides with another campus's alias,
+    // or if it's identical to the real slug (a name three letters long
+    // already) — never blocks campus creation.
+    if(!c&&saved){
+      const shortCode=campusShortCode(name);
+      if(shortCode&&shortCode!==fields.slug){
+        try{await sb.from('campus_slug_aliases').insert({campus_id:saved.id,alias_slug:shortCode});}
+        catch(e){/* best-effort; a collision or failure here never blocks campus creation */}
+      }
+    }
     note.textContent='Saved.'+ccbFlag;
     ADMIN.campuses=null;setTimeout(()=>{closeDrawer();loadAdmin().then(()=>{if(S.section==='admin')render();});},ccbFlag?2600:700);
   });
