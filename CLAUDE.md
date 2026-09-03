@@ -18,6 +18,23 @@ the **Goals and Facilities sub-menus**, which are hand-written lists in
 `GOALS_NAV` and `FAC_NAV` — a page added inside either app has to be added
 there too, or it will not appear in the portal.
 
+**Adding a section takes four edits, not one.** Facilities shipped broken
+because only three were made: the rail entry, the sub-menu and the embed URL
+were there, and the router was not, so clicking Facilities fell through the
+`S.section===` chain to its final `else` — which is Settings. Whenever a
+section is added, all four have to move together:
+
+| Edit | Miss it and |
+|---|---|
+| `SECTIONS` | there is no rail button |
+| the `S.section===` chain in `render()` | the button shows the Settings page |
+| `SECTION_PATH` + `PATH_SECTION` | the URL never changes, and a deep link 404s into Home |
+| the `closest(...)` list at the top of the click handler | `data-` buttons in that section are dead, because nothing reaches the handler |
+
+That last one is the least obvious: the delegated click handler starts with one
+long `closest()` selector, and an attribute missing from it never gets as far
+as its `if`. The Facilities sub-menu was inert for exactly that reason.
+
 **Facility bookings are a fifth calendar source.** `loadFacilities()` reads
 `v_fac_requests` out of the same Supabase project with the signed-in person's
 own session, so RLS decides what they see. It draws `block_start`/`block_end`
