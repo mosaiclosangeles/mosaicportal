@@ -55,6 +55,24 @@
 .um-head{display:flex;gap:10px;align-items:flex-start}
 .um-head .um-av{width:34px;height:34px;font-size:12px}
 
+/* ---- preview bar (admin viewing as staff / leader / volunteer) ---- */
+#previewBar{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:200;
+  background:#1a1a1a;color:#fff;border-radius:999px;padding:10px 14px 10px 16px;
+  display:inline-flex;align-items:center;gap:10px;font-size:13px;font-weight:500;
+  box-shadow:0 4px 20px rgba(0,0,0,.35);white-space:nowrap;font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;letter-spacing:-.011em}
+html.dark #previewBar{background:#2a2a2a}
+#previewBar svg{width:16px;height:16px;flex:0 0 auto;color:#f59e0b}
+#previewBar .pb-exit{border:none;cursor:pointer;font-family:inherit;letter-spacing:inherit;font-size:12.5px;font-weight:600;
+  background:#f59e0b;color:#000;border-radius:999px;padding:5px 14px;margin-left:2px}
+#previewBar .pb-exit:hover{filter:brightness(1.08)}
+#previewBar .pb-campus{border:none;background:transparent;color:inherit;font:inherit;letter-spacing:inherit;
+  cursor:pointer;padding:0;min-width:60px;max-width:150px;appearance:none;-webkit-appearance:none}
+#previewBar .pb-campus option{color:#000}
+#previewBar .pb-campus:focus{outline:2px solid #f59e0b;outline-offset:3px;border-radius:4px}
+#previewBar .pb-role{color:#f59e0b;font-weight:600}
+body.previewing .main{padding-bottom:76px}
+@media(max-width:480px){.pb-label{display:none}}
+
 /* ---- profile pictures ----
    Every place a photo is shown is listed once, here. Both rules matter: the
    circle has to clip (overflow) and the photo has to be told to fill it
@@ -2601,6 +2619,81 @@ function render(){
     if(!allowedSections().includes(S.section))S.section='home'; render();});
 }
 
+/* ============================ preview (view as staff/leader/volunteer) ============================ */
+const PREVIEW_ROLE_PRESET={staff:'comms',leader:'ops',volunteer:'volunteer'};
+
+function _previewPickCampus(){
+  // Use already-loaded campuses list, falling back gracefully if not loaded yet
+  const campuses=(ADMIN.campuses||[]).filter(c=>c.active!==false);
+  if(!campuses.length)return null;
+  return (campuses.find(c=>c.id===ME.campus_id)||campuses[0]).id;
+}
+
+async function enterPreview(role){
+  if(ME.preview)exitPreview(); // exit any existing preview first
+  // Ensure campuses are loaded for the campus dropdown
+  if(!ADMIN.campuses)await loadAdmin().catch(()=>{});
+  ME.preview=true;
+  ME.previewRole=role;
+  _previewRealCampus=ME.campus_id;
+  _previewCampusId=_previewPickCampus();
+  S.role=PREVIEW_ROLE_PRESET[role]||'comms';
+  if(!allowedSections().includes(S.section))S.section='home';
+  document.body.classList.add('previewing');
+  _showPreviewBanner();
+  render();
+}
+
+function exitPreview(){
+  if(!ME.preview)return;
+  ME.preview=false;
+  ME.previewRole=null;
+  ME.campus_id=_previewRealCampus;
+  _previewRealCampus=null;
+  _previewCampusId=null;
+  S.role=ROLE_PRESET[ME.role]||'comms';
+  if(!allowedSections().includes(S.section))S.section='home';
+  document.body.classList.remove('previewing');
+  _hidePreviewBanner();
+  render();
+}
+
+function _showPreviewBanner(){
+  let bar=document.getElementById('previewBar');
+  if(!bar){
+    bar=document.createElement('div');
+    bar.id='previewBar';
+    document.body.appendChild(bar);
+    bar.addEventListener('click',e=>{
+      if(e.target.classList.contains('pb-exit'))exitPreview();
+    });
+    bar.addEventListener('change',e=>{
+      if(e.target.classList.contains('pb-campus')){
+        _previewCampusId=e.target.value;
+        _showPreviewBanner(); // re-render banner to update selection
+      }
+    });
+  }
+  const campuses=(ADMIN.campuses||[]).filter(c=>c.active!==false);
+  const roleLabel=PREVIEW_ROLE_LABEL[ME.previewRole]||ME.previewRole||'';
+  const eyeSvg='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+  let campusHtml='';
+  if(campuses.length>1){
+    const opts=campuses.map(c=>'<option value="'+c.id+'"'+(c.id===_previewCampusId?' selected':'')+'>'+esc(c.name)+'</option>').join('');
+    campusHtml=' · <select class="pb-campus" aria-label="Preview campus">'+opts+'</select>';
+  } else if(campuses.length===1){
+    campusHtml=' · <span>'+esc(campuses[0].name)+'</span>';
+  }
+  bar.innerHTML=eyeSvg+
+    '<span><span class="pb-label">Previewing as </span><span class="pb-role">'+esc(roleLabel)+'</span>'+campusHtml+'</span>'+
+    '<button class="pb-exit" type="button">Exit '+esc(roleLabel)+' view</button>';
+}
+
+function _hidePreviewBanner(){
+  const bar=document.getElementById('previewBar');
+  if(bar)bar.remove();
+}
+
 /* ============================ events ============================ */
 // Keep ADMIN.campusOpen an always-accurate mirror of which <details> cards are open,
 // so any re-render (renaming a campus, toggling inactive campuses, editing a location)
@@ -2613,15 +2706,14 @@ document.addEventListener('toggle',e=>{
   if(d.open)ADMIN.campusOpen.add(d.dataset.campus);else ADMIN.campusOpen.delete(d.dataset.campus);
 },true);
 document.addEventListener('click',e=>{
-  const t=e.target.closest('[data-go],[data-view],[data-nav],[data-filter],[data-ev],[data-day],[data-task],[data-new],[data-pick],[data-everyone],[data-tl],[data-back],[data-logout],[data-preview],[data-profile],[data-fb],[data-newuser],[data-gp],[data-user],[data-pinv],[data-pinvsend],[data-pinvdel],[data-adtab],[data-theme],[data-newcampus],[data-editcampus],[data-addloc],[data-deactivateloc],[data-addtime],[data-rmtime],[data-toggleinactivecampus],[data-toggleusers]');
+  const t=e.target.closest('[data-go],[data-view],[data-nav],[data-filter],[data-ev],[data-day],[data-task],[data-new],[data-pick],[data-everyone],[data-tl],[data-back],[data-logout],[data-preview],[data-previewexit],[data-profile],[data-fb],[data-newuser],[data-gp],[data-user],[data-pinv],[data-pinvsend],[data-pinvdel],[data-adtab],[data-theme],[data-newcampus],[data-editcampus],[data-addloc],[data-deactivateloc],[data-addtime],[data-rmtime],[data-toggleinactivecampus],[data-toggleusers]');
   if(!t) return;
   if(t.dataset.logout){ (sb?sb.auth.signOut():Promise.resolve()).then(()=>location.reload()); return; }
   if(t.dataset.preview){
-    ME.preview=!ME.preview;
-    S.role=ME.preview?'comms':(ROLE_PRESET[ME.role]||'comms');
-    if(!allowedSections().includes(S.section))S.section='home';
-    umClose(); render(); return;
+    const role=t.dataset.preview; // 'staff', 'leader', or 'volunteer'
+    enterPreview(role); umClose(); return;
   }
+  if(t.dataset.previewexit){ exitPreview(); umClose(); return; }
   if(t.dataset.profile){ umClose(); S.from=S.section||'home'; S.section='profile'; render(); return; }
   if(t.dataset.pick){
     const [type,tok]=t.dataset.pick.split('|');
@@ -2803,7 +2895,9 @@ function primeSharedSession(session){
   let raw=null;try{raw=localStorage.getItem(key);}catch(e){}
   try{mosaicAuthStorage.setItem(key,raw||JSON.stringify(session));}catch(e){}
 }
-const ME={email:null,role:null,name:null};
+const ME={email:null,role:null,name:null,preview:false,previewRole:null};
+let _previewRealCampus=null;  // admin's real campus_id, saved while previewing
+let _previewCampusId=null;    // campus being previewed as
 /* Metrics roles → prototype role presets (which sections the rail shows).
    The Settings role switcher still works on top of this default. */
 const ROLE_PRESET={admin:"leadership",staff:"comms",leader:"ops",volunteer:"volunteer"};
@@ -2899,15 +2993,23 @@ function avatarHtml(url,name){
     ? '<img src="'+esc(url)+'" alt="" onerror="if(this.parentNode)this.parentNode.textContent=\''+ini.replace(/'/g,"\\'")+'\'">'
     : ini;
 }
+const PREVIEW_ROLE_LABEL={staff:'Staff',leader:'Leader',volunteer:'Volunteer'};
 function umHtml(){
   const isAdmin=ME.role==="admin";
+  const pvLabel=ME.preview?(' · previewing as '+esc(PREVIEW_ROLE_LABEL[ME.previewRole]||ME.previewRole)):"";
   return '<div class="um-head"><span class="um-av">'+avatarHtml(ME.avatar_url,ME.name)+'</span>'+
     '<div><div class="um-name">'+esc(ME.name||"")+'</div><div class="um-mail">'+esc(ME.email||"")+'</div>'+
-    '<span class="um-role">'+(isAdmin?"Admin · all campuses":esc(cap(ME.role||"")))+(ME.preview?" · viewing as staff":"")+"</span></div></div>"+
+    '<span class="um-role">'+(isAdmin?"Admin · all campuses":esc(cap(ME.role||"")))+pvLabel+"</span></div></div>"+
     '<button class="um-item" data-profile="1">'+ic("info")+'Profile</button>'+
     (isAdmin?'<button class="um-item" data-go="settings">'+ic("settings")+'App settings</button>'+
       '<button class="um-item" data-go="admin">'+ic("lock")+'Admin</button>'+
-      '<button class="um-item" data-preview="1">'+ic("target")+(ME.preview?"Exit staff view":"View as staff")+"</button>":"")+
+      '<div class="um-sep"></div>'+
+      (ME.preview
+        ? '<button class="um-item" data-previewexit="1">'+ic("x")+'Exit '+esc(PREVIEW_ROLE_LABEL[ME.previewRole]||'')+" view</button>"
+        : '<button class="um-item" data-preview="staff">'+ic("target")+'View as Staff</button>'+
+          '<button class="um-item" data-preview="leader">'+ic("target")+'View as Leader</button>'+
+          '<button class="um-item" data-preview="volunteer">'+ic("target")+'View as Volunteer</button>'
+      ):"")+
     '<div class="um-sep"></div><button class="um-item" data-logout="1">'+ic("x")+'Log Out</button>';
 }
 /* Profile — same shape as the Metrics profile page: your account details,
