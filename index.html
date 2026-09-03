@@ -629,7 +629,8 @@ const P = {
   info:'M12 9h.01M11 12h1v4h1M12 3a9 9 0 100 18 9 9 0 000-18',
   wallet:'M3 8a2 2 0 012-2h14a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2zM3 10.5h18M16.5 14.5h2',
   heart:'M12 20l-7.1-7.1a4 4 0 015.7-5.6l1.4 1.4 1.4-1.4a4 4 0 015.7 5.6z',
-  lock:'M6 11a2 2 0 012-2h8a2 2 0 012 2v6a2 2 0 01-2 2H8a2 2 0 01-2-2zM9 9V7a3 3 0 016 0v2'
+  lock:'M6 11a2 2 0 012-2h8a2 2 0 012 2v6a2 2 0 01-2 2H8a2 2 0 01-2-2zM9 9V7a3 3 0 016 0v2',
+  door:'M4 21h16M6 21V5a2 2 0 012-2h8a2 2 0 012 2v16M14 12h.01'
 };
 function ic(n,s){return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"'+(s?' style="'+s+'"':'')+'><path d="'+P[n]+'"/></svg>';}
 document.getElementById('drawerClose').innerHTML = ic('x');
@@ -652,7 +653,8 @@ const TYPES = {
   event: {label:'Events',hue:'var(--gathering)',tint:'var(--gathering-t)',deep:'var(--gathering-d)',solid:'var(--gathering-s)'},
   comms: {label:'Comms', hue:'var(--amber)',    tint:'var(--amber-t)',    deep:'var(--amber-d)',    solid:'var(--amber-s)'},
   other: {label:'Mosaic Calendar', hue:'var(--neutral)',  tint:'var(--neutral-t)',  deep:'var(--neutral-d)',  solid:'var(--neutral-s)'},
-  away:  {label:'Staff travel + PTO', hue:'var(--lime)', tint:'var(--lime-t)', deep:'var(--lime-d)', solid:'var(--lime-s)'}
+  away:  {label:'Staff travel + PTO', hue:'var(--lime)', tint:'var(--lime-t)', deep:'var(--lime-d)', solid:'var(--lime-s)'},
+  facility:{label:'Facility bookings', hue:'var(--red)', tint:'var(--red-t)', deep:'var(--red-d)', solid:'var(--red-s)'}
 };
 // status: done | scheduled | waiting | drafting
 /* ---- live data ----------------------------------------------------------
@@ -750,6 +752,47 @@ async function loadCalendar(){
     });
   }catch(_){/* the calendar is extra context; the board still stands on its own */}
 }
+/* Facility bookings — the same v_fac_requests the facilities app reads, in
+   the same Supabase project, through the signed-in person's own session. RLS
+   decides what comes back: your own requests always, everyone's with
+   facilities view_all. Declined, cancelled and archived rows are left out;
+   they are not on anybody's calendar.
+
+   A booking is the room being unavailable, so the times shown include the
+   setup and teardown either side — block_start and block_end, not start_at.
+   Reading start_at would put a 2pm setup on the calendar as a 5pm wedding
+   and let somebody book the room at three. */
+async function loadFacilities(){
+  if(!sb)return;
+  const iso=d=>d.toISOString().slice(0,10);
+  try{
+    const {data,error}=await sb.from('v_fac_requests')
+      .select('id,ref,title,request_type,status,campus_name,space_name,organization,'+
+              'requester_name,requested_by_name,attendees,block_start,block_end,archived_at')
+      .in('status',['submitted','in_review','approved','completed'])
+      .is('archived_at',null)
+      .gte('block_start',addDays(TODAY,-120).toISOString())
+      .lte('block_start',addDays(TODAY,300).toISOString());
+    if(error||!data)return;
+    data.forEach(r=>{
+      const from=new Date(r.block_start), to=new Date(r.block_end);
+      const waiting=r.status==='submitted'||r.status==='in_review';
+      EVENTS.push({id:'fac:'+r.id, date:key(from),
+        dateEnd:key(to)!==key(from)?key(to):null,
+        title:r.title, type:'facility',
+        // Waiting on a decision is the thing worth seeing on a shared
+        // calendar: it is the room somebody is about to be told they can
+        // have, or cannot.
+        status:waiting?'waiting':(to<TODAY?'done':'scheduled'),
+        detail:[r.space_name||r.campus_name,
+                from.toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}),
+                r.organization||''].filter(Boolean).join(' · '),
+        owner:r.requested_by_name||r.requester_name||'', campus:r.campus_name||'',
+        link:'https://facilities.mosaic.org'});
+    });
+    EVENTS.sort((a,b)=>D(a.date)-D(b.date));
+  }catch(_){/* the other four sources still stand on their own */}
+}
 function weekNum(d){const t=addDays(weekStartOf(d),4);const y0=new Date(t.getFullYear(),0,1);return Math.ceil(((t-y0)/86400000+1)/7);}
 const GOALS = [
   {k:'Sunday attendance average',v:412,t:450,hue:'var(--gathering)'},
@@ -765,6 +808,7 @@ const SECTIONS = [
   {group:'WORK'},
   {id:'comms',label:'Communication',icon:'mail',h:'var(--amber)',t:'var(--amber-t)',url:'https://comms.mosaic.org'},
   {id:'planning',label:'Planning',icon:'board',h:'var(--milestone)',t:'var(--milestone-t)',url:'https://pm.mosaic.org'},
+  {id:'facilities',label:'Facilities',icon:'door',h:'var(--red)',t:'var(--red-t)',url:'https://facilities.mosaic.org'},
   {group:'MEASURE'},
   {id:'numbers',label:'Metrics',icon:'chart',h:'var(--session)',t:'var(--session-t)',url:'https://metrics.mosaic.org'},
   {id:'goals',label:'Goals',icon:'target',h:'var(--magenta)',t:'var(--magenta-t)',url:'https://goals.mosaic.org'},
@@ -775,10 +819,10 @@ const SECTIONS = [
 ];
 const PALETTE = ['--neutral','--red','--milestone','--amber','--lime','--session','--gathering','--indigo','--comms','--magenta'];
 const ROLES = {
-  comms:{name:'Comms / staff',sections:['home','calendar','comms','planning','numbers','goals']},
-  leadership:{name:'Leadership',sections:['home','calendar','comms','planning','numbers','goals','budgets','giving','settings','admin']},
-  ops:{name:'Ops / event management',sections:['home','calendar','planning']},
-  volunteer:{name:'Volunteer lead',sections:['home','calendar']}
+  comms:{name:'Comms / staff',sections:['home','calendar','comms','planning','facilities','numbers','goals']},
+  leadership:{name:'Leadership',sections:['home','calendar','comms','planning','facilities','numbers','goals','budgets','giving','settings','admin']},
+  ops:{name:'Ops / event management',sections:['home','calendar','planning','facilities']},
+  volunteer:{name:'Volunteer lead',sections:['home','calendar','facilities']}
 };
 const BUDGETS=[
   {k:'Facilities — NYC',b:72000,a:51400},
@@ -798,13 +842,14 @@ const S = {
   view:'week',
   anchor:new Date(TODAY),
   month:new Date(TODAY.getFullYear(),TODAY.getMonth(),1),
-  filters:new Set(['event','comms','other','away']),
+  filters:new Set(['event','comms','other','away','facility']),
   role:'comms',
   forEveryone:false,
   tlShift:0,
   eventId:'g0823',
   from:'calendar',
   goalsPath:'/',
+  facPath:'requests',   // which Facilities page the sub-menu has selected
   deep:{}   // section -> the item that section should open on arrival
 };
 
@@ -828,6 +873,21 @@ const GOALS_NAV=[
   {path:'/digest',label:'Digest',admin:true},
   {path:'/developer',label:'Developer',admin:true}
 ];
+/* Facilities' own pages hang off its rail button, so the embedded app can
+   drop its own sidebar. Adding a page inside Facilities means adding it here
+   too — nothing reads the app's nav at runtime. Spaces & resources is admin
+   only, and the app itself falls back to Requests if somebody without the
+   permission arrives there, so the two cannot disagree. */
+const FAC_NAV=[
+  {page:'requests',label:'Requests'},
+  {page:'new',label:'New request'},
+  {page:'calendar',label:'Calendar'},
+  {page:'spaces',label:'Spaces & resources',admin:true}
+];
+function facNavItems(){
+  const isAdmin=ME.role==='admin'&&!ME.preview;
+  return FAC_NAV.filter(it=>!it.admin||isAdmin);
+}
 function goalsNavItems(){
   const isAdmin=ME.role==='admin'&&!ME.preview;
   const isLead=isAdmin||(ME.role==='staff'&&!ME.preview);
@@ -889,6 +949,11 @@ function renderNav(){
       (it.restricted?'<span class="lock" title="Restricted">'+ic('lock')+'</span>':'')+
       (it.beta?'<span class="badge">BETA</span>':(it.count?'<span class="count">'+it.count+'</span>':''))+
       '</button>');
+    if(it.id==='facilities'&&S.section==='facilities'){
+      out.push('<div class="subnav">'+facNavItems().map(f=>
+        '<button data-fp="'+esc(f.page)+'" class="'+(S.facPath===f.page?'on':'')+'">'+
+        esc(f.label)+'</button>').join('')+'</div>');
+    }
     // Goals' own pages hang off its rail button instead of a second sidebar
     if(it.id==='goals'&&S.section==='goals'){
       out.push('<div class="subnav">'+goalsNavItems().map(g=>g.group
@@ -1001,10 +1066,15 @@ function filterBar(){
     '<button class="chip '+(S.filters.has(k)?'on':'off')+'" data-filter="'+k+'">'+
     '<span class="swatch" style="background:'+TYPES[k].hue+'"></span>'+TYPES[k].label+'</button>').join('')+
     '<button class="chip" data-filter="__all">All</button></div>'+
-    ((S.filters.has('other')||S.filters.has('away'))
+    ((S.filters.has('other')||S.filters.has('away')||S.filters.has('facility'))
       ? '<div style="font-size:12px;color:var(--text2);margin:-8px 0 14px">'+
-        (CAL_ON?'Mosaic Calendar shows the shared staff calendar — meetings, rehearsals, birthdays and closures. Staff travel + PTO pulls the time-away entries out of it.'
-               :'The shared Mosaic Calendar isn\'t connected yet, so these two rows are empty.')+'</div>'
+        [(S.filters.has('other')||S.filters.has('away'))
+          ? (CAL_ON?'Mosaic Calendar shows the shared staff calendar — meetings, rehearsals, birthdays and closures. Staff travel + PTO pulls the time-away entries out of it.'
+                   :'The shared Mosaic Calendar isn\'t connected yet, so these two rows are empty.')
+          : '',
+         S.filters.has('facility')
+          ? 'Facility bookings come from facilities.mosaic.org, and show the room held — setup and teardown included, not just the event itself. Anything still waiting on a decision is drawn as waiting.'
+          : ''].filter(Boolean).join(' ')+'</div>'
       : '');
 }
 function legend(){
@@ -1069,7 +1139,9 @@ function pageEmbed(id){
   const sec=SECTIONS.find(x=>x.id===id);
   let src=sec.url;
   if(id==='goals')src+=(S.goalsPath==='/'?'':S.goalsPath);
-  if(id==='numbers'||id==='comms'||id==='planning'||id==='goals')src+=(src.includes('?')?'&':'?')+'embed=portal';
+  if(id==='facilities')src+=(src.includes('?')?'&':'?')+'page='+(S.facPath||'requests');
+  if(id==='numbers'||id==='comms'||id==='planning'||id==='goals'||id==='facilities')
+    src+=(src.includes('?')?'&':'?')+'embed=portal';
   // Arriving from an event: tell the app which one, so people land on the
   // thing they clicked instead of the app's front page.
   const want=S.deep&&S.deep[id];
@@ -2622,6 +2694,7 @@ document.addEventListener('click',e=>{
   }
   if(t.dataset.fb){ feedbackDrawer(t.dataset.fb); return; }
   if(t.dataset.gp!==undefined){ S.goalsPath=t.dataset.gp; S.section='goals'; render(); return; }
+  if(t.dataset.fp!==undefined){ S.facPath=t.dataset.fp; S.section='facilities'; render(); return; }
   if(t.dataset.user){ S.from='admin'; S.adminUserId=t.dataset.user; S.section='admin-user'; render(); return; }
   if(t.dataset.pinv){ paInviteDrawer(t.dataset.pinv); return; }
   if(t.dataset.pinvsend){
@@ -3008,7 +3081,10 @@ async function enterPortal(){
     // The shared calendar is extra context, so it loads after the page is
     // usable and re-renders when it lands. Awaiting it before the first paint
     // meant one slow Microsoft call left staff staring at an empty screen.
+    // Same reasoning for both of the extras: load after the first paint, and
+    // repaint when each one lands.
     loadCalendar().then(()=>{if(BOOTED)render();});
+    loadFacilities().then(()=>{if(BOOTED)render();});
     /* Come back to the tab and you get current data. There's no push from
        Outlook or the planning board, so a tab left open all afternoon would
        otherwise still show the morning. Refetch on return, at most once a
@@ -3020,6 +3096,7 @@ async function enterPortal(){
       if(document.getElementById('drawer').classList.contains('open'))return;
       lastLoad=Date.now();await loadLive();render();
       loadCalendar().then(()=>render());
+      loadFacilities().then(()=>render());
     });
   }
 }
