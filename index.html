@@ -2693,7 +2693,7 @@ function _showPreviewBanner(){
       }
     });
   }
-  const ROLE_ACCENT={staff:'var(--comms)',leader:'var(--milestone)',volunteer:'var(--session)'};
+  const ROLE_ACCENT={staff:'var(--gathering)',leader:'var(--milestone)',volunteer:'var(--session)'};
   bar.style.setProperty('--pb-accent',ROLE_ACCENT[ME.previewRole]||'var(--comms)');
   const campuses=(ADMIN.campuses||[]).filter(c=>c.active!==false);
   const roleLabel=PREVIEW_ROLE_LABEL[ME.previewRole]||ME.previewRole||'';
