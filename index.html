@@ -35,7 +35,8 @@
 .embed-wrap iframe{width:100%;height:100%;border:0;display:block;background:#fff}
 .embed-open{position:absolute;right:14px;bottom:14px;display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#8a8a8a;background:rgba(255,255,255,.92);border:1px solid #e6e6e5;border-radius:999px;padding:6px 12px;text-decoration:none;box-shadow:0 2px 8px rgba(0,0,0,.06)}
 .embed-open:hover{color:#000}
-@media(max-width:760px){.embed-wrap{margin:-18px -16px -96px;height:calc(100vh - 58px)}}
+@media(max-width:760px){.embed-wrap{margin:-18px -16px -96px;height:calc(100vh - 58px)}
+  .embed-open{display:none}}
 
 /* ---- account menu (rail foot) ---- */
 .rail-foot{cursor:pointer;border-radius:8px}
@@ -51,6 +52,135 @@
 .um-item svg{width:15px;height:15px;color:#5c5c5c;flex:none}
 .um-item .hint{color:#8a8a8a;font-size:11px;margin-left:auto}
 .um-sep{height:1px;background:#f0f0f0;margin:6px 0}
+.um-head{display:flex;gap:10px;align-items:flex-start}
+.um-head .um-av{width:34px;height:34px;font-size:12px}
+
+/* ---- profile pictures ----
+   Every place a photo is shown is listed once, here. Both rules matter: the
+   circle has to clip (overflow) and the photo has to be told to fill it
+   (width/height/object-fit). Miss either and a full-size photo spills across
+   the page - which it has done twice. Showing a photo somewhere new means
+   adding that class to BOTH selector lists below and nothing else. */
+/* With no photo we show initials on the same blue as the primary button
+   (--gathering), not a grey disc - the grey initials were too faint to read. */
+.avatar,.pa-av,.um-head .um-av,.pf-av .ring,.au-ring{
+  border-radius:50%;background:var(--gathering);overflow:hidden;flex:none;
+  display:flex;align-items:center;justify-content:center;font-weight:600;color:#fff}
+.avatar img,.pa-av img,.um-head .um-av img,.pf-av .ring img,.au-ring img{
+  width:100%;height:100%;object-fit:cover;display:block}
+/* sizes only - everything else is shared above */
+.pf-av{display:flex;align-items:center;gap:14px;margin:0 0 18px}
+.pf-av .ring{width:64px;height:64px;font-size:20px}
+.pa-av{width:24px;height:24px;font-size:9.5px;vertical-align:middle;margin-right:9px}
+
+/* ---- appearance: dark theme re-points the neutral tokens; the type hues
+   (which encode meaning) stay exactly as they are. ---- */
+html.dark{color-scheme:dark}
+html.dark body,html.dark #gate{background:#151514}
+html.dark:root,html.dark{
+  --surface:#1c1c1b; --rail:#161615; --rail-active:#2a2a28; --fill:#242422;
+  --hairline:#302f2d; --separator:#262624; --grid:#37362f;
+  --text:#f2f2f0; --text2:#9a9a95; --text3:#6d6d68;
+}
+html.dark .main,html.dark .app{background:#151514;color:var(--text)}
+html.dark .rail{background:var(--rail);border-right-color:var(--hairline)}
+html.dark .card,html.dark .pa-card,html.dark .rp-card,html.dark .drawer,html.dark .um-pop,html.dark .gate-card{background:var(--surface);border-color:var(--hairline);color:var(--text)}
+html.dark .pa-table th,html.dark .rp-table th,html.dark .rp-table tr.rp-sec td{background:#201f1e;color:var(--text2)}
+html.dark .pa-table td,html.dark .rp-table td{border-top-color:var(--separator)}
+html.dark .pa-bar input,html.dark .pa-bar select,html.dark .pa-in,html.dark .pa-table select,html.dark .gate-card input{background:#242422;border-color:var(--hairline);color:var(--text)}
+html.dark .um-item,html.dark .um-name,html.dark .gate-card h1,html.dark .gate-brand .name{color:var(--text)}
+html.dark .um-item:hover{background:var(--fill)}
+html.dark .um-role{background:var(--fill);color:var(--text2)}
+/* the initials keep their blue in dark mode - white on it reads fine on both */
+html.dark .um-head,html.dark .um-sep{border-color:var(--separator);background:none}
+html.dark .btn-primary,html.dark .gate-btn{background:#f2f2f0;color:#151514}
+html.dark .gate-brand .mark,html.dark .brand-mark{background:#f2f2f0}
+html.dark .embed-open{background:rgba(28,28,27,.92);border-color:var(--hairline);color:var(--text2)}
+html.dark .app-embed,html.dark .embed-wrap iframe{background:#fff}
+html.dark .nav button{color:var(--text2)}
+html.dark .nav button.on,html.dark .nav button:hover{color:var(--text);background:var(--rail-active)}
+html.dark h1,html.dark h2,html.dark .brand-name,html.dark .who{color:var(--text)}
+html.dark .navgroup,html.dark .sub,html.dark .empty{color:var(--text2)}
+html.dark .badge,html.dark .count,html.dark .tag{background:var(--fill);color:var(--text2)}
+html.dark .banner{background:var(--surface);border-color:var(--hairline);color:var(--text2)}
+html.dark .cell,html.dark .wk-head div,html.dark .wk-body{border-color:var(--grid)}
+html.dark .row:hover{background:var(--fill)}
+/* permissions summary + editor */
+.pa-perm{border:0;background:none;padding:0;cursor:pointer;display:inline-flex;gap:5px;flex-wrap:wrap;font-family:inherit}
+.pa-pill{font-size:11px;padding:2px 8px;border-radius:999px;background:var(--fill);color:#4a4a4a;white-space:nowrap}
+.pa-pill.custom{background:#e8f0fa;color:#2c4c85}
+.pa-perm:hover .pa-pill{background:#e6e6e4}
+.pu-head{display:flex;gap:14px;align-items:flex-start;margin-bottom:6px}
+.pu-head .ring{width:52px;height:52px;border-radius:50%;background:#e2e2e0;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:600;color:#5c5c5c;flex:none}
+.pu-head .ring img{width:100%;height:100%;object-fit:cover}
+.pu-sec{font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--text2);font-weight:600;margin:22px 0 8px}
+.pu-note{font-size:12px;color:var(--text2);margin:8px 0 0;line-height:1.5}
+.pu-grid{display:grid;grid-template-columns:1fr 1fr;gap:2px}
+.pu-check{display:flex;align-items:center;gap:8px;font-size:13px;padding:7px 8px;border-radius:7px;cursor:pointer}
+.pu-check:hover{background:var(--fill)}
+.pu-check input{margin:0;width:15px;height:15px;flex:none;cursor:pointer}
+.pu-danger{border:1px solid #f3c9c2;background:#fff;color:#8f2c32;font-family:inherit;letter-spacing:inherit;font-size:13px;font-weight:500;padding:9px 15px;border-radius:8px;cursor:pointer}
+.pu-danger:hover{background:#fbe4e0}
+.pu-danger:disabled{opacity:.55;cursor:default}
+html.dark .pu-danger{background:transparent;border-color:#5c2a2a;color:#e88b8b}
+.pu-lock{margin-left:auto;color:var(--text3);display:inline-flex}
+.pu-lock svg{width:12px;height:12px}
+/* your own profile: account on the left, password and appearance on the right */
+.pf-grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:16px;align-items:start;max-width:820px}
+.pf-side{display:flex;flex-direction:column;gap:16px;min-width:0}
+.pf-grid .pa-card{padding:20px 22px}
+.pf-cardsec{margin:0 0 14px}
+@media(max-width:760px){.pf-grid{grid-template-columns:1fr}}
+/* a person's own page in Admin */
+.au-card{margin:0 0 4px;max-width:620px;overflow:visible}
+.au-head{display:flex;gap:16px;align-items:center;padding:18px 20px}
+.au-ring{width:64px;height:64px;font-size:20px}
+.au-name{font-size:20px;font-weight:700;line-height:1.2}
+.au-arch{font-size:11.5px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;color:var(--text2);border:1px solid var(--hairline);border-radius:999px;padding:3px 9px;vertical-align:3px}
+.au-mail{font-size:13px;color:var(--text2);margin-top:3px}
+.au-photo{font-size:12px;color:var(--text2);text-decoration:underline;background:none;border:none;padding:0;margin:6px 12px 0 0;cursor:pointer;font-family:inherit}
+.au-photo:hover{color:var(--text)}
+.au-fields{border-top:1px solid var(--separator)}
+.au-fields .kv{padding:11px 20px}
+.au-foot{padding:14px 20px;border-top:1px solid var(--separator)}
+/* per-app campus access */
+.pu-apps{display:flex;flex-direction:column;gap:12px;max-width:760px}
+.pu-app{padding:14px 16px}
+.pu-apphead{display:flex;align-items:center;gap:12px}
+.pu-appname{font-size:14.5px;font-weight:600;display:flex;align-items:center;gap:6px;flex:1;min-width:0}
+.pu-access{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--text2);flex:none}
+.pu-yesno{font-size:12.5px;padding:3px 8px;flex:none}
+.pu-appbody{margin-top:14px;padding-top:14px;border-top:1px solid var(--separator)}
+.pu-appbody[hidden]{display:none}
+.pu-sublbl{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text2);margin-bottom:8px}
+.pu-sublbl+.pu-campuses,.pu-sublbl+.pu-perms{padding-left:0;padding-right:0}
+.pu-appbody .pu-campuses{margin-bottom:14px;padding:0}
+.pu-appbody .pu-perms{padding:0}
+.pu-appoff{margin-top:8px;font-size:13px;color:var(--text2)}
+.pu-perms{display:flex;flex-wrap:wrap;gap:6px 18px;padding:0 8px 10px 8px;max-width:620px}
+.pu-perms[hidden]{display:none}
+.pu-perm{display:flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer}
+.pu-perm input{margin:0;width:14px;height:14px;flex:none;cursor:pointer}
+.pu-perm-tag{font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--gathering-d)}
+.pu-perm-ov{font-weight:500}
+.pu-app{border-radius:7px}
+.pu-campuses{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:2px 8px 10px 8px;max-width:620px}
+.pu-campuses[hidden]{display:none}
+.pu-chip{display:inline-flex;align-items:center;gap:4px;background:var(--fill);border:1px solid var(--hairline);border-radius:999px;padding:3px 8px 3px 11px;font-size:12.5px}
+.pu-chip button{line-height:1;font-size:14px;color:var(--text2);background:none;border:none;padding:0 0 0 2px;cursor:pointer;font-family:inherit}
+.pu-chip button:hover{color:var(--text)}
+.pu-chip-none{font-size:12.5px;color:var(--text2)}
+.pu-chip-locked{opacity:.75}
+.pu-chip-main{background:var(--gathering-t);border-color:var(--gathering)}
+.pu-chip-tag{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--gathering-d);margin-left:3px}
+html.dark .pu-chip-main{background:var(--fill);border-color:var(--gathering)}
+.pu-addcampus{font-size:12.5px;color:var(--text2);border:1px dashed var(--hairline);border-radius:999px;padding:3px 9px;background:none;cursor:pointer;font-family:inherit}
+html.dark .pu-chip,html.dark .pu-addcampus{background:var(--fill);border-color:var(--separator);color:var(--text2)}
+html.dark .pa-pill{background:var(--fill);color:var(--text2)}
+html.dark .pu-check:hover{background:var(--fill)}
+.ap-seg{display:inline-flex;gap:2px;background:var(--fill);border-radius:9px;padding:3px}
+.ap-seg button{border:0;background:none;font-family:inherit;letter-spacing:inherit;font-size:12.5px;padding:6px 12px;border-radius:6px;color:var(--text2);cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.ap-seg button.on{background:var(--surface);color:var(--text);font-weight:500;box-shadow:0 0 0 1px var(--hairline)}
 
 /* ---- native Admin page ---- */
 .pa-bar{display:flex;gap:10px;align-items:center;margin:0 0 14px}
@@ -61,9 +191,10 @@
 .pa-table th{text-align:left;font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:#8a8a8a;font-weight:500;padding:12px 16px;background:#fafaf9}
 .pa-table td{padding:9px 16px;border-top:1px solid #f0f0f0}
 .pa-table select{padding:6px 9px;border:1px solid #e6e6e5;border-radius:7px;font-family:inherit;letter-spacing:inherit;font-size:12.5px;background:#fff;cursor:pointer}
-.pa-eye{border:none;background:none;cursor:pointer;padding:2px;margin-right:8px;vertical-align:middle;color:#5c5c5c}
-.pa-eye svg{width:14px;height:14px}
-.pa-eye:hover{color:#000}
+.pa-name{border:none;background:none;cursor:pointer;padding:0;display:inline-flex;align-items:center;font-family:inherit;letter-spacing:inherit;font-size:14px;color:inherit;text-align:left}
+.pa-name .nm{font-weight:500;border-bottom:1px solid transparent}
+.pa-name:hover .nm{border-bottom-color:currentColor}
+html.dark .pa-name{color:var(--text)}
 .pa-lbl{display:block;font-size:12px;color:#8a8a8a;margin-bottom:5px}
 .pa-in{width:100%;box-sizing:border-box;padding:9px 11px;border:1px solid #e6e6e5;border-radius:7px;font-family:inherit;letter-spacing:inherit;font-size:14px;background:#fff}
 .pa-tabs{display:inline-flex;gap:2px;background:#f2f2f1;border-radius:9px;padding:3px;margin:0 0 18px}
@@ -74,6 +205,10 @@
 .rp-card .rp-role{font-size:11.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;margin-bottom:6px}
 .rp-card p{margin:0;font-size:12.5px;color:#5c5c5c;line-height:1.5}
 .rp-table{width:100%;border-collapse:collapse;font-size:13.5px}
+/* The table scrolls inside its own card so the role headings stay put while
+   you read down the permissions — sticky only works against a scrolling
+   ancestor, which is what .rp-scroll is for. */
+.rp-scroll{overflow:auto;max-height:calc(100vh - 300px)}
 .rp-table th{text-align:left;font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;font-weight:500;padding:12px 16px;background:#fafaf9;white-space:nowrap;position:sticky;top:0;z-index:2}
 .rp-table td{padding:9px 16px;border-top:1px solid #f0f0f0}
 .rp-table tr.rp-sec td{background:#fafaf9;font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:#8a8a8a;font-weight:500;padding:9px 16px}
@@ -117,10 +252,37 @@ button{font:inherit;letter-spacing:inherit;color:inherit;background:none;border:
 .rail{width:196px;flex:none;background:var(--rail);border-right:1px solid var(--hairline);
   padding:16px 10px 14px;display:flex;flex-direction:column;position:sticky;top:0;height:100vh}
 .brand{display:flex;align-items:center;gap:9px;padding:0 6px 16px}
+/* Only on a phone, where the rail is a panel that has to be dismissed.
+   Tapping the dimmed page works too, but a control you can see beats one
+   you have to guess at. */
+/* Collapsed, the rail keeps its icons exactly where they were and drops the
+   words — nothing shifts sideways when you toggle it. Loyda's spec called
+   ten items the ceiling for a fixed rail; this is the escape hatch it named. */
+.rail-collapse{display:none;margin-left:auto;background:none;border:0;padding:6px;cursor:pointer;color:var(--text2)}
+.rail-collapse:hover{color:var(--text)}
+.rail-collapse svg{width:18px;height:18px;display:block}
+@media (min-width:761px){ .rail-collapse{display:block} }
+body.railmin .rail{width:62px;padding-left:8px;padding-right:8px}
+body.railmin .brand-name,body.railmin .nav button>span:not(.tile):not(.badge):not(.lock),
+body.railmin .navgroup,body.railmin .subnav,body.railmin .who,body.railmin .nav .badge{display:none}
+body.railmin .brand{justify-content:center;padding:0 0 16px}
+body.railmin .rail-collapse{margin:0}
+body.railmin .nav button{justify-content:center;padding:8px 4px}
+body.railmin .nav .lock{display:none}
+body.railmin .rail-foot{justify-content:center}
+body.railmin .nav button:hover::after{content:attr(data-tip);position:fixed;left:70px;
+  background:var(--surface);color:var(--text);border:1px solid var(--hairline);border-radius:7px;
+  padding:5px 9px;font-size:12.5px;white-space:nowrap;z-index:80;box-shadow:0 6px 18px rgba(0,0,0,.10)}
+.rail-close{display:none;margin-left:auto;background:none;border:0;padding:6px;cursor:pointer;color:var(--text2)}
+.rail-close:hover{color:var(--text)}
+.rail-close svg{width:20px;height:20px;display:block}
 .brand-mark{width:18px;height:18px;border-radius:5px;background:#000;flex:none}
 .brand-name{font-size:13.5px;font-weight:500}
-.nav{display:flex;flex-direction:column;gap:1px;flex:1;min-height:0}
-.nav [data-go="settings"]{margin-top:auto}
+.nav{display:flex;flex-direction:column;gap:1px;flex:1;min-height:0;
+  overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;
+  scrollbar-width:thin}
+.nav::-webkit-scrollbar{width:6px}
+.nav::-webkit-scrollbar-thumb{background:var(--rail-active);border-radius:3px}
 .nav button{display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:var(--r-ctrl);
   font-size:13.5px;color:#5c5c5c;text-align:left;width:100%}
 .nav button:hover{background:#eaeae8}
@@ -131,6 +293,25 @@ button{font:inherit;letter-spacing:inherit;color:inherit;background:none;border:
 .nav .lock svg{width:13px;height:13px}
 .nav .lock + .badge{margin-left:6px}
 .nav .tile{width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;flex:none}
+.fb-card{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:26px;padding:15px 17px;
+  border:1px solid var(--hairline);border-radius:var(--r-card);background:var(--surface)}
+.fb-mark{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex:none}
+.fb-mark svg{width:17px;height:17px}
+.fb-txt{flex:1;min-width:180px}
+.fb-h{font-size:14px;font-weight:500;letter-spacing:-.011em}
+.fb-s{font-size:12.5px;color:var(--text2);margin-top:2px}
+.fb-tag{display:inline-block;font-size:10.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--text2);border:1px solid var(--hairline);border-radius:999px;padding:2px 8px;margin-right:6px;vertical-align:1px}
+.fb-btns{display:flex;gap:8px;flex-wrap:wrap}
+.fb-btn{font-size:12.5px;padding:7px 13px;border:1px solid var(--hairline);border-radius:999px;
+  background:transparent;color:var(--text2);font-family:inherit;letter-spacing:inherit}
+.fb-btn:hover{color:var(--text);border-color:var(--text3);background:var(--fill)}
+.subnav{display:flex;flex-direction:column;gap:1px;margin:2px 0 6px 0;padding-left:12px;border-left:1px solid var(--rail-active)}
+.subnav button{display:block;width:100%;text-align:left;font-size:12.5px;color:#6f6f6c;padding:5px 9px;border-radius:var(--r-ctrl)}
+.subnav button:hover{background:var(--rail-active);color:var(--text)}
+.subnav button.on{background:var(--rail-active);color:var(--text);font-weight:500}
+.subgroup{font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;color:#a3a3a0;padding:9px 9px 3px}
+html.dark .subnav button{color:var(--text2)}
+html.dark .subnav button:hover,html.dark .subnav button.on{color:var(--text);background:var(--rail-active)}
 .nav .tile svg{width:15px;height:15px}
 .swatches{display:grid;grid-template-columns:repeat(8,1fr);gap:7px;max-width:330px}
 .sw{aspect-ratio:1;border-radius:6px;display:flex;align-items:center;justify-content:center}
@@ -261,6 +442,41 @@ h2{font-size:16px;font-weight:600;letter-spacing:-.015em;margin:0 0 6px}
 .mini{display:flex;gap:22px;margin:4px 0 2px}
 .mini .v{font-size:24px;font-weight:600;letter-spacing:-.02em;line-height:1.05}
 .mini .k{font-size:11.5px;color:var(--text2);margin-top:2px}
+.foot-links button{font-family:inherit;letter-spacing:inherit;font-size:13px;color:var(--gathering);background:none;border:0;padding:0;cursor:pointer}
+.foot-links button:hover{text-decoration:underline}
+.kv button{font-family:inherit;letter-spacing:inherit;font-size:inherit;background:none;border:0;padding:0;cursor:pointer}
+.kv button:hover{text-decoration:underline}
+/* Campus hero cards — one collapsible card per top-level campus, styled after
+   Metrics' own Campus settings screen (label/value pairs, expand for detail). */
+.cc-card{background:var(--surface);border:1px solid var(--hairline);border-radius:var(--r-card);padding:18px 20px;margin-bottom:14px}
+.cc-head{display:flex;align-items:center;justify-content:space-between;cursor:pointer;list-style:none}
+.cc-head::-webkit-details-marker{display:none}
+.cc-name{font-size:15.5px;font-weight:600}
+.cc-chev{display:inline-flex;color:var(--text2);transition:transform .15s}
+.cc-card[open] .cc-chev{transform:rotate(180deg)}
+.cc-kv{display:flex;gap:14px;font-size:13px;padding:9px 0 0}
+.cc-kv:first-of-type{padding-top:14px}
+.cc-kv>span:first-child{width:120px;flex:none;font-size:10.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text2);padding-top:1px}
+.cc-kv>span:last-child{font-weight:600}
+.cc-body{border-top:1px solid var(--separator);margin-top:16px;padding-top:14px}
+.cc-loc-block{padding:12px 0;border-bottom:1px solid var(--separator)}
+.cc-loc-block:last-of-type{border-bottom:0}
+.cc-loc{display:flex;align-items:center;justify-content:space-between;font-size:13.5px;font-weight:600}
+.cc-loc-right{display:flex;align-items:center;gap:14px;font-size:12.5px;font-weight:400}
+.cc-times{display:flex;flex-wrap:wrap;gap:7px;align-items:center;margin-top:10px}
+.cc-addtime,.cc-addloc{display:inline-flex;align-items:center;gap:7px}
+.cc-addloc{margin-top:14px}
+.cc-addtime input,.cc-addloc input{font-family:inherit;font-size:12.5px;border:1px solid var(--hairline);border-radius:999px;padding:5px 12px;width:120px;background:var(--surface);color:var(--text)}
+.cc-addloc input{width:180px}
+.cc-addtime button,.cc-addloc button{font-size:12.5px;white-space:nowrap}
+.cc-inactive-toggle{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--text2);margin-bottom:14px;cursor:pointer}
+.cc-inactive-toggle input{cursor:pointer}
+.cc-users{padding:2px 0 12px}
+.cc-user{display:flex;align-items:center;justify-content:space-between;padding:6px 0;font-size:13px}
+.cc-divider{display:flex;align-items:center;gap:12px;margin:22px 0 14px;color:var(--text2);font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase}
+.cc-divider::before,.cc-divider::after{content:'';flex:1;height:1px;background:var(--hairline)}
+button.linkout{font-family:inherit;letter-spacing:inherit;background:none;border:0;padding:0;cursor:pointer}
+button.linkout:hover{text-decoration:underline}
 .linkout{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--gathering);margin-top:16px}
 .linkout svg{width:14px;height:14px}
 .empty{font-size:13px;color:var(--text2);background:var(--fill);border-radius:var(--r-card);padding:12px 14px}
@@ -292,6 +508,14 @@ select{font:inherit;font-size:13px;padding:7px 10px;border:1px solid var(--hairl
 @media (max-width:860px){.ecard{grid-template-columns:1fr;gap:24px}}
 
 /* ---------- responsive ---------- */
+/* Phone chrome: a bar with the menu, the name, and you. Hidden on desktop,
+   where the rail is always visible. */
+.mtop{display:none;position:fixed;top:0;left:0;right:0;height:56px;z-index:50;align-items:center;gap:10px;
+  padding:0 12px;background:var(--rail);border-bottom:1px solid var(--hairline)}
+.mtop-btn,.mtop-av{background:none;border:0;padding:6px;display:flex;align-items:center;cursor:pointer;color:var(--text)}
+.mtop-btn svg{width:22px;height:22px}
+.mtop-name{flex:1;min-width:0;font-size:14.5px;font-weight:500;letter-spacing:-.011em}
+.mtop-av .avatar{width:30px;height:30px;font-size:11px}
 .mobile-only{display:none}
 @media (max-width:860px){
   .cards{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -299,19 +523,31 @@ select{font:inherit;font-size:13px;padding:7px 10px;border:1px solid var(--hairl
 }
 @media (max-width:760px){
   .app{flex-direction:column}
-  .rail{position:fixed;bottom:0;left:0;right:0;top:auto;width:100%;height:auto;
-    flex-direction:row;border-right:0;border-top:1px solid var(--hairline);
-    padding:6px 4px;z-index:3;overflow-x:auto}
-  .brand,.rail-foot{display:none}
-  .nav{flex-direction:row;gap:2px;width:100%}
-  .nav [data-go="settings"]{margin-top:0;margin-left:auto}
-  .nav button{flex-direction:column;gap:3px;font-size:10px;padding:6px 4px;justify-content:center;text-align:center}
-  .nav .badge,.nav .count{display:none}
-  .main{padding:18px 16px 96px}
+  /* A bottom bar couldn't hold ten sections without hiding most of them behind
+     a swipe. The rail slides in instead — the whole list at once, with its
+     groups, the way it reads on a desktop. */
+  .mtop{display:flex}
+  .rail{position:fixed;top:0;bottom:0;left:0;width:264px;max-width:82vw;height:auto;z-index:60;
+    transform:translateX(-100%);transition:transform .22s ease;
+    border-right:1px solid var(--hairline);padding:14px 12px calc(14px + env(safe-area-inset-bottom))}
+  .rail.open{transform:translateX(0)}
+  .rail-close{display:block}
+  .brand{padding:2px 2px 14px}
+  .rail-foot{flex:none;background:var(--rail)}
+  .nav button{width:100%;font-size:14.5px;padding:9px 8px}
+  .main{padding:74px 16px 40px}
   h1{font-size:24px}
   .desktop-only{display:none!important}
   .mobile-only{display:block}
+  .um-pop{left:auto;right:10px;top:62px;bottom:auto;max-width:calc(100vw - 20px)}
   .drawer{width:100%;max-width:100%}
+  .page-head{flex-wrap:wrap;gap:10px}
+  .pa-bar{flex-wrap:wrap}
+  .pa-bar input{min-width:0;flex:1 1 100%}
+  /* wide admin tables scroll inside their card instead of stretching the page */
+  .pa-card{overflow-x:auto}
+  .pa-table{min-width:600px}
+  .rp-table{min-width:600px}
 }
 </style>
 </head>
@@ -351,8 +587,21 @@ select{font:inherit;font-size:13px;padding:7px 10px;border:1px solid var(--hairl
 </div>
 
 <div class="app">
+  <div class="mtop">
+    <button class="mtop-btn" id="mMenu" aria-label="Open menu" aria-expanded="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+    </button>
+    <div class="mtop-name">Mosaic Portal</div>
+    <button class="mtop-av" id="mAv" aria-label="Your account"><span class="avatar">·</span></button>
+  </div>
   <nav class="rail" aria-label="Sections">
-    <div class="brand"><div class="brand-mark"></div><div class="brand-name">Mosaic Portal</div></div>
+    <div class="brand"><div class="brand-mark"></div><div class="brand-name">Mosaic Portal</div>
+      <button class="rail-collapse" id="railToggle" aria-label="Collapse sidebar" title="Collapse sidebar (⌘\\)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9.5 4v16"/></svg>
+      </button>
+      <button class="rail-close" id="mClose" aria-label="Close menu" title="Close menu">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M17 6l-6 6 6 6M11 6l-6 6 6 6"/></svg>
+      </button></div>
     <div class="nav" id="nav"></div>
     <div class="rail-foot"><div class="avatar">L</div><div class="who" id="who">Loyda</div></div>
   </nav>
@@ -375,7 +624,7 @@ const P = {
   chart:'M4 19V5M4 19h16M8 16v-5M12 16v-9M16 16v-3',
   target:'M12 12a2 2 0 104 0 2 2 0 00-4 0M12 3a9 9 0 109 9M14 5V3l3 3-3 3V7l-3 3',
   settings:'M10.3 4.3a1.9 1.9 0 013.4 0l.4.8a1.9 1.9 0 002.2 1l.9-.2a1.9 1.9 0 011.7 3l-.6.7a1.9 1.9 0 000 2.4l.6.7a1.9 1.9 0 01-1.7 3l-.9-.2a1.9 1.9 0 00-2.2 1l-.4.8a1.9 1.9 0 01-3.4 0l-.4-.8a1.9 1.9 0 00-2.2-1l-.9.2a1.9 1.9 0 01-1.7-3l.6-.7a1.9 1.9 0 000-2.4l-.6-.7a1.9 1.9 0 011.7-3l.9.2a1.9 1.9 0 002.2-1zM9.5 12a2.5 2.5 0 105 0 2.5 2.5 0 00-5 0',
-  left:'M15 6l-6 6 6 6', right:'M9 6l6 6-6 6', check:'M5 12l5 5L20 7',
+  left:'M15 6l-6 6 6 6', right:'M9 6l6 6-6 6', down:'M6 9l6 6 6-6', check:'M5 12l5 5L20 7',
   x:'M6 6l12 12M18 6L6 18', ext:'M11 7H7a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-4M14 4h6v6M20 4l-8 8',
   info:'M12 9h.01M11 12h1v4h1M12 3a9 9 0 100 18 9 9 0 000-18',
   wallet:'M3 8a2 2 0 012-2h14a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2zM3 10.5h18M16.5 14.5h2',
@@ -403,7 +652,8 @@ function pretty(dt){return ['Sunday','Monday','Tuesday','Wednesday','Thursday','
 const TYPES = {
   event: {label:'Events',hue:'var(--gathering)',tint:'var(--gathering-t)',deep:'var(--gathering-d)',solid:'var(--gathering-s)'},
   comms: {label:'Comms', hue:'var(--amber)',    tint:'var(--amber-t)',    deep:'var(--amber-d)',    solid:'var(--amber-s)'},
-  other: {label:'Other', hue:'var(--neutral)',  tint:'var(--neutral-t)',  deep:'var(--neutral-d)',  solid:'var(--neutral-s)'}
+  other: {label:'Mosaic Calendar', hue:'var(--neutral)',  tint:'var(--neutral-t)',  deep:'var(--neutral-d)',  solid:'var(--neutral-s)'},
+  away:  {label:'Staff travel + PTO', hue:'var(--lime)', tint:'var(--lime-t)', deep:'var(--lime-d)', solid:'var(--lime-s)'}
 };
 // status: done | scheduled | waiting | drafting
 /* ---- live data ----------------------------------------------------------
@@ -413,7 +663,7 @@ const TYPES = {
    METRICS comes from the Mosaic Metrics view v_service_totals using the
    signed-in person's own session. The four apps stay the systems of record;
    the portal reads and arranges. */
-let EVENTS=[], CAMPAIGNS=[], METRICS={}, TASKS=[], ATTN=[], CLOSEOUT=0, DATA_ERR=null;
+let EVENTS=[], CAMPAIGNS=[], METRICS={}, TASKS=[], ATTN=[], CLOSEOUT=0, DATA_ERR=null, CAL_ON=false;
 const PM_URL='https://yrviwbqhjcrlxgozrgay.supabase.co';
 const PM_KEY='sb_publishable_3o7Avv4DEhHW7i_k5DrH6Q_tYFLrgwg';
 async function pmGet(q){
@@ -480,6 +730,27 @@ async function loadLive(){
     }
   }catch(e){/* metrics card stays empty */}
 }
+/* The shared Mosaic Calendar (calendar@mosaic.org), read through an edge
+   function because Graph needs an app credential the browser must never hold.
+   A window either side of today covers every view without a refetch per click. */
+async function loadCalendar(){
+  if(!sb)return;
+  const iso=d=>d.toISOString().slice(0,10);
+  const from=addDays(TODAY,-120), to=addDays(TODAY,300);
+  try{
+    const {data,error}=await Promise.race([
+      sb.functions.invoke('calendar-events',{body:{start:iso(from),end:iso(to)}}),
+      new Promise(r=>setTimeout(()=>r({error:new Error('timeout')}),12000))
+    ]);
+    if(error||!data||!data.ok)return;
+    CAL_ON=!!data.configured;
+    (data.events||[]).forEach(e=>{
+      EVENTS.push({id:e.id,date:e.date,dateEnd:(e.end&&e.end!==e.date)?e.end:null,
+        title:e.title,type:e.kind==='away'?'away':'other',status:'done',
+        detail:e.where||'',owner:'',campus:'',link:e.link||''});
+    });
+  }catch(_){/* the calendar is extra context; the board still stands on its own */}
+}
 function weekNum(d){const t=addDays(weekStartOf(d),4);const y0=new Date(t.getFullYear(),0,1);return Math.ceil(((t-y0)/86400000+1)/7);}
 const GOALS = [
   {k:'Sunday attendance average',v:412,t:450,hue:'var(--gathering)'},
@@ -491,25 +762,25 @@ const GOALS = [
 ];
 const SECTIONS = [
   {id:'home',label:'Home',icon:'home',h:'var(--slate)',t:'var(--slate-t)'},
-  {id:'calendar',label:'Calendar',icon:'calendar',h:'var(--gathering)',t:'var(--gathering-t)'},
+  {id:'calendar',label:'Calendars',icon:'calendar',h:'var(--gathering)',t:'var(--gathering-t)'},
   {group:'WORK'},
   {id:'comms',label:'Communication',icon:'mail',h:'var(--amber)',t:'var(--amber-t)',url:'https://comms.mosaic.org'},
   {id:'planning',label:'Planning',icon:'board',h:'var(--milestone)',t:'var(--milestone-t)',url:'https://pm.mosaic.org'},
   {id:'facilities',label:'Facilities',icon:'door',h:'var(--comms)',t:'var(--comms-t)',url:'https://facilities.mosaic.org'},
   {group:'MEASURE'},
   {id:'numbers',label:'Metrics',icon:'chart',h:'var(--session)',t:'var(--session-t)',url:'https://metrics.mosaic.org'},
-  {id:'goals',label:'Goals',icon:'target',beta:true,h:'var(--magenta)',t:'var(--magenta-t)',url:'https://mosaic-hub.replit.app/'},
+  {id:'goals',label:'Goals',icon:'target',h:'var(--magenta)',t:'var(--magenta-t)',url:'https://goals.mosaic.org'},
   {id:'budgets',label:'Budgets',icon:'wallet',beta:true,restricted:true,h:'var(--indigo)',t:'var(--indigo-t)'},
   {id:'giving',label:'Giving',icon:'heart',beta:true,restricted:true,h:'var(--lime)',t:'var(--lime-t)'},
-  {group:''},
-  {id:'settings',label:'Settings',icon:'settings',h:'var(--slate)',t:'var(--slate-t)'}
+  /* Settings lives in the account menu (click your name), not the rail. */
+  {id:'settings',label:'App settings',icon:'settings',h:'var(--slate)',t:'var(--slate-t)',inMenu:true}
 ];
 const PALETTE = ['--neutral','--red','--milestone','--amber','--lime','--session','--gathering','--indigo','--comms','--magenta'];
 const ROLES = {
-  comms:{name:'Comms / staff',sections:['home','calendar','comms','planning','facilities','numbers','goals','settings']},
+  comms:{name:'Comms / staff',sections:['home','calendar','comms','planning','facilities','numbers','goals']},
   leadership:{name:'Leadership',sections:['home','calendar','comms','planning','facilities','numbers','goals','budgets','giving','settings','admin']},
-  ops:{name:'Ops / event management',sections:['home','calendar','planning','facilities','settings']},
-  volunteer:{name:'Volunteer lead',sections:['home','calendar','facilities','settings']}
+  ops:{name:'Ops / event management',sections:['home','calendar','planning','facilities']},
+  volunteer:{name:'Volunteer lead',sections:['home','calendar','facilities']}
 };
 const BUDGETS=[
   {k:'Facilities — NYC',b:72000,a:51400},
@@ -529,13 +800,41 @@ const S = {
   view:'week',
   anchor:new Date(TODAY),
   month:new Date(TODAY.getFullYear(),TODAY.getMonth(),1),
-  filters:new Set(['event','comms','other']),
+  filters:new Set(['event','comms','other','away']),
   role:'comms',
   forEveryone:false,
   tlShift:0,
   eventId:'g0823',
-  from:'calendar'
+  from:'calendar',
+  goalsPath:'/',
+  deep:{}   // section -> the item that section should open on arrival
 };
+
+/* Goals' own pages, shown as a sub-menu under the Goals rail button so the
+   embedded app doesn't need a second sidebar. Mirrors the role rules the
+   Goals app itself applies: staff/lead see the Staff Dashboard, admins also
+   see the admin console. `lead` here means a Mosaic staff or admin role. */
+const GOALS_NAV=[
+  {path:'/',label:'Dashboard'},
+  {path:'/goals',label:'Goals'},
+  {path:'/scorecards',label:'Assessment'},
+  {group:'Staff dashboard',lead:true},
+  {path:'/staff',label:'Overview',lead:true},
+  {path:'/staff/teams',label:'Teams',lead:true},
+  {path:'/staff/members',label:'Members',lead:true},
+  {path:'/staff/all-goals',label:'All goals',lead:true},
+  {path:'/staff/rubrics',label:'All assessments',lead:true},
+  {path:'/staff/feedback',label:'Feedback',lead:true},
+  {group:'Admin console',lead:true},
+  {path:'/settings',label:'Settings',lead:true},
+  {path:'/digest',label:'Digest',admin:true},
+  {path:'/developer',label:'Developer',admin:true}
+];
+function goalsNavItems(){
+  const isAdmin=ME.role==='admin'&&!ME.preview;
+  const isLead=isAdmin||(ME.role==='staff'&&!ME.preview);
+  return GOALS_NAV.filter(it=>(it.admin?isAdmin:it.lead?isLead:true));
+}
 
 /* ============================ helpers ============================ */
 function evOn(dt){return EVENTS.filter(e=>e.date===key(dt) && S.filters.has(e.type));}
@@ -558,11 +857,22 @@ function dueSoon(){return TASKS.filter(t=>!t.done && D(t.due)>=addDays(TODAY,-1)
 function waiting(){return EVENTS.filter(e=>e.status==='waiting').length;}
 
 /* ============================ nav ============================ */
+/* Which sections this person actually sees: the role preset, then any
+   per-person override an admin set in Admin > Users. */
+function allowedSections(){
+  const base=ROLES[S.role].sections.slice();
+  const ov=(!ME.preview&&ME.app_access)?ME.app_access:null;
+  if(!ov)return base;
+  const out=base.filter(id=>ov[id]!==false);
+  Object.keys(ov).forEach(id=>{if(ov[id]===true&&!out.includes(id))out.push(id);});
+  return out;
+}
 function renderNav(){
-  const allowed=ROLES[S.role].sections;
+  const allowed=allowedSections();
   const items=[];
   SECTIONS.forEach(sec=>{
     if(sec.group!==undefined){ items.push({divider:sec.group}); return; }
+    if(sec.inMenu) return;                       // lives in the account menu
     if(!allowed.includes(sec.id)) return;
     items.push(sec);
   });
@@ -575,28 +885,26 @@ function renderNav(){
       out.push('<div class="navgroup">'+it.divider+'</div>');
       return;
     }
-    out.push('<button data-go="'+it.id+'" class="'+(S.section===it.id?'on':'')+'">'+
+    out.push('<button data-go="'+it.id+'" data-tip="'+esc(it.label)+'" class="'+(S.section===it.id?'on':'')+'">'+
       '<span class="tile" style="background:'+it.t+';color:'+it.h+'">'+ic(it.icon)+'</span>'+
       '<span>'+it.label+'</span>'+
       (it.restricted?'<span class="lock" title="Restricted">'+ic('lock')+'</span>':'')+
       (it.beta?'<span class="badge">BETA</span>':(it.count?'<span class="count">'+it.count+'</span>':''))+
       '</button>');
+    // Goals' own pages hang off its rail button instead of a second sidebar
+    if(it.id==='goals'&&S.section==='goals'){
+      out.push('<div class="subnav">'+goalsNavItems().map(g=>g.group
+        ?'<div class="subgroup">'+esc(g.group)+'</div>'
+        :'<button data-gp="'+esc(g.path)+'" class="'+(S.goalsPath===g.path?'on':'')+'">'+esc(g.label)+'</button>'
+      ).join('')+'</div>');
+    }
   });
   document.getElementById('nav').innerHTML=out.join('');
   const _who=document.getElementById('who'),_av=document.querySelector('.rail-foot .avatar');
   const _nm=(typeof ME!=='undefined'&&ME.name)?ME.name:'';
-  if(_nm){
-    _who.textContent=_nm;
-    if(_av){
-      if(typeof ME!=='undefined'&&ME.avatar_url){
-        _av.innerHTML='<img src="'+esc(ME.avatar_url)+'" alt="" style="width:24px;height:24px;border-radius:50%;object-fit:cover;display:block">';
-        _av.style.background='none';
-      } else {
-        _av.innerHTML=_nm.charAt(0).toUpperCase();
-        _av.style.background='';
-      }
-    }
-  }
+  if(_nm){_who.textContent=_nm;if(_av)_av.innerHTML=avatarHtml(ME.avatar_url,_nm);
+    const _mav=document.querySelector('.mtop-av .avatar');
+    if(_mav)_mav.innerHTML=avatarHtml(ME.avatar_url,_nm);}
 }
 
 /* ============================ pages ============================ */
@@ -612,7 +920,7 @@ function pageHome(){
   const upcoming=EVENTS.filter(e=>D(e.date)>=TODAY && e.type==='event').slice(0,5);
   const attn=ATTN.slice(0,6);
   return '<div class="page-head"><div><h1>Home</h1><div class="sub">'+pretty(TODAY)+' · week '+weekNum(TODAY)+'</div></div>'+
-   '<a class="btn-primary" href="https://pm.mosaic.org" target="_blank" rel="noopener" style="text-decoration:none">New event</a></div>'+
+   '<button class="btn-primary" data-go="planning">New event</button></div>'+
    (DATA_ERR?'<div class="banner">'+ic('info')+'<div>'+esc(DATA_ERR)+'</div></div>':'')+
    '<div class="cards">'+
      card('This week',twEvents.length,twComms.length+' comms alongside','calendar','--session')+
@@ -628,7 +936,41 @@ function pageHome(){
      (upcoming.length?upcoming.map(e=>'<button class="row" data-ev="'+e.id+'"><span class="when">'+fmt(D(e.date))+'</span>'+
        '<span class="txt"><span class="name">'+esc(e.title)+'</span><span class="meta">'+esc(e.detail||'')+'</span></span></button>').join('')
        :'<div class="empty">No upcoming events loaded.</div>')+
-   '</div></div>';
+   '</div></div>'+
+   '<div class="fb-card">'+
+     '<span class="fb-mark" style="background:var(--comms-t);color:var(--comms)">'+ic('heart')+'</span>'+
+     '<div class="fb-txt"><div class="fb-h">Help us make this better</div>'+
+       '<div class="fb-s">Something broken, or something missing? Tell us.</div></div>'+
+     '<div class="fb-btns"><button class="fb-btn" data-fb="bug">Report a problem</button>'+
+       '<button class="fb-btn" data-fb="idea">Suggest an idea</button></div>'+
+   '</div>';
+}
+
+/* Feedback — goes to portal_feedback, and admins read it in Admin > Feedback.
+   A form that writes somewhere nobody looks is worse than no form at all. */
+function feedbackDrawer(kind){
+  const bug=kind==='bug';
+  openDrawer('<h2 style="margin-top:0">'+(bug?'Report a problem':'Suggest an idea')+'</h2>'+
+    '<div class="sub">'+(bug?'What happened, and what did you expect instead?':'What would make this more useful for you?')+'</div>'+
+    '<textarea id="fbMsg" class="pa-in" rows="6" style="margin-top:16px;resize:vertical;line-height:1.5" placeholder="'+
+      (bug?'When I click…':'It would help if…')+'"></textarea>'+
+    '<button class="btn-primary" id="fbSend" style="margin-top:14px">Send</button>'+
+    '<div id="fbNote" style="font-size:12.5px;color:var(--text2);margin-top:10px"></div>');
+  const ta=document.getElementById('fbMsg');ta.focus();
+  document.getElementById('fbSend').addEventListener('click',async()=>{
+    const msg=ta.value.trim(),n=document.getElementById('fbNote');
+    if(!msg){n.textContent='Please write a little about it first.';return;}
+    const btn=document.getElementById('fbSend');btn.disabled=true;btn.textContent='Sending…';
+    const {data,error}=await sb.from('portal_feedback')
+      .insert({type:bug?'bug':'idea',message:msg,section:S.section}).select('id').single();
+    btn.disabled=false;btn.textContent='Send';
+    if(error){n.textContent="Couldn't send — "+(error.message||'please try again.');return;}
+    // The saved row is the record; the email is a nudge, so a mail failure
+    // must not look like the feedback was lost.
+    if(data&&data.id)sb.functions.invoke('feedback-notify',{body:{id:data.id}}).catch(()=>{});
+    n.textContent='Thank you — this is with the team now.';
+    ta.value='';setTimeout(closeDrawer,1200);
+  });
 }
 function card(k,v,n,go,c){
   const bg=c?'background:var('+c+'-t);border-color:transparent':'';
@@ -644,7 +986,7 @@ function taskRow(t){
 
 function pageCalendar(){
   const ws=weekStartOf(S.anchor);
-  const head='<div class="page-head"><div><h1>Calendar</h1><div class="sub">'+
+  const head='<div class="page-head"><div><h1>Calendars</h1><div class="sub">'+
     (S.view==='week'? fmt(ws)+' – '+fmt(addDays(ws,6))+', '+addDays(ws,6).getFullYear()+' · week '+weekNum(ws)
                     : MON[S.month.getMonth()]+' '+S.month.getFullYear())+
     '</div></div><div style="display:flex;gap:8px;align-items:center">'+
@@ -661,8 +1003,10 @@ function filterBar(){
     '<button class="chip '+(S.filters.has(k)?'on':'off')+'" data-filter="'+k+'">'+
     '<span class="swatch" style="background:'+TYPES[k].hue+'"></span>'+TYPES[k].label+'</button>').join('')+
     '<button class="chip" data-filter="__all">All</button></div>'+
-    (S.filters.has('other')
-      ? '<div style="font-size:12px;color:var(--text2);margin:-8px 0 14px">Other pulls meetings from your Outlook calendar and birthdays from CCB — only you see these.</div>'
+    ((S.filters.has('other')||S.filters.has('away'))
+      ? '<div style="font-size:12px;color:var(--text2);margin:-8px 0 14px">'+
+        (CAL_ON?'Mosaic Calendar shows the shared staff calendar — meetings, rehearsals, birthdays and closures. Staff travel + PTO pulls the time-away entries out of it.'
+               :'The shared Mosaic Calendar isn\'t connected yet, so these two rows are empty.')+'</div>'
       : '');
 }
 function legend(){
@@ -726,7 +1070,17 @@ function monthGrid(){
 function pageEmbed(id){
   const sec=SECTIONS.find(x=>x.id===id);
   let src=sec.url;
-  if(id==='numbers'||id==='comms'||id==='planning')src+=(src.includes('?')?'&':'?')+'embed=portal';
+  if(id==='goals')src+=(S.goalsPath==='/'?'':S.goalsPath);
+  if(id==='numbers'||id==='comms'||id==='planning'||id==='goals')src+=(src.includes('?')?'&':'?')+'embed=portal';
+  // Arriving from an event: tell the app which one, so people land on the
+  // thing they clicked instead of the app's front page.
+  const want=S.deep&&S.deep[id];
+  if(want){
+    // comms takes either: an id opens that message, a date lands on its month
+    const k=id==='planning'?'item':id==='numbers'?'date'
+      :(/^\d{4}-\d{2}-\d{2}$/.test(want)?'on':'item');
+    src+='&'+k+'='+encodeURIComponent(want);
+  }
   return '<div class="embed-wrap"><iframe src="'+src+'" title="'+esc(sec.label)+'" allow="clipboard-write"></iframe>'+
     '<a class="embed-open" href="'+sec.url+'" target="_blank" rel="noopener" title="Open '+esc(sec.label)+' in its own tab">'+ic('ext','width:12px;height:12px')+'open</a></div>';
 }
@@ -734,24 +1088,58 @@ function pageEmbed(id){
 /* ---- Admin: user management for the whole app (same profiles the four
    apps share). Reads/writes the Metrics Supabase with the signed-in
    admin's own session — RLS enforces that only admins can. ---- */
-const ADMIN={profs:null,campuses:null,err:null,q:'',role:'all',loading:false,tab:'users',apps:null,appPerms:null,appDefaults:null};
+/* Campus display order isn't in the database, and Metrics itself doesn't sort by any
+   column there — it's a fixed list radiating out from LA: LA itself, then the rest of
+   the US, then Mexico (next in North America), Ecuador (rest of the Americas), London
+   (Europe), Online last. Paola set this on 26 Aug 2026 (this session). Atlanta shows
+   despite being marked inactive in the database — an intentional exception, per Paola,
+   not a bug to "fix" by hiding it. A new campus needs a human to slot it into this list
+   at the right geographic point; unrecognized names fall back to just before Online. */
+const CAMPUS_ORDER=['Los Angeles','Orange County','New York City','Chicago','Atlanta','Seattle','Mexico','Ecuador','London','Mosaic Online'];
+const CAMPUS_ALWAYS_SHOW=['Atlanta'];
+function campusSortIndex(name){
+  const i=CAMPUS_ORDER.indexOf(name);
+  if(i>=0)return i;
+  const onlineIdx=CAMPUS_ORDER.indexOf('Mosaic Online');
+  return onlineIdx>=0?onlineIdx-0.5:CAMPUS_ORDER.length;
+}
+const ADMIN={profs:null,campuses:null,pending:null,err:null,fb:null,fbErr:null,q:'',role:'all',loading:false,tab:'users',apps:null,appPerms:null,appDefaults:null,campusOpen:new Set(),showInactiveCampuses:false,campusUsersOpen:new Set(),regions:null};
 const ROLE_LIST=['admin','staff','leader','volunteer'];
+const SECTION_LABEL=id=>{const s=SECTIONS.find(x=>x.id===id);return s?s.label:id;};
 function adminName(p){const n=p.display_name||p.full_name||'—';return n.includes('@')?prettyNameFromEmail(n):n;}
 async function loadAdmin(){
   if(ADMIN.loading)return;ADMIN.loading=true;
-  const [r1,r2,r3,r4,r5]=await Promise.all([
-    sb.from('profiles').select('id,display_name,full_name,role,campus_id'),
-    sb.from('campuses').select('id,name,parent_campus_id'),
-    sb.from('apps').select('key,name'),
-    sb.from('app_permissions').select('app_key,perm_key,label,sort_order').order('sort_order'),
-    sb.from('role_app_defaults').select('role,app_key,perm_key,granted')
+  /* r4-r6 are the permission registry: the apps, the named permissions inside
+     each, and which of them a role gets by default. Roles & permissions reads
+     these so the table describes what the database actually says, rather than
+     a list kept in step by hand. */
+  const [r1,r2,r3,r4,r5,r6,r7,r8,r9]=await Promise.all([
+    sb.from('profiles').select('id,display_name,full_name,role,campus_id,avatar_url,app_access,campus_ids,archived_at'),
+    sb.from('campuses').select('id,name,parent_campus_id,active,region_id,timezone,language'),
+    sb.from('pending_invites').select('id,email,name,role,campus_id,created_at').order('created_at'),
+    sb.from('apps').select('key,name').order('name'),
+    sb.from('app_permissions').select('app_key,perm_key,label,sort_order').order('app_key').order('sort_order'),
+    sb.from('role_app_defaults').select('role,app_key,perm_key,granted'),
+    // The real, attendance-tracked meeting locations per campus (same table Metrics
+    // itself reads) — separate from, and richer than, the campuses table's own
+    // parent/child rows, which exist only to scope portal permissions by sub-campus.
+    // Admins can write any campus's locations; staff only their own (my_campuses()).
+    sb.from('campus_locations').select('id,campus_id,location,active,note').eq('active',true),
+    // Gathering times per location — admin-write only, joined to a location by id.
+    sb.from('campus_service_times').select('id,campus_id,location_id,gathering_type,service_label,sort_order,active').eq('active',true).order('sort_order'),
+    // Regions group campuses for reporting — ordered closest-to-LA first (see campus_regions).
+    sb.from('campus_regions').select('id,name,sort_order').order('sort_order')
   ]);
+  ADMIN.apps=r4.data||[];
+  ADMIN.appPerms=r5.data||[];
+  ADMIN.appDefaults=r6.data||[];
   ADMIN.err=(r1.error&&r1.error.message)||(r2.error&&r2.error.message)||null;
   ADMIN.profs=r1.data||[];
-  ADMIN.campuses=(r2.data||[]).filter(c=>!c.parent_campus_id).sort((a,b)=>a.name.localeCompare(b.name));
-  ADMIN.apps=r3.data||[];
-  ADMIN.appPerms=r4.data||[];
-  ADMIN.appDefaults=r5.data||[];
+  ADMIN.pending=r3.data||[];
+  ADMIN.campuses=(r2.data||[]).filter(c=>!c.parent_campus_id).sort((a,b)=>campusSortIndex(a.name)-campusSortIndex(b.name));
+  ADMIN.campusLocations=r7.data||[];
+  ADMIN.serviceTimes=r8.data||[];
+  ADMIN.regions=r9.data||[];
   ADMIN.loading=false;
   if(S.section==='admin')render();
 }
@@ -769,12 +1157,65 @@ function effectiveAppPerms(appKey,globalRole,roleOverride,permOverrides){
     return {perm_key:p.perm_key,label:p.label,granted:ov?ov.granted:def,overridden:!!ov};
   });
 }
-function campusName(id){const c=(ADMIN.campuses||[]).find(x=>x.id===id);return c?c.name:'—';}
 function appHasAccess(appKey,globalRole,roleOverride,permOverrides){
   return effectiveAppPerms(appKey,globalRole,roleOverride,permOverrides).some(p=>p.granted);
 }
 function roleDefaultHasAny(appKey,role){
   return (ADMIN.appDefaults||[]).some(d=>d.role===role&&d.app_key===appKey&&d.granted);
+}
+// Mirrors the campus_locations_write RLS policy: is_admin() OR (is_staff() AND
+// campus_id = ANY(my_campuses())) — so the UI never offers a control the database
+// would reject. Gathering times stay admin-only, matching campus_service_times_admin_write.
+function canEditLocations(campusId){
+  if(ME.role==='admin')return true;
+  if(ME.role!=='staff')return false;
+  const mine=[ME.campus_id,...(ME.campus_ids||[])].filter(Boolean);
+  return mine.includes(campusId);
+}
+// Re-fetch after a location/gathering-time edit. ADMIN.campusOpen stays accurate on
+// its own (see the document-level 'toggle' listener), so this just needs fresh data.
+async function afterCampusEdit(){
+  await loadAdmin();
+}
+function campusName(id){const c=(ADMIN.campuses||[]).find(x=>x.id===id);return c?c.name:'—';}
+/* The sections a person can reach, and the campuses they can see, resolving
+   role defaults plus any per-person override. */
+const PERM_SECTIONS=SECTIONS.filter(s=>s.id&&s.id!=='settings');
+function sectionsFor(p){
+  const preset=ROLE_PRESET[p.role]||'volunteer';
+  const base=(ROLES[preset]||ROLES.volunteer).sections.filter(id=>id!=='settings'&&id!=='admin');
+  const ov=p.app_access||null;
+  if(!ov)return base;
+  const out=base.filter(id=>ov[id]!==false);
+  Object.keys(ov).forEach(id=>{if(ov[id]===true&&!out.includes(id))out.push(id);});
+  return out;
+}
+function campusesFor(p){
+  if(p.campus_ids&&p.campus_ids.length)return p.campus_ids;
+  if(p.role==='admin')return (ADMIN.campuses||[]).map(c=>c.id);
+  return p.campus_id?[p.campus_id]:[];
+}
+function relDays(ts){
+  const d=new Date(ts);if(isNaN(d))return '';
+  const days=Math.round((TODAY-d)/86400000);
+  if(days<=0)return 'today';
+  if(days===1)return 'yesterday';
+  if(days<30)return days+' days ago';
+  if(days<365)return Math.round(days/30)+' months ago';
+  return Math.round(days/365)+'y ago';
+}
+function permSummary(p){
+  const secs=sectionsFor(p), cams=campusesFor(p);
+  const allCam=(ADMIN.campuses||[]).length;
+  const camLab=(p.role==='admin'&&!(p.campus_ids||[]).length)?'all campuses'
+    :cams.length===0?'no campus'
+    :cams.length===1?campusName(cams[0])
+    :cams.length===allCam?'all campuses'
+    :cams.length+' campuses';
+  const custom=!!(p.app_access||(p.campus_ids&&p.campus_ids.length));
+  return '<span class="pa-pill">'+secs.length+' of '+PERM_SECTIONS.length+' apps</span>'+
+    '<span class="pa-pill">'+esc(camLab)+'</span>'+
+    (custom?'<span class="pa-pill custom">custom</span>':'');
 }
 /* Roles & permissions — Paola's reference matrix from the Metrics admin,
    adapted to the portal: what each role can reach across the whole app,
@@ -789,7 +1230,7 @@ const RP_ROLES=[
 const RP_SECTIONS=[
   {title:'Portal sections',rows:[
     ['Home','yes','yes','yes','yes'],
-    ['Calendar','yes','yes','yes','yes'],
+    ['Calendars','yes','yes','yes','yes'],
     ['Communication','yes','yes','no','no'],
     ['Planning','yes','yes','yes','no'],
     ['Metrics','yes','yes','yes','no'],
@@ -821,32 +1262,136 @@ function rpCell(v){
   if(v==='own')return '<span class="rp-lim">Own campus</span>';
   return esc(v);
 }
-function pageAdminRoles(){
-  const apps=(ADMIN.apps||[]).slice().sort((a,b)=>a.name.localeCompare(b.name));
+/* The permission rows come from the database: one group per app, one row per
+   named permission, a tick where that role has it by default. RP_ROLES and
+   ROLE_LIST are in the same order, which is what keeps the ticks under the
+   right heading. If the registry hasn't loaded we fall back to the written
+   table rather than showing an empty grid. */
+function rolesTableRows(){
+  const perms=ADMIN.appPerms||[], defaults=ADMIN.appDefaults||[];
+  if(!perms.length)return null;
   const cols=ROLE_LIST.length+1;
-  const appRows=apps.map(a=>{
-    const perms=(ADMIN.appPerms||[]).filter(p=>p.app_key===a.key);
-    if(!perms.length)return '';
+  return (ADMIN.apps||[]).map(a=>{
+    const mine=perms.filter(p=>p.app_key===a.key);
+    if(!mine.length)return '';
     return '<tr class="rp-sec"><td colspan="'+cols+'">'+esc(a.name)+'</td></tr>'+
-      perms.map(p=>'<tr><td>'+esc(p.label)+'</td>'+
-        ROLE_LIST.map(role=>{
-          const granted=(ADMIN.appDefaults||[]).some(d=>d.role===role&&d.app_key===a.key&&d.perm_key===p.perm_key&&d.granted);
-          return '<td>'+(granted?'<span class="rp-yes">✓</span>':'<span class="rp-no">—</span>')+'</td>';
-        }).join('')+
+      mine.map(p=>'<tr><td>'+esc(p.label||p.perm_key)+'</td>'+
+        ROLE_LIST.map(role=>'<td>'+(defaults.some(d=>d.role===role&&d.app_key===a.key&&d.perm_key===p.perm_key&&d.granted)
+          ?'<span class="rp-yes">✓</span>':'<span class="rp-no">—</span>')+'</td>').join('')+
       '</tr>').join('');
   }).join('');
+}
+function pageAdminRoles(){
+  const live=rolesTableRows();
+  const body=live!==null&&live.trim()
+    ? live
+    : RP_SECTIONS.map(sec=>'<tr class="rp-sec"><td colspan="5">'+esc(sec.title)+'</td></tr>'+
+        sec.rows.map(row=>'<tr><td>'+esc(row[0])+'</td>'+row.slice(1).map(v=>'<td>'+rpCell(v)+'</td>').join('')+'</tr>').join('')
+      ).join('');
   return '<div class="rp-desc">'+RP_ROLES.map(r=>'<div class="rp-card"><div class="rp-role" style="color:'+r.color+'">'+esc(r.name)+'</div><p>'+esc(r.desc)+'</p></div>').join('')+'</div>'+
-    '<div class="pa-card" style="overflow:auto;max-height:calc(100vh - 260px)"><table class="rp-table"><thead><tr><th>Permission</th>'+
+    '<div class="pa-card rp-scroll"><table class="rp-table"><thead><tr><th>Permission</th>'+
     RP_ROLES.map(r=>'<th style="color:'+r.color+'">'+esc(r.name)+'</th>').join('')+'</tr></thead><tbody>'+
-    appRows+'</tbody></table></div>'+
+    body+'</tbody></table></div>'+
     '<p style="font-size:12.5px;color:var(--text2);margin-top:14px;max-width:640px;line-height:1.5">A reference, not a control panel — change someone\'s access by changing their role on the Users tab. Section visibility is enforced by the portal; campus scope and who can edit what are enforced by the database itself, so the rules hold no matter which app you\'re in.</p>';
+}
+function pageAdminCampuses(){
+  const all=(ADMIN.campuses||[]).slice().sort((a,b)=>campusSortIndex(a.name)-campusSortIndex(b.name));
+  if(!all.length)return '<div class="empty">No campuses yet.</div>';
+  const visible=all.filter(c=>c.active!==false||CAMPUS_ALWAYS_SHOW.includes(c.name));
+  const hidden=all.filter(c=>!visible.includes(c));
+  const toggle='<label class="cc-inactive-toggle"><input type="checkbox" data-toggleinactivecampus'+(ADMIN.showInactiveCampuses?' checked':'')+'> See inactive campuses'+(hidden.length&&!ADMIN.showInactiveCampuses?' ('+hidden.length+' hidden)':'')+'</label>';
+  if(!visible.length&&!(ADMIN.showInactiveCampuses&&hidden.length))return toggle+'<div class="empty">No active campuses.</div>';
+  const userCount=id=>(ADMIN.profs||[]).filter(p=>!p.archived_at&&p.campus_id===id).length;
+  const ppl=n=>n+' '+(n===1?'person':'people');
+  const locsFor=id=>(ADMIN.campusLocations||[]).filter(l=>l.campus_id===id).sort((a,b)=>a.location.localeCompare(b.location));
+  const timesFor=locId=>(ADMIN.serviceTimes||[]).filter(t=>t.location_id===locId);
+  const cardHtml=c=>{
+    const locations=locsFor(c.id);
+    const people=(ADMIN.profs||[]).filter(p=>!p.archived_at&&p.campus_id===c.id).sort((a,b)=>adminName(a).localeCompare(adminName(b)));
+    const total=people.length;
+    const usersOpen=ADMIN.campusUsersOpen.has(c.id);
+    const canEdit=canEditLocations(c.id);
+    return '<details class="cc-card" data-campus="'+esc(c.id)+'"'+(ADMIN.campusOpen.has(c.id)?' open':'')+'>'+
+      '<summary class="cc-head"><span class="cc-name">'+esc(c.name)+'</span><span class="cc-chev">'+ic('down','width:16px;height:16px')+'</span></summary>'+
+      (c.active===false?'<div class="cc-kv"><span>Status</span><span><span class="au-arch">Inactive</span></span></div>':'')+
+      '<div class="cc-kv"><span>Locations</span><span>'+(locations.length?locations.map(l=>esc(l.location)).join(' · '):'<span style="font-weight:400;color:var(--text3)">None currently meeting</span>')+'</span></div>'+
+      '<div class="cc-kv"><span>Users assigned</span><span>'+
+        (total?'<button type="button" class="linkout" data-toggleusers="'+esc(c.id)+'">'+ppl(total)+'</button>':ppl(total))+
+      '</span></div>'+
+      (usersOpen&&total?'<div class="cc-users">'+people.map(p=>'<div class="cc-user"><span>'+esc(adminName(p))+'</span><span class="pa-pill">'+esc(cap(p.role))+'</span></div>').join('')+'</div>':'')+
+      '<div class="cc-body">'+
+        locations.map(l=>{
+          const times=timesFor(l.id);
+          return '<div class="cc-loc-block">'+
+            '<div class="cc-loc"><span>'+esc(l.location)+'</span>'+
+            (canEdit?'<span class="cc-loc-right"><button class="btn-ghost" data-deactivateloc="'+esc(l.id)+'">Deactivate</button></span>':'')+
+            '</div>'+
+            (times.length||canEdit?'<div class="cc-times">'+
+              times.map(t=>'<span class="pu-chip">'+esc(t.service_label)+(canEdit?'<button type="button" data-rmtime="'+esc(t.id)+'" aria-label="Remove '+esc(t.service_label)+'">×</button>':'')+'</span>').join('')+
+              (canEdit?'<span class="cc-addtime" data-addtimefor="'+esc(l.id)+'" data-campusfor="'+esc(c.id)+'">'+
+                '<input type="text" placeholder="e.g. 9:30 AM">'+
+                '<button class="btn-ghost" data-addtime="'+esc(l.id)+'">Add</button>'+
+              '</span>':'')+'</div>'
+            :'')+
+          '</div>';
+        }).join('')+
+        (canEdit?'<div class="cc-addloc" data-addlocfor="'+esc(c.id)+'">'+
+          '<input type="text" placeholder="e.g. South Pasadena">'+
+          '<button class="btn-ghost" data-addloc="'+esc(c.id)+'">Add location</button>'+
+        '</div>'
+        :(ME.role==='staff'?'<p style="font-size:12px;color:var(--text3);margin:8px 0 0">You can edit locations for your own campus, not this one.</p>':''))+
+        (ME.role==='admin'?'<button class="btn-ghost" style="margin-top:14px" data-editcampus="'+esc(c.id)+'">Rename campus</button>':'')+
+      '</div>'+
+    '</details>';
+  };
+  const cards=visible.map(cardHtml).join('');
+  const hiddenSection=(ADMIN.showInactiveCampuses&&hidden.length)
+    ?'<div class="cc-divider"><span>Inactive campuses</span></div>'+hidden.map(cardHtml).join('')
+    :'';
+  return toggle+cards+hiddenSection+
+    '<p style="font-size:12.5px;color:var(--text2);margin-top:4px;max-width:640px;line-height:1.5">'+
+    'The campus itself (its name) is the same one used everywhere else in the portal — a person\'s primary campus on '+
+    'the Users tab, and the per-app campus pickers on their profile. Locations are the same ones Metrics reads for '+
+    'attendance; deactivating one here is the same as it going inactive there — it stops showing up, it isn\'t deleted. '+
+    'Gathering times are admin-only, matching the same rule in Metrics. There\'s no delete here yet for the campus '+
+    'itself: one with people or history attached needs a real plan for where that goes, not a button.</p>';
+}
+function pageAdminFeedback(){
+  if(!ADMIN.fb&&!ADMIN.fbErr){loadFeedback();return '<div class="empty">Loading…</div>';}
+  if(ADMIN.fbErr)return '<div class="banner">'+ic('info')+'<div>Couldn\'t load feedback — '+esc(ADMIN.fbErr)+'</div></div>';
+  if(!ADMIN.fb.length)return '<div class="empty">Nothing reported yet.</div>';
+  const who=id=>{const p=(ADMIN.profs||[]).find(x=>x.id===id);return p?adminName(p):'Someone';};
+  const fdt=ts=>{const d=new Date(ts);return isNaN(d)?'':d.toLocaleDateString(undefined,{month:'short',day:'numeric'});};
+  return '<div class="pa-card"><table class="pa-table"><thead><tr><th>What</th><th>From</th><th>When</th><th>Status</th></tr></thead><tbody>'+
+    ADMIN.fb.map(f=>'<tr><td style="max-width:520px;white-space:normal;line-height:1.45">'+
+      '<span class="fb-tag">'+(f.type==='bug'?'Problem':'Idea')+'</span> '+esc(f.message)+
+      (f.section?'<div style="color:var(--text3);font-size:11.5px;margin-top:3px">on '+esc(cap(f.section))+'</div>':'')+'</td>'+
+      '<td style="color:var(--text2)">'+esc(who(f.user_id))+'</td>'+
+      '<td style="color:var(--text2)">'+esc(fdt(f.created_at))+'</td>'+
+      '<td><select class="pa-role" data-fbst="'+esc(f.id)+'">'+
+        ['new','reviewed','resolved'].map(st=>'<option value="'+st+'"'+(f.status===st?' selected':'')+'>'+cap(st)+'</option>').join('')+
+      '</select></td></tr>').join('')+
+    '</tbody></table></div>';
+}
+async function loadFeedback(){
+  const {data,error}=await sb.from('portal_feedback').select('*').order('created_at',{ascending:false});
+  ADMIN.fbErr=error?(error.message||'please try again'):null;
+  ADMIN.fb=data||[];
+  if(S.section==='admin')render();
 }
 function pageAdmin(){
   if(ME.role!=='admin')return '<div class="page-head"><div><h1>Admin</h1></div></div><div class="empty">Only admins can open this.</div>';
-  const tabs='<div class="pa-tabs"><button data-adtab="users" class="'+(ADMIN.tab!=='roles'?'on':'')+'">Users</button>'+
-    '<button data-adtab="roles" class="'+(ADMIN.tab==='roles'?'on':'')+'">Roles & permissions</button></div>';
+  const tabs='<div class="pa-tabs"><button data-adtab="users" class="'+(ADMIN.tab!=='roles'&&ADMIN.tab!=='feedback'&&ADMIN.tab!=='campuses'?'on':'')+'">Users</button>'+
+    '<button data-adtab="roles" class="'+(ADMIN.tab==='roles'?'on':'')+'">Roles & permissions</button>'+
+    '<button data-adtab="campuses" class="'+(ADMIN.tab==='campuses'?'on':'')+'">Campuses</button>'+
+    '<button data-adtab="feedback" class="'+(ADMIN.tab==='feedback'?'on':'')+'">Feedback</button></div>';
+  if(ADMIN.tab==='feedback')
+    return '<div class="page-head"><div><h1>Admin</h1><div class="sub">What staff have reported from inside the portal</div></div></div>'+tabs+pageAdminFeedback();
   if(ADMIN.tab==='roles')
     return '<div class="page-head"><div><h1>Admin</h1><div class="sub">What each role can reach across the portal</div></div></div>'+tabs+pageAdminRoles();
+  if(ADMIN.tab==='campuses')
+    return '<div class="page-head"><div><h1>Admin</h1><div class="sub">Every campus, and who\'s assigned to each</div></div>'+
+      (ME.role==='admin'?'<button class="btn-primary" data-newcampus="1">New campus</button>':'')+'</div>'+tabs+pageAdminCampuses();
   const head='<div class="page-head"><div><h1>Admin</h1><div class="sub">User management · every app, one account list</div></div>'+
     '<button class="btn-primary" data-newuser="1">New user</button></div>'+tabs;
   if(!ADMIN.profs&&!ADMIN.err){loadAdmin();return head+'<div class="empty">Loading users…</div>';}
@@ -856,6 +1401,9 @@ function pageAdmin(){
   const q=ADMIN.q.trim().toLowerCase();
   if(ADMIN.role!=='all')rows=rows.filter(p=>p.role===ADMIN.role);
   if(q)rows=rows.filter(p=>adminName(p).toLowerCase().includes(q)||(p.full_name||'').toLowerCase().includes(q));
+  const archived=rows.filter(p=>p.archived_at);
+  rows=rows.filter(p=>!p.archived_at);
+  const activeTotal=ADMIN.profs.filter(p=>!p.archived_at).length;
   const roleSel=p=>'<select class="pa-role" data-id="'+esc(p.id)+'">'+ROLE_LIST.map(r=>'<option value="'+r+'"'+(r===p.role?' selected':'')+'>'+cap(r)+'</option>').join('')+'</select>';
   const campusSel=p=>p.role==='admin'?'<span style="color:var(--text2)">All campuses</span>'
     :'<select class="pa-campus" data-id="'+esc(p.id)+'"><option value="">Select a campus</option>'+
@@ -864,16 +1412,100 @@ function pageAdmin(){
     '<div class="pa-bar"><input id="paSearch" type="text" placeholder="Search by name…" value="'+esc(ADMIN.q)+'">'+
     '<select id="paRole"><option value="all"'+(ADMIN.role==='all'?' selected':'')+'>All roles</option>'+
       ROLE_LIST.map(r=>'<option value="'+r+'"'+(ADMIN.role===r?' selected':'')+'>'+cap(r)+'</option>').join('')+'</select>'+
-    '<span style="margin-left:auto;font-size:12.5px;color:var(--text2)">'+rows.length+' of '+ADMIN.profs.length+' users</span></div>'+
+    '<span style="margin-left:auto;font-size:12.5px;color:var(--text2)">'+rows.length+' of '+activeTotal+' users</span></div>'+
     '<div id="paNote" class="banner" style="display:none"></div>'+
-    '<div class="pa-card"><table class="pa-table"><thead><tr><th>Name</th><th>Role</th><th>Campus</th></tr></thead><tbody>'+
+    '<div class="pa-card"><table class="pa-table"><thead><tr><th>Name</th><th>Role</th><th>Primary campus</th><th>Roles &amp; permissions</th></tr></thead><tbody>'+
     (rows.length?rows.map(p=>'<tr>'+
-      '<td><button class="pa-eye" data-user="'+esc(p.id)+'" style="font-weight:500;text-align:left;font-size:inherit;font-family:inherit;padding:0;color:inherit;text-decoration:none">'+esc(adminName(p))+'</button>'+
+      '<td><button class="pa-name" data-user="'+esc(p.id)+'" title="Open '+esc(adminName(p))+'">'+
+      '<span class="pa-av">'+avatarHtml(p.avatar_url,adminName(p))+'</span><span class="nm">'+esc(adminName(p))+'</span></button>'+
       (ME.email&&p.full_name===ME.email?' <span style="color:var(--text2);font-size:11.5px">(you)</span>':'')+'</td>'+
-      '<td>'+roleSel(p)+'</td><td>'+campusSel(p)+'</td></tr>').join('')
-      :'<tr><td colspan="3" style="color:var(--text2)">No users match.</td></tr>')+
+      '<td>'+roleSel(p)+'</td><td>'+campusSel(p)+'</td>'+
+      '<td><button class="pa-perm" data-user="'+esc(p.id)+'">'+permSummary(p)+'</button></td></tr>').join('')
+      :'<tr><td colspan="4" style="color:var(--text2)">No users match.</td></tr>')+
     '</tbody></table></div>'+
+    ((ADMIN.pending||[]).length?
+      '<div class="pu-sec" style="margin-top:26px">Invite pending</div>'+
+      '<p style="font-size:12.5px;color:var(--text2);margin:4px 0 10px;max-width:620px;line-height:1.5">Accounts prepared but not announced yet — no email has gone out. Send each invite whenever you\'re ready, or open one to edit it.</p>'+
+      '<div class="pa-card"><table class="pa-table"><tbody>'+
+      ADMIN.pending.map(v=>'<tr>'+
+        '<td><button class="pa-name" data-pinv="'+esc(v.id)+'" title="Edit this pending invite">'+
+        '<span class="pa-av">'+avatarHtml(null,v.name||v.email)+'</span><span class="nm">'+esc(v.name||v.email)+'</span></button>'+
+        ' <span style="font-size:11px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;color:var(--milestone-d,#8a6d00);border:1px solid var(--hairline);border-radius:999px;padding:3px 9px;white-space:nowrap">Invite pending</span></td>'+
+        '<td style="color:var(--text2)">'+esc(v.email)+'</td>'+
+        '<td style="color:var(--text2)">'+cap(v.role)+(v.role!=='admin'&&v.campus_id?' · '+esc(campusName(v.campus_id)):'')+'</td>'+
+        '<td style="text-align:right;white-space:nowrap"><button class="btn-primary" data-pinvsend="'+esc(v.id)+'" style="padding:6px 12px;font-size:12px">Send invite</button> '+
+        '<button class="gate-ghost" data-pinvdel="'+esc(v.id)+'" style="margin:0;padding:6px 12px;font-size:12px">Remove</button></td></tr>').join('')+
+      '</tbody></table></div>':'')+
+    (archived.length?
+      '<div class="pu-sec" style="margin-top:26px">Archived users</div>'+
+      '<p style="font-size:12.5px;color:var(--text2);margin:4px 0 10px;max-width:620px;line-height:1.5">No longer on staff. They can\'t sign in, but their account and history are kept — open one to restore access.</p>'+
+      '<div class="pa-card"><table class="pa-table"><tbody>'+
+      archived.map(p=>'<tr style="opacity:.65">'+
+        '<td><button class="pa-name" data-user="'+esc(p.id)+'" title="Open '+esc(adminName(p))+'">'+
+        '<span class="pa-av">'+avatarHtml(p.avatar_url,adminName(p))+'</span><span class="nm">'+esc(adminName(p))+'</span></button></td>'+
+        '<td style="color:var(--text2)">'+cap(p.role||'')+'</td>'+
+        '<td style="color:var(--text2)">Archived '+esc(new Date(p.archived_at).toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'}))+'</td>'+
+        '<td></td></tr>').join('')+
+      '</tbody></table></div>':'')+
     '<p style="font-size:12.5px;color:var(--text2);margin-top:14px;max-width:620px;line-height:1.5">Changing a role or campus here applies everywhere the Mosaic account is used — the portal, Metrics, and anything added later. Campus applies to staff, leaders and volunteers; admins see all campuses.</p>';
+}
+/* The rail calls Metrics 'numbers'; the permission tables call it 'metrics'.
+   Everything else matches. Without this the Metrics row would quietly show no
+   permissions at all, which reads as "this app has none" rather than a typo. */
+const APP_KEY={numbers:'metrics'};
+const appKeyFor=id=>APP_KEY[id]||id;
+/* What this person can actually do in an app: what their role grants by
+   default, with any per-person entry in section_permissions winning. Mirrors
+   can() in Supabase so the screen and the database agree. */
+function effectiveAppPerms(appKey,role,permOverrides){
+  return (ADMIN.appPerms||[]).filter(p=>p.app_key===appKey).map(p=>{
+    const def=(ADMIN.appDefaults||[]).some(d=>d.role===role&&d.app_key===appKey&&d.perm_key===p.perm_key&&d.granted);
+    const ov=(permOverrides||[]).find(o=>o.app_key===appKey&&o.perm_key===p.perm_key);
+    return {perm_key:p.perm_key,label:p.label,granted:ov?ov.granted:def,overridden:!!ov};
+  });
+}
+/* The named permissions inside one app, as tickboxes. A tick that differs
+   from what the role gives is marked, so an exception is visible as an
+   exception rather than looking like the default. */
+function puPermRow(sectionId,role,permOverrides,appOn){
+  const key=appKeyFor(sectionId);
+  const perms=effectiveAppPerms(key,role,permOverrides);
+  if(!perms.length)return '';
+  return '<div class="pu-perms" data-permrow="'+esc(sectionId)+'"'+(appOn?'':' hidden')+'>'+
+    perms.map(p=>'<label class="pu-perm'+(p.overridden?' pu-perm-ov':'')+'">'+
+      '<input type="checkbox" data-perm data-papp="'+esc(key)+'" data-pkey="'+esc(p.perm_key)+'"'+(p.granted?' checked':'')+'>'+
+      '<span>'+esc(p.label||p.perm_key)+'</span>'+
+      (p.overridden?'<span class="pu-perm-tag">changed</span>':'')+
+    '</label>').join('')+
+  '</div>';
+}
+/* The campuses a person can see inside one app: chips for the ones they have,
+   a dropdown to add another. Hidden until the app itself is ticked, and never
+   shown for admins — they see every campus everywhere. */
+function puCampusRow(appKey,selectedIds,allCampuses,isAdminUser,appOn,personCampusIds){
+  const wrap=inner=>'<div class="pu-campuses" data-campusrow="'+esc(appKey)+'"'+(appOn?'':' hidden')+'>'+inner+'</div>';
+  /* Admins are not limited anywhere, so one short line - repeating every
+     campus under all eight apps says the same thing eight times. */
+  if(isAdminUser)return wrap('<span class="pu-chip-none">All campuses</span>');
+  const cams=allCampuses.slice().sort((a,b)=>a.name.localeCompare(b.name));
+  /* With nothing chosen for this app, they get their main campus - not every
+     campus. Saying "Every campus" here overstated what they can reach. */
+  const inherited=!selectedIds||!selectedIds.length;
+  const ids=inherited?(personCampusIds||[]):selectedIds;
+  const sel=cams.filter(c=>ids.includes(c.id));
+  const avail=cams.filter(c=>!ids.includes(c.id));
+  const chips=sel.length
+    ? sel.map(c=>'<span class="pu-chip'+(inherited?' pu-chip-locked':'')+'">'+esc(c.name)+
+        (inherited?'':'<button type="button" data-rmcampus data-capp="'+esc(appKey)+'" data-cid="'+esc(c.id)+'" aria-label="Remove '+esc(c.name)+'">×</button>')+
+      '</span>').join('')+(inherited?'<span class="pu-chip-none">their main campus</span>':'')
+    : '<span class="pu-chip-none">No campus set — add one below</span>';
+  const add=avail.length
+    ? '<select class="pu-addcampus" data-addcampus data-capp="'+esc(appKey)+'">'+
+        '<option value="">+ Add campus</option>'+
+        avail.map(c=>'<option value="'+esc(c.id)+'">'+esc(c.name)+'</option>').join('')+
+      '</select>'
+    : '';
+  return wrap(chips+add);
 }
 function paNote(msg,err){const n=document.getElementById('paNote');if(!n)return;n.style.display='flex';n.style.borderColor=err?'var(--red)':'var(--hairline)';n.innerHTML=ic('info')+'<div>'+esc(msg)+'</div>';clearTimeout(paNote._t);paNote._t=setTimeout(()=>{const x=document.getElementById('paNote');if(x)x.style.display='none';},4500);}
 async function paSaveGlobalRole(id,next){
@@ -890,14 +1522,13 @@ async function paSaveGlobalRole(id,next){
       sb.from('section_permissions').delete().eq('user_id',id)
     ]);
     if(note)note.textContent=result;
-    ADMIN.viewUser=null;
-    if(S.section==='admin-user'&&S.adminUserId===id)loadAdminUser(id);
+    if(S.section==='admin-user'&&S.adminUserId===id)render();
   }
 }
 async function paSaveRole(id,next){
   const p=ADMIN.profs.find(x=>x.id===id);if(!p||p.role===next)return true;
   const who=adminName(p);
-  if(p.role==='admin'&&next!=='admin'&&ADMIN.profs.filter(x=>x.role==='admin').length<=1){alert("You can't change the last admin's role — promote someone else to Admin first.");return false;}
+  if(p.role==='admin'&&next!=='admin'&&ADMIN.profs.filter(x=>x.role==='admin'&&!x.archived_at).length<=1){alert("You can't change the last admin's role — promote someone else to Admin first.");return false;}
   const self=(p.full_name===ME.email);
   let msg='Change '+who+"'s role from “"+p.role+'” to “'+next+'”?';
   if(next==='admin')msg='Make '+who+' an Admin?\n\nAdmins can view and edit every campus and manage all users.';
@@ -916,322 +1547,702 @@ async function paSaveCampus(id,next){
   p.campus_id=next||null;
   return 'Set '+adminName(p)+"'s campus to "+(next?campusName(next):'No campus')+'.';
 }
-/* Admin user profile — a real page (like event detail), not a drawer, so
-   the per-app permissions and campus lists have room to breathe. */
-function openAdminUser(id){
-  S.from='admin'; S.section='admin-user'; S.adminUserId=id;
-  ADMIN.viewUser=null;
-  render();
-}
-async function loadAdminUser(id){
-  if(!ADMIN.viewUser||ADMIN.viewUser.id!==id)ADMIN.viewUser={id,loading:false,u:null,roleOverrides:null,perms:null,campusIds:null,appCampuses:null,err:null};
-  if(ADMIN.viewUser.loading)return;
-  ADMIN.viewUser.loading=true;
-  const [{data,error},roRes,permRes,ucRes,uacRes]=await Promise.all([
-    sb.rpc('admin_get_user',{target:id}),
-    sb.from('section_role_overrides').select('app_key,role_override').eq('user_id',id),
-    sb.from('section_permissions').select('app_key,perm_key,granted').eq('user_id',id),
-    sb.from('user_campuses').select('campus_id').eq('user_id',id),
-    sb.from('user_app_campuses').select('app_key,campus_id').eq('user_id',id)
-  ]);
-  const u=Array.isArray(data)?data[0]:data;
-  ADMIN.viewUser.loading=false;
-  ADMIN.viewUser.err=(error&&error.message)||(!u?'not found':null);
-  ADMIN.viewUser.u=u||null;
-  ADMIN.viewUser.roleOverrides=roRes.data||[];
-  ADMIN.viewUser.perms=permRes.data||[];
-  ADMIN.viewUser.campusIds=(ucRes.data||[]).map(r=>r.campus_id);
-  const acMap={};(uacRes.data||[]).forEach(r=>{if(!acMap[r.app_key])acMap[r.app_key]=[];acMap[r.app_key].push(r.campus_id);});
-  ADMIN.viewUser.appCampuses=acMap;
-  if(S.section==='admin-user'&&S.adminUserId===id)render();
-}
+/* The person's own page, not a slide-over: opened by clicking their name in
+   Admin, and Back returns to the list. paUserPage fills #auBody once the
+   profile has loaded. */
 function pageAdminUser(){
   const id=S.adminUserId;
-  const back='<button class="back" data-back="1">'+ic('left')+'Back</button>';
-  const vu=ADMIN.viewUser;
-  if(!vu||vu.id!==id){loadAdminUser(id);return back+'<div class="empty">Loading…</div>';}
-  if(vu.loading&&!vu.u)return back+'<div class="empty">Loading…</div>';
-  if(vu.err||!vu.u)return back+'<div class="empty">Couldn\'t load this profile — '+esc(vu.err||'not found')+'</div>';
-  const u=vu.u;
+  if(!id)return '<div class="empty">No one selected.</div>';
+  setTimeout(()=>paUserPage(id),0);
+  return '<button class="back" data-back="1">'+ic('left')+'Back</button>'+
+    '<div id="auBody"><div class="empty">Loading…</div></div>';
+}
+async function paUserPage(id){
+  const host=document.getElementById('auBody');
+  if(!host)return;
+  const {data,error}=await sb.rpc('admin_get_user',{target:id});
+  const u=Array.isArray(data)?data[0]:data;
   const p=ADMIN.profs.find(x=>x.id===id)||{};
-  const globalRole=p.role||u.role||'volunteer';
-  const nm=adminName(Object.assign({},u,p));
+  if(error&&!p.id){host.innerHTML='<div class="empty">Couldn\'t load this profile — '+esc((error&&error.message)||'not found')+'</div>';return;}
+  const nm=adminName(Object.assign({},u||{},p));
+  const email=(u&&u.email)||p.full_name||'';
   const fdt=ts=>{if(!ts)return '—';const d=new Date(ts);return isNaN(d)?'—':d.toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'});};
-  const initials=nm.split(' ').map(w=>w[0]||'').slice(0,2).join('').toUpperCase();
-  const avatarInnerAdmin=u.avatar_url
-    ? '<img src="'+esc(u.avatar_url)+'" alt="" style="width:64px;height:64px;border-radius:50%;object-fit:cover;display:block">'
-    : '<div style="width:64px;height:64px;border-radius:50%;background:#4f7fd1;color:#fff;font-size:20px;font-weight:700;display:flex;align-items:center;justify-content:center">'+esc(initials)+'</div>';
-  const avatarWrap='<input type="file" id="paAvatarInput" accept="image/*" style="display:none" data-uid="'+esc(id)+'">'+
-    '<div style="position:relative;flex:none;cursor:pointer" data-av-wrap data-pa-avatar="1" title="Change photo">'+
-      avatarInnerAdmin+
-      '<div style="position:absolute;inset:0;border-radius:50%;background:rgba(0,0,0,.38);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .15s" class="av-overlay">'+
-        '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>'+
-      '</div>'+
-    '</div>';
-  return back+
-    '<div class="pa-card" style="margin-bottom:20px;overflow:visible">'+
-      '<div style="display:flex;align-items:center;gap:16px;padding:18px 20px">'+
-        avatarWrap+
-        '<div>'+
-          '<div style="font-size:20px;font-weight:700;line-height:1.2;color:inherit">'+esc(nm)+'</div>'+
-          '<div style="font-size:13px;color:var(--text2);margin-top:3px">'+esc(u.email||'')+'</div>'+
+  const secs=sectionsFor(p), cams=campusesFor(p);
+  const isAdminUser=p.role==='admin';
+  /* Per-app campus access (Paola's tables) sits behind the App access tick:
+     say yes to an app, then choose which campuses inside it. Admins see every
+     campus everywhere, so they get no picker. */
+  const {data:uacRows}=await sb.from('user_app_campuses').select('app_key,campus_id').eq('user_id',id);
+  const {data:spRows}=await sb.from('section_permissions').select('app_key,perm_key,granted').eq('user_id',id);
+  let permOv=spRows||[];
+  const appCampuses={};(uacRows||[]).forEach(r=>{(appCampuses[r.app_key]=appCampuses[r.app_key]||[]).push(r.campus_id);});
+  /* Their campuses, used as the fallback for an app with none chosen and as
+     the basis for the campus_ids Save writes. */
+  let campusIds=(cams&&cams.length)?cams.slice():(p.campus_id?[p.campus_id]:[]);
+  /* Their main campus is always part of their access even though the chips
+     only show the extras - otherwise changing Main campus would leave the
+     old one saved and the new one missing. */
+  if(p.campus_id&&!campusIds.includes(p.campus_id))campusIds.unshift(p.campus_id);
+  const roleOpts=ROLE_LIST.map(r=>'<option value="'+r+'"'+(r===p.role?' selected':'')+'>'+cap(r)+'</option>').join('');
+  const camOpts='<option value="">Select a campus</option>'+(ADMIN.campuses||[]).map(c=>'<option value="'+esc(c.id)+'"'+(c.id===p.campus_id?' selected':'')+'>'+esc(c.name)+'</option>').join('');
+  const lastActive=u&&u.last_sign_in_at;
+  host.innerHTML=
+    '<div class="pa-card au-card">'+
+      '<div class="au-head">'+
+        '<span class="ring au-ring" id="puRing">'+avatarHtml(p.avatar_url,nm)+'</span>'+
+        '<div style="min-width:0">'+
+          '<div class="au-name">'+esc(nm)+(p.archived_at?' <span class="au-arch">Archived</span>':'')+'</div>'+
+          '<div class="au-mail">'+esc(email)+'</div>'+
+          '<button class="au-photo" id="puPhotoBtn">'+(p.avatar_url?'Change photo':'Upload photo')+'</button>'+
+          (p.avatar_url?'<button class="au-photo" id="puPhotoDel">Remove photo</button>':'')+
+          '<input type="file" id="puPhotoIn" accept="image/jpeg,image/png,image/webp,image/gif" style="display:none">'+
         '</div>'+
       '</div>'+
-      '<div style="border-top:1px solid var(--separator)">'+
-        '<div class="kv" style="padding:11px 20px"><span>Role</span><span><select data-global-role data-id="'+esc(id)+'">'+ROLE_LIST.map(r=>'<option value="'+r+'"'+(r===globalRole?' selected':'')+'>'+cap(r)+'</option>').join('')+'</select></span></div>'+
-        '<div id="paRoleNote" style="font-size:12.5px;color:var(--text2);padding:0 20px;margin-top:-6px;margin-bottom:6px"></div>'+
-        '<div class="kv" style="padding:11px 20px"><span>Main campus</span><span><select data-main-campus data-id="'+esc(id)+'">'+'<option value="">No campus</option>'+(ADMIN.campuses||[]).slice().sort((a,b)=>a.name.localeCompare(b.name)).map(c=>'<option value="'+esc(c.id)+'"'+((p.campus_id||u.campus_id)===c.id?' selected':'')+'>'+esc(c.name)+'</option>').join('')+'</select></span></div>'+
-        '<div id="paCampusNote2" style="font-size:12.5px;color:var(--text2);padding:0 20px;margin-top:-6px;margin-bottom:6px"></div>'+
-        '<div class="kv" style="padding:11px 20px"><span>Joined</span><span>'+esc(fdt(u.created_at))+'</span></div>'+
-        '<div class="kv" style="padding:11px 20px;border-bottom:0"><span>Last active</span><span>'+esc(u.last_sign_in_at?fdt(u.last_sign_in_at):'Never signed in')+'</span></div>'+
+      '<div class="au-fields">'+
+        '<div class="kv"><span>Name</span><span><input id="puName" class="pa-in" style="width:180px;padding:6px 9px;font-size:13px;text-align:right" value="'+esc(nm)+'"></span></div>'+
+        '<div class="kv"><span>Role</span><span><select class="pa-role" data-id="'+esc(id)+'">'+roleOpts+'</select></span></div>'+
+        '<div class="kv"><span>Main campus</span><span>'+
+          (isAdminUser?'<span style="color:var(--text2)">All campuses</span>'
+           :'<select class="pa-campus" data-id="'+esc(id)+'">'+camOpts+'</select>')+'</span></div>'+
+        '<div class="kv"><span>Joined</span><span>'+esc(fdt(u&&u.created_at))+'</span></div>'+
+        '<div class="kv" style="border-bottom:0"><span>Last active</span><span>'+esc(lastActive?fdt(lastActive)+' ('+relDays(lastActive)+')':'Never signed in')+'</span></div>'+
       '</div>'+
-      '<div style="padding:14px 20px;border-top:1px solid var(--separator)">'+
-        '<button class="btn-primary" id="paReset">Email a password reset link</button>'+
-        '<div id="paResetNote" style="font-size:12.5px;color:var(--text2);margin-top:8px"></div>'+
-      '</div>'+
+      '<div class="au-foot"><button class="btn-primary" id="puSaveName" style="padding:7px 13px;font-size:12.5px">Save name</button></div>'+
     '</div>'+
-    '<h2 style="margin-top:28px">Permissions</h2>'+
-    paPermissionsSection(globalRole,vu.roleOverrides||[],vu.perms||[],vu.appCampuses||{},p.campus_id||null)+
-    '<div id="paPermNote" style="font-size:12.5px;color:var(--text2);margin-top:10px"></div>';
-}
-function campusPicker(appKey,selectedIds,allCampuses,isAdmin){
-  const sel=allCampuses.filter(c=>selectedIds.includes(c.id));
-  const avail=allCampuses.filter(c=>!selectedIds.includes(c.id));
-  const chips=sel.length
-    ? sel.map(c=>
-        '<span style="display:inline-flex;align-items:center;gap:5px;background:var(--fill);border:1px solid var(--border);border-radius:20px;padding:3px 10px 3px 12px;font-size:13px">'+
-          esc(c.name)+
-          (isAdmin?'':
-            '<button data-rm-campus data-app="'+esc(appKey)+'" data-cid="'+esc(c.id)+'" style="line-height:1;font-size:15px;color:var(--text2);padding:0 0 0 2px" title="Remove">×</button>')+
-        '</span>'
-      ).join('')
-    : '<span style="font-size:13px;color:var(--text2)">None</span>';
-  const addSel=(!isAdmin&&avail.length)
-    ? '<select data-add-campus data-app="'+esc(appKey)+'" style="font-size:13px;color:var(--text2);border:1px dashed var(--border);border-radius:20px;padding:3px 10px;background:none;cursor:pointer">'+
-        '<option value="">+ Add campus</option>'+
-        avail.map(c=>'<option value="'+esc(c.id)+'">'+esc(c.name)+'</option>').join('')+
-      '</select>'
-    : '';
-  return '<div data-campus-block data-app="'+esc(appKey)+'" style="display:flex;flex-wrap:wrap;gap:7px;align-items:center">'+chips+addSel+'</div>';
-}
-function paPermissionsSection(globalRole,roleOverrides,permOverrides,appCampuses,mainCampusId){
-  const apps=(ADMIN.apps||[]).slice().sort((a,b)=>a.name.localeCompare(b.name));
-  const campuses=(ADMIN.campuses||[]).slice().sort((a,b)=>a.name.localeCompare(b.name));
-  const isAdmin=globalRole==='admin';
-  const lbl='font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text2);margin-bottom:8px';
-  return apps.map(a=>{
-    const ro=roleOverrides.find(x=>x.app_key===a.key);
-    const on=isAdmin||appHasAccess(a.key,globalRole,ro?ro.role_override:null,permOverrides);
-    const perms=effectiveAppPerms(a.key,globalRole,ro?ro.role_override:null,permOverrides);
-    // Use saved per-app campuses if present; otherwise fall back to main campus
-    const acIds=appCampuses.hasOwnProperty(a.key)?appCampuses[a.key]:(mainCampusId?[mainCampusId]:[]);
-    return '<div class="pa-card" data-app-block="'+esc(a.key)+'" style="margin-bottom:12px;padding:14px 16px">'+
-      '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px">'+
-        '<strong style="font-size:14.5px">'+esc(a.name)+'</strong>'+
-        '<label style="display:flex;align-items:center;gap:7px;font-size:13px;color:var(--text2)">Access'+
-          '<select data-app-access data-app="'+esc(a.key)+'"'+(isAdmin?' disabled':'')+' style="font-size:13px">'+
-            '<option value="yes"'+(on?' selected':'')+'>Yes</option>'+
-            '<option value="no"'+(!on?' selected':'')+'>No</option>'+
-          '</select>'+
-        '</label>'+
-      '</div>'+
-      (on?
-        '<div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">'+
-          (campuses.length?
-            '<div style="margin-bottom:14px"><div style="'+lbl+'">Campuses</div>'+
-            campusPicker(a.key,acIds,campuses,isAdmin)+
-            '</div>'
-          :'')+
-          (perms.length?
-            '<div><div style="'+lbl+'">Permissions</div>'+
-            '<div style="display:flex;flex-wrap:wrap;gap:8px 20px">'+
-              perms.map(p=>'<label style="display:flex;align-items:center;gap:7px;font-size:13.5px"><input type="checkbox" data-perm data-app="'+esc(a.key)+'" data-perm-key="'+esc(p.perm_key)+'" '+(p.granted?'checked':'')+'>'+esc(p.label)+'</label>').join('')+
-            '</div></div>'
-          :'')+
-        '</div>'
-      :
-        '<div style="margin-top:8px;font-size:13px;color:var(--text2)">No access.</div>'
-      )+
-    '</div>';
-  }).join('');
-}
-async function paSetAppAccess(userId,appKey,on){
-  const note=document.getElementById('paPermNote');
-  const perms=(ADMIN.appPerms||[]).filter(p=>p.app_key===appKey);
-  if(!on){
-    // Turning an app off is an explicit denial of everything in it, regardless
-    // of what the role would otherwise grant — this is the "master switch."
-    const rows=perms.map(p=>({user_id:userId,app_key:appKey,perm_key:p.perm_key,granted:false}));
-    const {error}=await sb.from('section_permissions').upsert(rows,{onConflict:'user_id,app_key,perm_key'});
-    if(error){if(note)note.textContent="Couldn't save — "+error.message;return;}
-    let cur=(ADMIN.viewUser.perms||[]).filter(x=>x.app_key!==appKey);
-    ADMIN.viewUser.perms=cur.concat(rows.map(r=>({app_key:r.app_key,perm_key:r.perm_key,granted:false})));
-  }else{
-    const p=ADMIN.profs.find(x=>x.id===userId)||{};
-    const globalRole=p.role||'volunteer';
-    const ro=(ADMIN.viewUser.roleOverrides||[]).find(x=>x.app_key===appKey);
-    const effRole=(ro&&ro.role_override)||globalRole;
-    if(roleDefaultHasAny(appKey,effRole)){
-      // The role already grants something here — just clear any denial.
-      await paResetApp(userId,appKey,true);
-    }else{
-      // The role grants nothing for this app at all — turning it on means
-      // a real exception, so grant everything explicitly.
-      const rows=perms.map(p=>({user_id:userId,app_key:appKey,perm_key:p.perm_key,granted:true}));
-      const {error}=await sb.from('section_permissions').upsert(rows,{onConflict:'user_id,app_key,perm_key'});
-      if(error){if(note)note.textContent="Couldn't save — "+error.message;return;}
-      let cur=(ADMIN.viewUser.perms||[]).filter(x=>x.app_key!==appKey);
-      ADMIN.viewUser.perms=cur.concat(rows.map(r=>({app_key:r.app_key,perm_key:r.perm_key,granted:true})));
-    }
-  }
-  render();
-  const n2=document.getElementById('paPermNote');if(n2)n2.textContent='Saved.';
-}
-function paCampusPicker(selectedIds,isAdmin){
-  const campuses=(ADMIN.campuses||[]).slice().sort((a,b)=>a.name.localeCompare(b.name));
-  return '<div class="pa-card" style="display:flex;flex-wrap:wrap;gap:10px 22px;padding:16px">'+
-    campuses.map(c=>'<label style="display:flex;align-items:center;gap:7px;font-size:13.5px'+(isAdmin?';color:var(--text2)':'')+'"><input type="checkbox" data-campus-cb value="'+esc(c.id)+'" '+(isAdmin||selectedIds.includes(c.id)?'checked':'')+' '+(isAdmin?'disabled':'')+'>'+esc(c.name)+'</label>').join('')+
-    '</div>'+
-    '<div id="paCampusNote" style="font-size:12.5px;color:var(--text2);margin-top:8px"></div>';
-}
-function paPermsBlocks(globalRole,roleOverrides,permOverrides){
-  const apps=(ADMIN.apps||[]).slice().sort((a,b)=>a.name.localeCompare(b.name));
-  return apps.map(a=>{
-    const ro=roleOverrides.find(x=>x.app_key===a.key);
-    const roleForApp=(ro&&ro.role_override)||globalRole;
-    const perms=effectiveAppPerms(a.key,globalRole,ro?ro.role_override:null,permOverrides);
-    if(!perms.length)return '';
-    if(globalRole!=='admin'&&!perms.some(p=>p.granted))return '';
-    const anyOverride=!!ro||perms.some(p=>p.overridden);
-    return '<div class="pa-card" data-app-block="'+esc(a.key)+'" style="margin-bottom:12px;padding:14px 16px">'+
-      '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px">'+
-        '<strong>'+esc(a.name)+'</strong>'+
-        '<div style="display:flex;align-items:center;gap:10px">'+
-          '<select data-app-role-override data-app="'+esc(a.key)+'"><option value=""'+(!ro?' selected':'')+'>Acts as '+cap(globalRole)+' (default)</option>'+
-          ROLE_LIST.map(r=>'<option value="'+r+'"'+(r===roleForApp&&ro?' selected':'')+'>Acts as '+cap(r)+'</option>').join('')+'</select>'+
-          (anyOverride?'<button class="pa-eye" data-app-reset data-app="'+esc(a.key)+'">'+ic('info')+' Reset app</button>':'')+
+    '<p class="pu-note">The role sets the defaults below. Anything you tick here is an override for this person only.</p>'+
+
+    '<div class="pu-sec">App access</div>'+
+    /* One card per app: the app and its Access switch on top, then its own
+       Campuses and Permissions inside it. Run together as a flat list, it was
+       impossible to see where one app ended and the next began. */
+    '<div class="pu-apps">'+PERM_SECTIONS.map(s=>{
+      const on=secs.includes(s.id);
+      const camp=puCampusRow(s.id,appCampuses[s.id]||[],ADMIN.campuses||[],isAdminUser,true,campusIds);
+      const perm=puPermRow(s.id,(p.role||'volunteer'),permOv,true);
+      return '<div class="pa-card pu-app" data-approw="'+esc(s.id)+'">'+
+        '<div class="pu-apphead"><span class="pu-appname">'+esc(s.label)+(s.restricted?'<span class="pu-lock">'+ic('lock')+'</span>':'')+'</span>'+
+          '<label class="pu-access">Access'+
+            '<select class="pu-yesno" data-app="'+esc(s.id)+'" aria-label="'+esc(s.label)+' access">'+
+              '<option value="yes"'+(on?' selected':'')+'>Yes</option>'+
+              '<option value="no"'+(on?'':' selected')+'>No</option>'+
+            '</select>'+
+          '</label>'+
         '</div>'+
-      '</div>'+
-      '<div style="display:flex;flex-wrap:wrap;gap:8px 20px">'+
-      perms.map(p=>'<label style="display:flex;align-items:center;gap:7px;font-size:13.5px'+(p.overridden?';color:var(--amber-d);font-weight:500':'')+'"><input type="checkbox" data-perm data-app="'+esc(a.key)+'" data-perm-key="'+esc(p.perm_key)+'" '+(p.granted?'checked':'')+'>'+esc(p.label)+(p.overridden?' *':'')+'</label>').join('')+
-      '</div>'+
-    '</div>';
-  }).join('');
-}
-async function paSaveCampuses(userId){
-  const boxes=[...document.querySelectorAll('[data-campus-cb]')];
-  const ids=boxes.filter(b=>b.checked).map(b=>b.value);
-  const note=document.getElementById('paCampusNote');
-  const {error:delErr}=await sb.from('user_campuses').delete().eq('user_id',userId);
-  if(delErr){if(note)note.textContent="Couldn't save — "+delErr.message;return;}
-  if(ids.length){
-    const {error:insErr}=await sb.from('user_campuses').insert(ids.map(campus_id=>({user_id:userId,campus_id})));
-    if(insErr){if(note)note.textContent="Couldn't save — "+insErr.message;return;}
-  }
-  await sb.from('profiles').update({campus_id:ids[0]||null}).eq('id',userId);
-  ADMIN.viewUser.campusIds=ids;
-  const p=ADMIN.profs.find(x=>x.id===userId);if(p)p.campus_id=ids[0]||null;
-  if(note)note.textContent='Saved.';
-}
-async function paSaveAppCampuses(userId,appKey,ids){
-  const note=document.getElementById('paPermNote');
-  const {error:delErr}=await sb.from('user_app_campuses').delete().eq('user_id',userId).eq('app_key',appKey);
-  if(delErr){if(note)note.textContent="Couldn't save — "+delErr.message;return false;}
-  if(ids.length){
-    const {error:insErr}=await sb.from('user_app_campuses').insert(ids.map(campus_id=>({user_id:userId,app_key:appKey,campus_id})));
-    if(insErr){if(note)note.textContent="Couldn't save — "+insErr.message;return false;}
-  }
-  if(!ADMIN.viewUser.appCampuses)ADMIN.viewUser.appCampuses={};
-  ADMIN.viewUser.appCampuses[appKey]=ids;
-  // Keep user_campuses in sync (union of all app campus sets, for RLS)
-  const allIds=[...new Set(Object.values(ADMIN.viewUser.appCampuses).flat())];
-  await sb.from('user_campuses').delete().eq('user_id',userId);
-  if(allIds.length)await sb.from('user_campuses').insert(allIds.map(campus_id=>({user_id:userId,campus_id})));
-  ADMIN.viewUser.campusIds=allIds;
-  if(note)note.textContent='Saved.';
-  return true;
-}
-function paRefreshCampusBlock(appKey){
-  const block=document.querySelector('[data-campus-block][data-app="'+appKey+'"]');
-  if(!block)return;
-  const vu=ADMIN.viewUser;
-  const campuses=(ADMIN.campuses||[]).slice().sort((a,b)=>a.name.localeCompare(b.name));
-  const ids=(vu.appCampuses||{})[appKey]||[];
-  const isAdmin=(vu.u?.role||'volunteer')==='admin';
-  block.outerHTML=campusPicker(appKey,ids,campuses,isAdmin);
-}
-async function paSaveRoleOverride(userId,appKey,role){
-  const note=document.getElementById('paPermNote');
-  if(!role){
-    const {error}=await sb.from('section_role_overrides').delete().eq('user_id',userId).eq('app_key',appKey);
-    if(error){if(note)note.textContent="Couldn't save — "+error.message;return;}
-    ADMIN.viewUser.roleOverrides=(ADMIN.viewUser.roleOverrides||[]).filter(r=>r.app_key!==appKey);
-  }else{
-    const {error}=await sb.from('section_role_overrides').upsert({user_id:userId,app_key:appKey,role_override:role},{onConflict:'user_id,app_key'});
-    if(error){if(note)note.textContent="Couldn't save — "+error.message;return;}
-    const ros=(ADMIN.viewUser.roleOverrides||[]).filter(r=>r.app_key!==appKey);
-    ros.push({app_key:appKey,role_override:role});
-    ADMIN.viewUser.roleOverrides=ros;
-  }
-  render();
-  const n2=document.getElementById('paPermNote');if(n2)n2.textContent='Saved.';
-}
-async function paTogglePerm(userId,appKey,permKey,granted){
-  const note=document.getElementById('paPermNote');
-  const {error}=await sb.from('section_permissions').upsert({user_id:userId,app_key:appKey,perm_key:permKey,granted},{onConflict:'user_id,app_key,perm_key'});
-  if(error){if(note)note.textContent="Couldn't save — "+error.message;return;}
-  const perms=(ADMIN.viewUser.perms||[]).filter(p=>!(p.app_key===appKey&&p.perm_key===permKey));
-  perms.push({app_key:appKey,perm_key:permKey,granted});
-  ADMIN.viewUser.perms=perms;
-  render();
-  const n2=document.getElementById('paPermNote');if(n2)n2.textContent='Saved.';
-}
-async function paResetApp(userId,appKey){
-  const note=document.getElementById('paPermNote');
-  const [{error:e1},{error:e2}]=await Promise.all([
-    sb.from('section_role_overrides').delete().eq('user_id',userId).eq('app_key',appKey),
-    sb.from('section_permissions').delete().eq('user_id',userId).eq('app_key',appKey)
-  ]);
-  if(e1||e2){if(note)note.textContent="Couldn't reset — "+((e1&&e1.message)||(e2&&e2.message));return;}
-  ADMIN.viewUser.roleOverrides=(ADMIN.viewUser.roleOverrides||[]).filter(r=>r.app_key!==appKey);
-  ADMIN.viewUser.perms=(ADMIN.viewUser.perms||[]).filter(p=>p.app_key!==appKey);
-  render();
-  const n2=document.getElementById('paPermNote');if(n2)n2.textContent='Reset to default.';
-}
-function paInviteDrawer(){
-  openDrawer('<h2 style="margin-top:0">Invite a new user</h2><div class="sub">They\'ll get an email to set their own password.</div>'+
-    '<div style="display:flex;flex-direction:column;gap:12px;margin-top:16px">'+
-    '<div><label class="pa-lbl">Full name</label><input id="nuName" class="pa-in" type="text" placeholder="Jane Doe"></div>'+
-    '<div><label class="pa-lbl">Email</label><input id="nuEmail" class="pa-in" type="email" placeholder="jane@mosaic.org"></div>'+
-    '<div><label class="pa-lbl">Role</label><select id="nuRole" class="pa-in"><option value="leader" selected>Leader</option><option value="staff">Staff</option><option value="volunteer">Volunteer</option><option value="admin">Admin</option></select></div>'+
-    '<div id="nuCampusWrap"><label class="pa-lbl">Campus</label><select id="nuCampus" class="pa-in"><option value="">Select a campus</option>'+
-      (ADMIN.campuses||[]).map(c=>'<option value="'+esc(c.id)+'">'+esc(c.name)+'</option>').join('')+'</select></div></div>'+
-    '<button class="btn-primary" id="nuSend" style="margin-top:18px">Send invite</button>'+
-    '<div id="nuNote" style="font-size:12.5px;color:var(--text2);margin-top:10px"></div>');
-  const roleSel=document.getElementById('nuRole'),wrap=document.getElementById('nuCampusWrap');
-  const sync=()=>{wrap.style.display=roleSel.value==='admin'?'none':'';};
-  roleSel.addEventListener('change',sync);sync();
-  document.getElementById('nuSend').addEventListener('click',async()=>{
-    const name=document.getElementById('nuName').value.trim(),email=document.getElementById('nuEmail').value.trim();
-    const role=roleSel.value,campus_id=role==='admin'?null:(document.getElementById('nuCampus').value||null);
-    const note=document.getElementById('nuNote');
-    if(!name){note.textContent='Please enter a name.';return;}
-    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){note.textContent='Please enter a valid email.';return;}
-    const btn=document.getElementById('nuSend');btn.disabled=true;btn.textContent='Sending…';
+        '<div class="pu-appbody" data-appbody="'+esc(s.id)+'"'+(on?'':' hidden')+'>'+
+          '<div class="pu-sublbl">Campuses</div>'+camp+
+          (perm?'<div class="pu-sublbl">Permissions</div>'+perm:'')+
+        '</div>'+
+        (on?'':'<div class="pu-appoff">No access.</div>')+
+      '</div>';
+    }).join('')+
+    '</div>'+
+    '<p class="pu-note">Say yes to an app, then choose which campuses this person sees inside it. Leaving it on every campus is fine for someone who works across all of them.<br>'+
+      '<strong>Turning an app off takes effect straight away.</strong> The campus choice is saved here but the apps don\'t read it yet, so it doesn\'t limit what anyone can see — treat it as a note of what you intend, not a restriction that\'s in place.</p>'+
+
+
+
+    '<div style="display:flex;gap:10px;align-items:center;margin-top:20px">'+
+      '<button class="btn-primary" id="puSave">Save permissions</button>'+
+      '<button class="gate-ghost" id="puReset" style="margin:0">Reset to role defaults</button></div>'+
+    '<div id="puNote" style="font-size:12.5px;color:var(--text2);margin-top:10px"></div>'+
+    '<div class="pu-sec" style="margin-top:26px">Password</div>'+
+    '<button class="btn-primary" id="paReset" style="margin-top:4px">Email a password reset link</button>'+
+    '<div id="paResetNote" style="font-size:12.5px;color:var(--text2);margin-top:10px"></div>'+
+    '<div class="pu-sec" style="margin-top:26px">'+(p.archived_at?'Restore access':'Archive')+'</div>'+
+    (p.archived_at
+      ?'<p class="pu-note" style="margin-top:0">Archived '+esc(fdt(p.archived_at))+' — their sign-in is blocked but the account and history are kept. Restoring lets them sign in again with the same email and password.</p>'+
+       '<button class="btn-primary" id="puArchive">Restore '+esc(nm)+'</button>'
+      :'<p class="pu-note" style="margin-top:0">For someone leaving staff: blocks their sign-in everywhere but keeps their account, photo and history. You can restore them later — unlike Remove, nothing is lost.</p>'+
+       '<button class="gate-ghost" id="puArchive" style="margin:0">Archive '+esc(nm)+'</button>')+
+    '<div id="puArchiveNote" style="font-size:12.5px;color:var(--text2);margin-top:10px"></div>'+
+    '<div class="pu-sec" style="margin-top:26px;color:#8f2c32">Remove from Mosaic</div>'+
+    '<p class="pu-note" style="margin-top:0">Deletes this account: their email and password stop working and every session they have open is signed out, everywhere. This can\'t be undone — to bring them back you\'d invite them again.</p>'+
+    '<button class="pu-danger" id="puRemove">Remove '+esc(nm)+'</button>'+
+    '<div id="puRemoveNote" style="font-size:12.5px;color:var(--text2);margin-top:10px"></div>';
+
+  /* admin edits this person's photo + name */
+  const pfi=document.getElementById('puPhotoIn');
+  document.getElementById('puPhotoBtn').addEventListener('click',()=>pfi.click());
+  pfi.addEventListener('change',async()=>{
+    const f=pfi.files&&pfi.files[0];if(!f)return;
+    const n=document.getElementById('puNote');
+    if(f.size>2*1024*1024){n.textContent='That photo is over 2 MB — please pick a smaller one.';return;}
+    n.textContent='Uploading…';
+    const ext=(f.name.split('.').pop()||'jpg').toLowerCase();
+    const path=id+'/avatar.'+ext;
+    const up=await sb.storage.from('avatars').upload(path,f,{upsert:true,contentType:f.type});
+    if(up.error){n.textContent="Couldn't upload — "+(up.error.message||'try again.');return;}
+    const {data:pub}=sb.storage.from('avatars').getPublicUrl(path);
+    const url=pub.publicUrl+'?v='+f.size+f.lastModified;
+    const {error:e5}=await sb.from('profiles').update({avatar_url:url}).eq('id',id);
+    if(e5){n.textContent="Uploaded, but couldn't save it — "+(e5.message||'try again.');return;}
+    p.avatar_url=url;document.getElementById('puRing').innerHTML=avatarHtml(url,nm);
+    n.textContent='Photo updated.';if(S.section==='admin')render();
+  });
+  const pdel=document.getElementById('puPhotoDel');
+  if(pdel)pdel.addEventListener('click',async()=>{
+    const n=document.getElementById('puNote');
+    const {error:e6}=await sb.from('profiles').update({avatar_url:null}).eq('id',id);
+    if(e6){n.textContent="Couldn't remove — "+(e6.message||'try again.');return;}
+    p.avatar_url=null;document.getElementById('puRing').innerHTML=avatarHtml(null,nm);
+    n.textContent='Photo removed.';if(S.section==='admin')render();
+  });
+  document.getElementById('puSaveName').addEventListener('click',async()=>{
+    const v=document.getElementById('puName').value.trim(),n=document.getElementById('puNote');
+    if(!v){n.textContent='Please enter a name.';return;}
+    const {error:e7}=await sb.from('profiles').update({display_name:v}).eq('id',id);
+    if(e7){n.textContent="Couldn't save — "+(e7.message||'try again.');return;}
+    p.display_name=v;n.textContent='Name updated.';if(S.section==='admin')render();
+  });
+  /* archive (reversible) — blocks sign-in via the archive-user function, keeps everything */
+  document.getElementById('puArchive').addEventListener('click',async()=>{
+    const n=document.getElementById('puArchiveNote');
+    const toArchive=!p.archived_at;
+    if(toArchive&&!confirm('Archive '+nm+'?\n\nThey won\'t be able to sign in to the portal or any Mosaic app, but their account and history are kept. You can restore them any time.'))return;
+    const btn=document.getElementById('puArchive');btn.disabled=true;btn.textContent=toArchive?'Archiving…':'Restoring…';
     let errMsg=null,ok=false;
     try{
-      const {data,error}=await sb.functions.invoke('invite-user',{body:{email,name,role,campus_id,redirect_to:location.origin+'/'}});
+      const {data,error}=await sb.functions.invoke('archive-user',{body:{id,archived:toArchive}});
       if(error){errMsg=error.message||'please try again.';try{const b=await error.context.json();if(b&&b.error)errMsg=b.error;}catch(_){}}
       else if(data&&data.error){errMsg=data.error;}
       else ok=true;
     }catch(ex){errMsg=String((ex&&ex.message)||ex);}
+    if(!ok){btn.disabled=false;btn.textContent=(toArchive?'Archive ':'Restore ')+nm;n.textContent="Couldn't "+(toArchive?'archive':'restore')+' — '+errMsg;return;}
+    p.archived_at=toArchive?new Date().toISOString():null;
+    paUserPage(id);if(S.section==='admin')render();
+  });
+  /* remove the account entirely */
+  document.getElementById('puRemove').addEventListener('click',async()=>{
+    const n=document.getElementById('puRemoveNote');
+    if(!confirm('Remove '+nm+" from Mosaic?\n\nTheir email and password stop working immediately and they're signed out of every app. This can't be undone."))return;
+    const typed=prompt('To confirm, type their name exactly:\n'+nm);
+    if(typed===null)return;
+    if(typed.trim()!==nm){n.textContent="That didn't match — nothing was removed.";return;}
+    const btn=document.getElementById('puRemove');btn.disabled=true;btn.textContent='Removing…';
+    let errMsg=null,ok=false;
+    try{
+      const {data,error}=await sb.functions.invoke('remove-user',{body:{id}});
+      if(error){errMsg=error.message||'please try again.';try{const b=await error.context.json();if(b&&b.error)errMsg=b.error;}catch(_){}}
+      else if(data&&data.error){errMsg=data.error;}
+      else ok=true;
+    }catch(ex){errMsg=String((ex&&ex.message)||ex);}
+    btn.disabled=false;btn.textContent='Remove '+nm;
+    if(!ok){n.textContent="Couldn't remove — "+errMsg;return;}
+    ADMIN.profs=null;S.section='admin';S.adminUserId=null;render();
+  });
+  /* Per-app campuses are held here and written by Save, alongside everything
+     else in this drawer — one Save button, not two ways to save. */
+  const redrawCampusRow=key=>{
+    const row=document.querySelector('#auBody [data-campusrow="'+key+'"]');
+    if(!row)return;
+    const on=document.querySelector('#auBody select.pu-yesno[data-app="'+key+'"]');
+    row.outerHTML=puCampusRow(key,appCampuses[key]||[],ADMIN.campuses||[],isAdminUser,!!(on&&on.value==='yes'),campusIds);
+  };
+  host.addEventListener('change',e=>{
+    const cb=e.target.closest('select.pu-yesno[data-app]');
+    if(cb){
+      const on=cb.value==='yes';
+      const body=document.querySelector('#auBody [data-appbody="'+cb.dataset.app+'"]');
+      if(body){if(on)body.removeAttribute('hidden');else body.setAttribute('hidden','');}
+      const card=document.querySelector('#auBody [data-approw="'+cb.dataset.app+'"]');
+      if(card){
+        let off=card.querySelector('.pu-appoff');
+        if(on&&off)off.remove();
+        if(!on&&!off){off=document.createElement('div');off.className='pu-appoff';off.textContent='No access.';card.appendChild(off);}
+      }
+      return;
+    }
+    const add=e.target.closest('[data-addcampus]');
+    if(add&&add.value){
+      const key=add.dataset.capp;
+      appCampuses[key]=(appCampuses[key]||[]).concat(add.value);
+      redrawCampusRow(key);
+      return;
+    }
+  });
+  host.addEventListener('click',e=>{
+    const rm=e.target.closest('[data-rmcampus]');
+    if(rm){
+      const key=rm.dataset.capp;
+      appCampuses[key]=(appCampuses[key]||[]).filter(x=>x!==rm.dataset.cid);
+      redrawCampusRow(key);
+      return;
+    }
+  });
+  document.getElementById('puSave').addEventListener('click',async()=>{
+    const n=document.getElementById('puNote');
+    const app={};
+    document.querySelectorAll('#auBody select.pu-yesno[data-app]').forEach(sel=>{app[sel.dataset.app]=(sel.value==='yes');});
+    /* campus_ids is every campus they touch anywhere - the union of the
+       per-app choices plus their main campus. It is derived, not edited
+       separately, so there is only one place to change a campus. */
+    const camIds=[...new Set([p.campus_id,...Object.keys(appCampuses).filter(k=>app[k]).flatMap(k=>appCampuses[k]||[])].filter(Boolean))];
+    const {error:e3}=await sb.from('profiles').update({app_access:app,campus_ids:camIds}).eq('id',id);
+    if(e3){n.textContent="Couldn't save — "+(e3.message||'try again.');return;}
+    if(!isAdminUser){
+      const rows=[];
+      Object.keys(appCampuses).forEach(k=>{if(app[k])(appCampuses[k]||[]).forEach(cid=>rows.push({user_id:id,app_key:k,campus_id:cid}));});
+      const {error:e7}=await sb.from('user_app_campuses').delete().eq('user_id',id);
+      if(e7){n.textContent="Apps saved, but the campuses didn't — "+(e7.message||'try again.');return;}
+      if(rows.length){
+        const {error:e8}=await sb.from('user_app_campuses').insert(rows);
+        if(e8){n.textContent="Apps saved, but the campuses didn't — "+(e8.message||'try again.');return;}
+      }
+    }
+    const role=p.role||'volunteer';
+    const wanted=[];
+    document.querySelectorAll('#auBody [data-perm]').forEach(cb=>{
+      const ak=cb.dataset.papp, pk=cb.dataset.pkey;
+      const def=(ADMIN.appDefaults||[]).some(d=>d.role===role&&d.app_key===ak&&d.perm_key===pk&&d.granted);
+      if(cb.checked!==def)wanted.push({user_id:id,app_key:ak,perm_key:pk,granted:cb.checked});
+    });
+    const {error:e9}=await sb.from('section_permissions').delete().eq('user_id',id);
+    if(e9){n.textContent="Apps saved, but the permissions didn't — "+(e9.message||'try again.');return;}
+    if(wanted.length){
+      const {error:e10}=await sb.from('section_permissions').insert(wanted);
+      if(e10){n.textContent="Apps saved, but the permissions didn't — "+(e10.message||'try again.');return;}
+    }
+    permOv=wanted.map(r=>({app_key:r.app_key,perm_key:r.perm_key,granted:r.granted}));
+    p.app_access=app;p.campus_ids=camIds;
+    n.textContent='Permissions saved.';
+    if(S.section==='admin')render();
+  });
+  document.getElementById('puReset').addEventListener('click',async()=>{
+    const n=document.getElementById('puNote');
+    const {error:e4}=await sb.from('profiles').update({app_access:null,campus_ids:null}).eq('id',id);
+    if(e4){n.textContent="Couldn't reset — "+(e4.message||'try again.');return;}
+    await sb.from('user_app_campuses').delete().eq('user_id',id);
+    await sb.from('section_permissions').delete().eq('user_id',id);
+    p.app_access=null;p.campus_ids=null;
+    n.textContent='Back to the role defaults.';
+    paUserPage(id);if(S.section==='admin')render();
+  });
+  document.getElementById('paReset').addEventListener('click',async()=>{
+    const n=document.getElementById('paResetNote');
+    if(!email){n.textContent='No email on this account.';return;}
+    const {error:e2}=await sb.auth.resetPasswordForEmail(email,{redirectTo:location.origin+'/'});
+    n.textContent=e2?("Couldn't send — "+(e2.message||'try again.')):('Reset link sent to '+email+'.');
+  });
+}
+/* Send the actual invite email for a person (used by the drawer and by the
+   "Send invite" button on a pending row). Deletes their pending row on success. */
+async function paSendInvite(v){
+  const {data,error}=await sb.functions.invoke('invite-user',{body:{email:v.email,name:v.name,role:v.role,campus_id:v.campus_id,redirect_to:location.origin+'/'}});
+  if(error){let m=error.message||'please try again.';try{const b=await error.context.json();if(b&&b.error)m=b.error;}catch(_){}return m;}
+  if(data&&data.error)return data.error;
+  await sb.from('pending_invites').delete().eq('email',v.email);
+  return null;
+}
+function paInviteDrawer(pendingId){
+  const pv=pendingId?(ADMIN.pending||[]).find(x=>x.id===pendingId):null;
+  openDrawer('<h2 style="margin-top:0">'+(pv?'Pending invite':'New user')+'</h2><div class="sub">'+(pv?'No email has gone out yet — edit the details, send the invite, or remove it.':'Send the invite now, or save it to send once you\'ve announced the portal.')+'</div>'+
+    '<div style="display:flex;flex-direction:column;gap:12px;margin-top:16px">'+
+    '<div><label class="pa-lbl">Full name</label><input id="nuName" class="pa-in" type="text" placeholder="Jane Doe" value="'+esc((pv&&pv.name)||'')+'"></div>'+
+    '<div><label class="pa-lbl">Email</label><input id="nuEmail" class="pa-in" type="email" placeholder="jane@mosaic.org" value="'+esc((pv&&pv.email)||'')+'"></div>'+
+    '<div><label class="pa-lbl">Role</label><select id="nuRole" class="pa-in">'+['leader','staff','volunteer','admin'].map(r=>'<option value="'+r+'"'+((pv?pv.role:'leader')===r?' selected':'')+'>'+cap(r)+'</option>').join('')+'</select></div>'+
+    '<div id="nuCampusWrap"><label class="pa-lbl">Campus</label><select id="nuCampus" class="pa-in"><option value="">Select a campus</option>'+
+      (ADMIN.campuses||[]).map(c=>'<option value="'+esc(c.id)+'"'+(pv&&pv.campus_id===c.id?' selected':'')+'>'+esc(c.name)+'</option>').join('')+'</select></div></div>'+
+    '<div style="display:flex;gap:10px;align-items:center;margin-top:18px;flex-wrap:wrap">'+
+    '<button class="btn-primary" id="nuSend">Send invite</button>'+
+    '<button class="gate-ghost" id="nuLater" style="margin:0">'+(pv?'Save changes':'Save for later — no email')+'</button></div>'+
+    '<div id="nuNote" style="font-size:12.5px;color:var(--text2);margin-top:10px"></div>');
+  const roleSel=document.getElementById('nuRole'),wrap=document.getElementById('nuCampusWrap');
+  const sync=()=>{wrap.style.display=roleSel.value==='admin'?'none':'';};
+  roleSel.addEventListener('change',sync);sync();
+  const read=()=>{
+    const name=document.getElementById('nuName').value.trim(),email=document.getElementById('nuEmail').value.trim().toLowerCase();
+    const role=roleSel.value,campus_id=role==='admin'?null:(document.getElementById('nuCampus').value||null);
+    const note=document.getElementById('nuNote');
+    if(!name){note.textContent='Please enter a name.';return null;}
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){note.textContent='Please enter a valid email.';return null;}
+    return {name,email,role,campus_id};
+  };
+  document.getElementById('nuSend').addEventListener('click',async()=>{
+    const v=read();if(!v)return;
+    const note=document.getElementById('nuNote');
+    const btn=document.getElementById('nuSend');btn.disabled=true;btn.textContent='Sending…';
+    const errMsg=await paSendInvite(v).catch(ex=>String((ex&&ex.message)||ex));
     btn.disabled=false;btn.textContent='Send invite';
-    if(!ok){note.textContent="Couldn't send invite — "+errMsg;return;}
-    note.textContent='Invite sent to '+email+'.';
+    if(errMsg){note.textContent="Couldn't send invite — "+errMsg;return;}
+    note.textContent='Invite sent to '+v.email+'.';
     ADMIN.profs=null;setTimeout(()=>{closeDrawer();if(S.section==='admin')render();},900);
+  });
+  document.getElementById('nuLater').addEventListener('click',async()=>{
+    const v=read();if(!v)return;
+    const note=document.getElementById('nuNote');
+    const {error}=pv
+      ?await sb.from('pending_invites').update(v).eq('id',pv.id)
+      :await sb.from('pending_invites').upsert(v,{onConflict:'email'});
+    if(error){note.textContent="Couldn't save — "+(error.message||'please try again.');return;}
+    note.textContent=pv?'Saved.':'Saved — no email sent. It\'s listed under “Invite pending” until you send it.';
+    ADMIN.profs=null;setTimeout(()=>{closeDrawer();if(S.section==='admin')render();},1100);
   });
 }
 
+// Named time zones for the campuses Mosaic actually has today — standard
+// labels ("Pacific Time (US & Canada)") instead of raw IANA strings, which
+// nobody reads at a glance. "Other" is the escape hatch for whatever comes
+// next (a real IANA identifier, typed by hand) rather than trying to
+// enumerate every zone on earth up front.
+const TIMEZONE_OPTIONS=[
+  {label:'Pacific Time (US & Canada)',tz:'America/Los_Angeles'},
+  {label:'Mountain Time (US & Canada)',tz:'America/Denver'},
+  {label:'Central Time (US & Canada)',tz:'America/Chicago'},
+  {label:'Eastern Time (US & Canada)',tz:'America/New_York'},
+  {label:'Central Time (Mexico City)',tz:'America/Mexico_City'},
+  {label:'Ecuador Time (Quito)',tz:'America/Guayaquil'},
+  {label:'Greenwich Mean Time (London)',tz:'Europe/London'},
+];
+const TIMEZONE_OTHER='__other__';
+// Language field mirrors the Time zone field's own pattern (a <select> of the
+// common ones + an "Other…" free-text slot) so the two controls open and
+// behave the same way instead of one being a native select and the other a
+// plain text/datalist input. Kept in sync with mosaic-metrics' copy.
+const LANGUAGE_OPTIONS=['English','Spanish','French','Portuguese','German','Korean','Japanese','Arabic'];
+const LANGUAGE_OTHER='__other_lang__';
+function campusLanguageOptions(selected){
+  const known=LANGUAGE_OPTIONS.includes(selected);
+  return LANGUAGE_OPTIONS.map(l=>'<option value="'+esc(l)+'"'+(l===selected?' selected':'')+'>'+esc(l)+'</option>').join('')
+    +'<option value="'+LANGUAGE_OTHER+'"'+(!known&&selected?' selected':'')+'>Other…</option>';
+}
+// Broader world list for the "Other…" search box — same "Zone Time (place)"
+// naming as TIMEZONE_OPTIONS, so a match never looks different from the
+// common ones. `q` holds extra search terms (city/country names) a label
+// alone wouldn't catch — typing "paris" or "france" both find CET.
+const TIMEZONE_WORLD=[
+  {label:'Alaska Time (Anchorage)',tz:'America/Anchorage',q:'alaska'},
+  {label:'Hawaii Time (Honolulu)',tz:'Pacific/Honolulu',q:'hawaii'},
+  {label:'Atlantic Time (Halifax)',tz:'America/Halifax',q:'canada nova scotia'},
+  {label:'Brasília Time (São Paulo)',tz:'America/Sao_Paulo',q:'brazil brasilia rio de janeiro'},
+  {label:'Argentina Time (Buenos Aires)',tz:'America/Argentina/Buenos_Aires',q:'argentina'},
+  {label:'Colombia Time (Bogotá)',tz:'America/Bogota',q:'colombia bogota'},
+  {label:'Peru Time (Lima)',tz:'America/Lima',q:'peru'},
+  {label:'Chile Time (Santiago)',tz:'America/Santiago',q:'chile'},
+  {label:'Western European Time (Lisbon)',tz:'Europe/Lisbon',q:'portugal'},
+  {label:'Greenwich Mean Time (London)',tz:'Europe/London',q:'uk united kingdom england ireland dublin'},
+  {label:'Central European Time (Paris)',tz:'Europe/Paris',q:'france germany berlin madrid spain rome italy amsterdam netherlands brussels belgium vienna austria zurich switzerland warsaw poland stockholm sweden oslo norway copenhagen denmark'},
+  {label:'Eastern European Time (Athens)',tz:'Europe/Athens',q:'greece finland helsinki romania bucharest ukraine kyiv'},
+  {label:'Eastern European Time (Cairo)',tz:'Africa/Cairo',q:'egypt'},
+  {label:'Moscow Time (Moscow)',tz:'Europe/Moscow',q:'russia'},
+  {label:'Turkey Time (Istanbul)',tz:'Europe/Istanbul',q:'turkey'},
+  {label:'West Africa Time (Lagos)',tz:'Africa/Lagos',q:'nigeria'},
+  {label:'Central Africa Time (Johannesburg)',tz:'Africa/Johannesburg',q:'south africa'},
+  {label:'East Africa Time (Nairobi)',tz:'Africa/Nairobi',q:'kenya ethiopia addis ababa'},
+  {label:'Israel Time (Jerusalem)',tz:'Asia/Jerusalem',q:'israel tel aviv'},
+  {label:'Gulf Time (Dubai)',tz:'Asia/Dubai',q:'uae abu dhabi'},
+  {label:'Arabia Time (Riyadh)',tz:'Asia/Riyadh',q:'saudi arabia qatar'},
+  {label:'India Time (Mumbai)',tz:'Asia/Kolkata',q:'india delhi bangalore kolkata new delhi'},
+  {label:'Pakistan Time (Karachi)',tz:'Asia/Karachi',q:'pakistan'},
+  {label:'Indochina Time (Bangkok)',tz:'Asia/Bangkok',q:'thailand vietnam hanoi'},
+  {label:'China Time (Shanghai)',tz:'Asia/Shanghai',q:'china beijing'},
+  {label:'Singapore Time (Singapore)',tz:'Asia/Singapore',q:'malaysia kuala lumpur'},
+  {label:'Japan Time (Tokyo)',tz:'Asia/Tokyo',q:'japan'},
+  {label:'Korea Time (Seoul)',tz:'Asia/Seoul',q:'korea'},
+  {label:'Western Australia Time (Perth)',tz:'Australia/Perth',q:'australia'},
+  {label:'Australian Central Time (Adelaide)',tz:'Australia/Adelaide',q:'australia'},
+  {label:'Australian Eastern Time (Sydney)',tz:'Australia/Sydney',q:'australia melbourne brisbane sidney'},
+  {label:'New Zealand Time (Auckland)',tz:'Pacific/Auckland',q:'new zealand'},
+];
+function searchTimezones(query){
+  const q=query.trim().toLowerCase();
+  if(!q)return[];
+  const all=TIMEZONE_OPTIONS.concat(TIMEZONE_WORLD);
+  return all.filter(o=>o.label.toLowerCase().includes(q)||(o.q&&o.q.includes(q))).slice(0,8);
+}
+// Best-guess time zone/language for a region name, used only to preselect
+// the dropdown when a region is picked — never blocks picking something else.
+const REGION_TZ_HINTS={'united states':'America/Los_Angeles','mexico':'America/Mexico_City','south america':'America/Guayaquil','europe':'Europe/London','online':'America/Los_Angeles'};
+const REGION_LANG_HINTS={'mexico':'Spanish','south america':'Spanish'};
+// Best-guess language for a campus name — the country's official/majority
+// language, used only to preselect the Language field when a known city is
+// typed. Kept in sync with mosaic-metrics' copy. Never blocks typing another
+// language by hand.
+const CAMPUS_LANG_HINTS={
+  'mexico city':'Spanish','mexico':'Spanish','quito':'Spanish','ecuador':'Spanish',
+  'bogotá':'Spanish','bogota':'Spanish','paris':'French','tokyo':'Japanese',
+  'berlin':'German','são paulo':'Portuguese','sao paulo':'Portuguese',
+  'seoul':'Korean','cairo':'Arabic','dubai':'Arabic',
+};
+function campusLangHint(campusName){
+  return CAMPUS_LANG_HINTS[campusName.trim().toLowerCase()]||null;
+}
+// Same idea for time zone: a known city's own zone beats the region's coarse
+// fallback (Region "Europe" defaults to London, which would silently
+// overwrite a Paris/Berlin-specific pick otherwise). Rather than hand-listing
+// cities (easy to miss one, as Sydney was), this matches the campus name
+// straight against every city already named in TIMEZONE_OPTIONS/
+// TIMEZONE_WORLD — the same master list the "Other…" search already covers —
+// so any of those ~35 world cities works automatically. Only a few true
+// exceptions need an override: a campus named after a country rather than
+// its city (Mexico, Ecuador), or a city that isn't any label's parenthetical
+// (Toronto, Vancouver ride on the generic "US & Canada" zones). Kept in sync
+// with mosaic-metrics' copy.
+const CAMPUS_TZ_OVERRIDES={
+  'mexico':'America/Mexico_City','ecuador':'America/Guayaquil',
+  'toronto':'America/New_York','vancouver':'America/Los_Angeles',
+  'quebec':'America/New_York','quebec city':'America/New_York',
+  'montreal':'America/New_York','ottawa':'America/New_York',
+};
+function normalizeCityName(s){
+  return s.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+}
+function campusTzHint(campusName){
+  const key=normalizeCityName(campusName);
+  if(!key)return null;
+  if(CAMPUS_TZ_OVERRIDES[key])return CAMPUS_TZ_OVERRIDES[key];
+  const all=TIMEZONE_OPTIONS.concat(TIMEZONE_WORLD);
+  const exact=all.find(o=>{
+    const m=o.label.match(/\(([^)]+)\)/);
+    return m&&normalizeCityName(m[1])===key;
+  });
+  if(exact)return exact.tz;
+  const partial=all.find(o=>o.q&&normalizeCityName(o.q).includes(key));
+  return partial?partial.tz:null;
+}
+
+// Known city short-codes for the campus alias slug — real city/airport-style
+// abbreviations, not a literal first-three-letters rule (that would make New
+// York City "new" instead of NYC). Matched case-insensitively against the
+// whole campus name. A name not in this list falls back to the first three
+// letters of its first word. Kept in sync with mosaic-metrics' copy. Most
+// campuses get one code; a value can be an array to add more than one alias
+// (Ecuador keeps both its city code and its ISO country code).
+const CAMPUS_SHORT_CODES={
+  'los angeles':'LAX','new york city':'NYC','new york':'NYC','chicago':'CHI',
+  'mexico city':'MEX','mexico':'MEX','quito':'UIO','ecuador':['UIO','ECU'],
+  'london':'LON','seattle':'SEA','orange county':'OCA','atlanta':'ATL',
+  'paris':'PAR','tokyo':'TYO','sydney':'SYD','berlin':'BER','toronto':'YTO',
+  'nairobi':'NBO','mumbai':'BOM','são paulo':'SAO','sao paulo':'SAO',
+  'seoul':'SEL','cairo':'CAI','dubai':'DXB','singapore':'SIN',
+  'vancouver':'YVR','bogotá':'BOG','bogota':'BOG','manila':'MNL',
+  'miami':'MIA','houston':'HOU','guayaquil':'GYE',
+};
+function campusShortCodes(campusName){
+  const known=CAMPUS_SHORT_CODES[campusName.trim().toLowerCase()];
+  if(known)return (Array.isArray(known)?known:[known]).map(c=>c.toLowerCase());
+  return [campusName.trim().split(/\s+/)[0].toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,3)];
+}
+function campusTimezoneOptions(selected){
+  const known=TIMEZONE_OPTIONS.some(o=>o.tz===selected);
+  return TIMEZONE_OPTIONS.map(o=>'<option value="'+esc(o.tz)+'"'+(o.tz===selected?' selected':'')+'>'+esc(o.label)+'</option>').join('')
+    +'<option value="'+TIMEZONE_OTHER+'"'+(!known&&selected?' selected':'')+'>Other…</option>';
+}
+function paCampusDrawer(campusId){
+  const c=campusId?(ADMIN.campuses||[]).find(x=>x.id===campusId):null;
+  const regions=ADMIN.regions||[];
+  const curRegionName=(c&&c.region_id)?(regions.find(r=>r.id===c.region_id)||{}).name||'':'';
+  const tzIsOther=!!(c&&c.timezone&&!TIMEZONE_OPTIONS.some(o=>o.tz===c.timezone));
+  const curLang=(c&&c.language)||'English';
+  const langIsOther=!LANGUAGE_OPTIONS.includes(curLang);
+  openDrawer('<h2 style="margin-top:0">'+(c?'Rename campus':'New campus')+'</h2>'+
+    (c?'':'<div class="sub">Add it here and it\'s immediately available as a primary campus, and in every per-app campus picker.</div>')+
+    '<div style="display:flex;flex-direction:column;gap:12px;margin-top:16px">'+
+    '<div><label class="pa-lbl">Name</label><input id="ncName" class="pa-in" type="text" placeholder="e.g. Seattle" value="'+esc((c&&c.name)||'')+'"></div>'+
+    '<div><label class="pa-lbl">Region</label><input id="ncRegion" class="pa-in" type="text" list="ncRegionList" placeholder="e.g. Asia — type a new one if it\'s not listed" value="'+esc(curRegionName)+'" autocomplete="mosaic-no-autofill" name="mosaic-nc-field-2" data-lpignore="true" data-1p-ignore="true">'+
+      '<datalist id="ncRegionList">'+regions.map(r=>'<option value="'+esc(r.name)+'">').join('')+'</datalist>'+
+    '</div>'+
+    '<div><label class="pa-lbl">Time zone</label><select id="ncTz" class="pa-in">'+campusTimezoneOptions((c&&c.timezone)||'America/Los_Angeles')+'</select>'+
+      '<div id="ncTzOtherWrap" style="position:relative;'+(tzIsOther?'':'display:none;')+'margin-top:6px">'+
+        '<input id="ncTzOther" class="pa-in" type="text" placeholder="Type a city or country…" value="'+(tzIsOther?esc(c.timezone):'')+'">'+
+        '<div id="ncTzOtherPop" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:#fff;border:1px solid #e6e6e5;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.12),0 2px 8px rgba(0,0,0,.08);padding:6px;z-index:70;max-height:280px;overflow:auto"></div>'+
+      '</div>'+
+    '</div>'+
+    '<div><label class="pa-lbl">Language</label><select id="ncLang" class="pa-in">'+campusLanguageOptions(curLang)+'</select>'+
+      '<div id="ncLangOtherWrap" style="'+(langIsOther?'':'display:none;')+'margin-top:6px">'+
+        '<input id="ncLangOther" class="pa-in" type="text" placeholder="Type a language…" value="'+(langIsOther?esc(curLang):'')+'">'+
+      '</div>'+
+    '</div>'+
+    '</div>'+
+    '<div style="display:flex;gap:10px;align-items:center;margin-top:18px"><button class="btn-primary" id="ncSave">Save</button></div>'+
+    '<div id="ncNote" style="font-size:12.5px;color:var(--text2);margin-top:10px"></div>');
+  // Region preselects the time zone/language to a best guess; changing either
+  // field by hand always works regardless — this is a nudge, not a restriction.
+  let tzTouched=false,langTouched=false;
+  document.getElementById('ncTz').addEventListener('change',()=>{
+    tzTouched=true;
+    const showOther=document.getElementById('ncTz').value===TIMEZONE_OTHER;
+    document.getElementById('ncTzOtherWrap').style.display=showOther?'':'none';
+    if(showOther)document.getElementById('ncTzOther').focus();
+  });
+  document.getElementById('ncLang').addEventListener('change',()=>{
+    langTouched=true;
+    const showOther=document.getElementById('ncLang').value===LANGUAGE_OTHER;
+    document.getElementById('ncLangOtherWrap').style.display=showOther?'':'none';
+    if(showOther)document.getElementById('ncLangOther').focus();
+  });
+  document.getElementById('ncLangOther').addEventListener('input',()=>{langTouched=true;});
+  // Sets the time zone field, using the "Other" search slot when the zone
+  // isn't one of the 7 common ones (e.g. Europe/Paris) so it still shows the
+  // real "Zone Time (place)" label instead of a blank/raw select value.
+  const setTz=tz=>{
+    if(TIMEZONE_OPTIONS.some(o=>o.tz===tz)){
+      document.getElementById('ncTz').value=tz;
+      document.getElementById('ncTzOtherWrap').style.display='none';
+      return;
+    }
+    const match=TIMEZONE_WORLD.find(o=>o.tz===tz);
+    document.getElementById('ncTz').value=TIMEZONE_OTHER;
+    document.getElementById('ncTzOtherWrap').style.display='';
+    document.getElementById('ncTzOther').value=match?match.label:tz;
+    document.getElementById('ncTzOther').dataset.tz=tz;
+  };
+  // Same pattern for Language: pick it from the list when it's one of the
+  // 8 common ones, otherwise drop it into the "Other" free-text slot.
+  const setLang=lang=>{
+    if(LANGUAGE_OPTIONS.includes(lang)){
+      document.getElementById('ncLang').value=lang;
+      document.getElementById('ncLangOtherWrap').style.display='none';
+      return;
+    }
+    document.getElementById('ncLang').value=LANGUAGE_OTHER;
+    document.getElementById('ncLangOtherWrap').style.display='';
+    document.getElementById('ncLangOther').value=lang;
+  };
+  // The campus name (city) is the more specific guess — Paris implies French
+  // and its own zone even inside a "Europe" region that's mostly
+  // English/German/London elsewhere — so it wins over the region's hint
+  // whenever both are available.
+  const applyLangHint=()=>{
+    if(langTouched)return;
+    const nameHint=campusLangHint(document.getElementById('ncName').value);
+    const regionKey=document.getElementById('ncRegion').value.trim().toLowerCase();
+    setLang(nameHint||REGION_LANG_HINTS[regionKey]||'English');
+  };
+  const applyTzHint=()=>{
+    if(tzTouched)return;
+    const name=document.getElementById('ncName').value.trim();
+    const nameHint=campusTzHint(name);
+    const regionKey=document.getElementById('ncRegion').value.trim().toLowerCase();
+    const hint=nameHint||REGION_TZ_HINTS[regionKey];
+    if(hint){setTz(hint);return;}
+    // A name has been typed but doesn't match any known city or region — drop
+    // into "Other" with an empty search box rather than silently leaving
+    // whatever an earlier, different name happened to match (a real, if
+    // confusing, bug: type "Dubai", then rename to "Quebec" before saving,
+    // and it stayed on Dubai's zone). Nothing typed yet keeps the plain
+    // Pacific Time default rather than popping "Other" open immediately.
+    if(name){
+      document.getElementById('ncTz').value=TIMEZONE_OTHER;
+      document.getElementById('ncTzOtherWrap').style.display='';
+      document.getElementById('ncTzOther').value='';
+      delete document.getElementById('ncTzOther').dataset.tz;
+    }
+  };
+  document.getElementById('ncName').addEventListener('input',()=>{applyTzHint();applyLangHint();});
+  document.getElementById('ncRegion').addEventListener('input',()=>{applyTzHint();applyLangHint();});
+
+  // "Other…" search: type a city/country, pick a match — same "Zone Time
+  // (place)" labels as the main list, never a raw IANA string to read.
+  document.getElementById('ncTzOther').addEventListener('input',()=>{
+    delete document.getElementById('ncTzOther').dataset.tz;
+    const matches=searchTimezones(document.getElementById('ncTzOther').value);
+    const pop=document.getElementById('ncTzOtherPop');
+    if(!matches.length){pop.style.display='none';return;}
+    pop.innerHTML=matches.map((m,i)=>'<div class="tz-sugg" data-tz-idx="'+i+'" style="padding:7px 8px;border-radius:8px;font-size:13.5px;cursor:pointer">'+esc(m.label)+'</div>').join('');
+    pop.style.display='';
+    pop.querySelectorAll('[data-tz-idx]').forEach(row=>{
+      row.addEventListener('mouseenter',()=>{row.style.background='#f5f5f4';});
+      row.addEventListener('mouseleave',()=>{row.style.background='';});
+      row.addEventListener('click',()=>{
+        const m=matches[Number(row.dataset.tzIdx)];
+        document.getElementById('ncTzOther').value=m.label;
+        document.getElementById('ncTzOther').dataset.tz=m.tz;
+        pop.style.display='none';
+      });
+    });
+  });
+  document.addEventListener('click',e=>{
+    if(!e.target.closest('#ncTzOtherWrap'))document.getElementById('ncTzOtherPop').style.display='none';
+  });
+  document.getElementById('ncSave').addEventListener('click',async()=>{
+    const name=document.getElementById('ncName').value.trim();
+    const note=document.getElementById('ncNote');
+    if(!name){note.textContent='Please enter a name.';return;}
+    const btn=document.getElementById('ncSave');btn.disabled=true;btn.textContent='Saving…';
+    // Region can be typed freehand — resolve to an existing row by name, or
+    // create one on the fly. New regions slot in just before "Online" (bumping
+    // it back one place) so Online stays last, per how regions are ordered;
+    // where exactly a new continent belongs relative to the others is not
+    // assumed beyond that.
+    const regionText=document.getElementById('ncRegion').value.trim();
+    let region_id=null;
+    if(regionText){
+      const existing=regions.find(r=>r.name.toLowerCase()===regionText.toLowerCase());
+      if(existing){
+        region_id=existing.id;
+      }else{
+        btn.textContent='Adding region…';
+        const online=regions.find(r=>r.name.toLowerCase()==='online');
+        const insertOrder=online?online.sort_order:(Math.max(0,...regions.map(r=>r.sort_order))+1);
+        if(online){
+          await sb.from('campus_regions').update({sort_order:online.sort_order+1}).eq('id',online.id);
+          online.sort_order+=1;
+        }
+        const {data:newRegion,error:regionErr}=await sb.from('campus_regions')
+          .insert({name:regionText,sort_order:insertOrder}).select('id,name,sort_order').single();
+        if(regionErr){btn.disabled=false;btn.textContent='Save';note.textContent="Couldn't add that region — "+(regionErr.message||'try again.');return;}
+        regions.push(newRegion);regions.sort((a,b)=>a.sort_order-b.sort_order);
+        region_id=newRegion.id;
+      }
+    }
+    let timezone=document.getElementById('ncTz').value;
+    if(timezone===TIMEZONE_OTHER){
+      const typed=document.getElementById('ncTzOther').value.trim();
+      // A picked suggestion carries the real IANA id in data-tz; typing without
+      // picking one is only valid if it's already an exact identifier (has a
+      // "/", e.g. Asia/Tokyo) — otherwise "Paris" would silently save as a
+      // literal, invalid time zone string.
+      timezone=document.getElementById('ncTzOther').dataset.tz||(typed.includes('/')?typed:'');
+      if(!timezone){btn.disabled=false;btn.textContent='Save';note.textContent='Pick a suggested time zone, or type the exact identifier (e.g. Asia/Tokyo).';return;}
+    }
+    let language=document.getElementById('ncLang').value;
+    if(language===LANGUAGE_OTHER)language=document.getElementById('ncLangOther').value.trim()||'English';
+    const fields={
+      name,
+      region_id,
+      timezone,
+      language,
+    };
+    // Slug and the CCB check only happen on create — renaming an existing
+    // campus doesn't touch either, same as Metrics: the slug is a stable
+    // identity set once, not something that should shift under a rename,
+    // and re-running the CCB check on every edit would be pointless (the
+    // campus, if it exists there, was already found the first time).
+    let ccbFlag='';
+    if(!c){
+      fields.slug=name.toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+      btn.textContent='Checking CCB…';
+      try{
+        const {data:ccb,error:ccbErr}=await sb.functions.invoke('check-ccb-campus',{body:{name}});
+        if(!ccbErr&&ccb){
+          if(ccb.matched){fields.ccb_campus_id=ccb.ccb_campus_id;}
+          else if(ccb.matched===false){ccbFlag=' No matching campus found in CCB — you may want to add it there too.';}
+        }
+      }catch(e){/* CCB check is best-effort; never blocks campus creation */}
+    }
+    btn.textContent='Saving…';
+    const {data:saved,error}=c
+      ?await sb.from('campuses').update(fields).eq('id',c.id)
+      :await sb.from('campuses').insert(fields).select('id').single();
+    btn.disabled=false;btn.textContent='Save';
+    if(error){note.textContent="Couldn't save — "+(error.message||'please try again.');return;}
+    // Best-effort short-code alias(es) — real city/airport-style abbreviations
+    // from CAMPUS_SHORT_CODES (Seattle -> sea, New York City -> nyc; Ecuador
+    // gets both uio and ecu), falling back to the first three letters of the
+    // first word for a city not yet in that list. Each is silently skipped if
+    // it collides with another campus's alias, or is identical to the real
+    // slug — never blocks campus creation.
+    if(!c&&saved){
+      for(const shortCode of campusShortCodes(name)){
+        if(!shortCode||shortCode===fields.slug)continue;
+        try{await sb.from('campus_slug_aliases').insert({campus_id:saved.id,alias_slug:shortCode});}
+        catch(e){/* best-effort; a collision or failure here never blocks campus creation */}
+      }
+    }
+    note.textContent='Saved.'+ccbFlag;
+    ADMIN.campuses=null;setTimeout(()=>{closeDrawer();loadAdmin().then(()=>{if(S.section==='admin')render();});},ccbFlag?2600:700);
+  });
+}
 function money(n){return '$'+n.toLocaleString('en-US');}
 function pageBudgets(){
   const el=Math.round((TODAY-new Date(2026,0,1))/86400000/365*100);
@@ -1307,6 +2318,20 @@ function pageSettings(){
     '<div class="note" style="margin-top:22px">Prototype · data is illustrative and resets on reload. Built '+pretty(TODAY)+'.</div>';
 }
 
+/* The planning board's own id for an event. Repeats carry the occurrence date
+   too ('pm:123:2026-08-09'); the board only knows the item, so trim it. */
+/* The comms app's id for a message ('ce:42' here, 42 there). */
+function ceId(e){
+  const raw=String(e&&e.id||'');
+  return raw.startsWith('ce:')?raw.slice(3):'';
+}
+function pmId(e){
+  const raw=String(e&&e.id||'');
+  if(!raw.startsWith('pm:'))return '';
+  const rest=raw.slice(3);
+  const cut=rest.lastIndexOf(':');
+  return (cut>0&&/^\d{4}-\d{2}-\d{2}$/.test(rest.slice(cut+1)))?rest.slice(0,cut):rest;
+}
 function pageEvent(){
   const e=EVENTS.find(x=>x.id===S.eventId);
   if(!e) return '<h1>Not found</h1>';
@@ -1397,9 +2422,9 @@ function pageEvent(){
 
   h+='</div></div>'+
     '<div class="foot-links">'+
-    '<a href="https://pm.mosaic.org" target="_blank" rel="noopener">Edit in Planning board '+ic('ext')+'</a>'+
-    '<a href="https://comms.mosaic.org" target="_blank" rel="noopener">Edit comms '+ic('ext')+'</a>'+
-    (isSunday?'<a href="https://metrics.mosaic.org" target="_blank" rel="noopener">'+(m?'View in Metrics ':'Submit attendance ')+ic('ext')+'</a>':'')+
+    '<button data-go="planning" data-item="'+esc(pmId(e))+'">Edit in Planning</button>'+
+    '<button data-go="comms" data-item="'+esc(ceId(e)||e.date||'')+'">Edit comms</button>'+
+    (isSunday?'<button data-go="numbers" data-item="'+esc(e.date||'')+'">'+(m?'View in Metrics':'Submit attendance')+'</button>':'')+
     '</div>';
   return h;
 }
@@ -1436,19 +2461,19 @@ function eventDrawer(id){
         '<div><div class="v">'+m.n+'</div><div class="k">next steps</div></div></div>'+
         '<div class="bars-chart" style="height:70px;margin-top:14px">'+ks.map(k=>'<div class="bar-v'+(k===key(d)?' hi':'')+'" style="height:'+Math.round(METRICS[k].a/mx*100)+'%"></div>').join('')+'</div>'+
         '<div style="font-size:12px;color:var(--text2);margin-top:7px">Six-week average '+avg+'</div>'+
-        '<a class="linkout" href="https://metrics.mosaic.org" target="_blank" rel="noopener">Open in Metrics '+ic('ext')+'</a>';
+        '<button class="linkout" data-go="numbers">Open in Metrics</button>';
     } else {
-      h+='<div class="empty">No attendance recorded. <a href="https://metrics.mosaic.org" target="_blank" rel="noopener" style="color:var(--gathering)">Submit attendance</a></div>';
+      h+='<div class="empty">No attendance recorded. <button data-go="numbers" style="color:var(--gathering)">Submit attendance</button></div>';
     }
   }
   if(linked.length){
     h+='<div class="eyebrow">COMMS FOR THIS DAY</div>'+linked.map(c=>
       '<div class="kv"><span>'+esc(c.title)+'</span><span>'+STATUS_LABEL[c.status]+'</span></div>').join('')+
-      '<a class="linkout" href="https://comms.mosaic.org" target="_blank" rel="noopener">Open in Comms '+ic('ext')+'</a>';
+      '<button class="linkout" data-go="comms" data-item="'+esc(ceId(e))+'">Open in Comms</button>';
   }
   if(subs.length){
     h+='<div class="eyebrow">SUBTASKS</div>'+subs.map(t=>taskRow(t)).join('')+
-      '<a class="linkout" href="https://pm.mosaic.org" target="_blank" rel="noopener">Open in Planning Board '+ic('ext')+'</a>';
+      '<button class="linkout" data-go="planning">Open in Planning</button>';
   }
   openDrawer(h);
 }
@@ -1464,9 +2489,9 @@ function newDrawer(){
   openDrawer('<h1 style="font-size:22px">Creating happens in the source app</h1>'+
    '<div class="sub" style="margin-top:8px">The portal is read-only in v1. It reads and arranges; the four apps stay the systems of record.</div>'+
    '<div class="eyebrow">CREATE IN</div>'+
-   '<div class="kv"><span>An event or milestone</span><a href="https://pm.mosaic.org" target="_blank" rel="noopener" style="color:var(--gathering)">Planning board</a></div>'+
-   '<div class="kv"><span>An email, text, or script</span><a href="https://comms.mosaic.org" target="_blank" rel="noopener" style="color:var(--gathering)">Comms dashboard</a></div>'+
-   '<div class="kv"><span>Attendance numbers</span><a href="https://metrics.mosaic.org" target="_blank" rel="noopener" style="color:var(--gathering)">Metrics</a></div>'+
+   '<div class="kv"><span>An event or milestone</span><button data-go="planning" style="color:var(--gathering)">Planning</button></div>'+
+   '<div class="kv"><span>An email, text, or script</span><button data-go="comms" style="color:var(--gathering)">Comms</button></div>'+
+   '<div class="kv"><span>Attendance numbers</span><button data-go="numbers" style="color:var(--gathering)">Metrics</button></div>'+
    '<div class="note">Editing in the portal is explicitly out of scope for the two-week launch.</div>');
 }
 
@@ -1494,22 +2519,37 @@ function render(){
   window.scrollTo(0,0);
   const ps=document.getElementById('paSearch');
   if(ps)ps.addEventListener('input',()=>{ADMIN.q=ps.value;render();const el=document.getElementById('paSearch');if(el){el.focus();el.setSelectionRange(el.value.length,el.value.length);}});
+  document.querySelectorAll('[data-fbst]').forEach(sel=>sel.addEventListener('change',async()=>{
+    const {error}=await sb.from('portal_feedback').update({status:sel.value}).eq('id',sel.dataset.fbst);
+    paNote(error?("Couldn't update — "+(error.message||'try again.')):'Marked '+sel.value+'.',!!error);
+    if(!error){const f=(ADMIN.fb||[]).find(x=>x.id===sel.dataset.fbst);if(f)f.status=sel.value;}
+  }));
   const pr=document.getElementById('paRole');
   if(pr)pr.addEventListener('change',()=>{ADMIN.role=pr.value;render();});
   const rs=document.getElementById('roleSel');
   if(rs) rs.addEventListener('change',e=>{S.role=e.target.value;
-    if(!ROLES[S.role].sections.includes(S.section))S.section='home'; render();});
+    if(!allowedSections().includes(S.section))S.section='home'; render();});
 }
 
 /* ============================ events ============================ */
+// Keep ADMIN.campusOpen an always-accurate mirror of which <details> cards are open,
+// so any re-render (renaming a campus, toggling inactive campuses, editing a location)
+// preserves exactly what's open right now — not a stale snapshot taken at whichever
+// other action last remembered to check. 'toggle' doesn't bubble in every browser, so
+// this listens in the capture phase, which still sees it regardless.
+document.addEventListener('toggle',e=>{
+  const d=e.target;
+  if(!(d instanceof HTMLElement)||!d.classList.contains('cc-card')||!d.dataset.campus)return;
+  if(d.open)ADMIN.campusOpen.add(d.dataset.campus);else ADMIN.campusOpen.delete(d.dataset.campus);
+},true);
 document.addEventListener('click',e=>{
-  const t=e.target.closest('[data-go],[data-view],[data-nav],[data-filter],[data-ev],[data-day],[data-task],[data-new],[data-pick],[data-everyone],[data-tl],[data-back],[data-logout],[data-preview],[data-profile],[data-newuser],[data-user],[data-adtab],[data-app-reset],[data-pf-save],[data-pf-reset],[data-pf-avatar],[data-pa-avatar],[data-rm-campus]');
+  const t=e.target.closest('[data-go],[data-view],[data-nav],[data-filter],[data-ev],[data-day],[data-task],[data-new],[data-pick],[data-everyone],[data-tl],[data-back],[data-logout],[data-preview],[data-profile],[data-fb],[data-newuser],[data-gp],[data-user],[data-pinv],[data-pinvsend],[data-pinvdel],[data-adtab],[data-theme],[data-newcampus],[data-editcampus],[data-addloc],[data-deactivateloc],[data-addtime],[data-rmtime],[data-toggleinactivecampus],[data-toggleusers]');
   if(!t) return;
   if(t.dataset.logout){ (sb?sb.auth.signOut():Promise.resolve()).then(()=>location.reload()); return; }
   if(t.dataset.preview){
     ME.preview=!ME.preview;
     S.role=ME.preview?'comms':(ROLE_PRESET[ME.role]||'comms');
-    if(!ROLES[S.role].sections.includes(S.section))S.section='home';
+    if(!allowedSections().includes(S.section))S.section='home';
     umClose(); render(); return;
   }
   if(t.dataset.profile){ umClose(); S.from=S.section||'home'; S.section='profile'; render(); return; }
@@ -1523,11 +2563,89 @@ document.addEventListener('click',e=>{
   }
   if(t.dataset.everyone){ S.forEveryone=!S.forEveryone; render(); return; }
   if(t.dataset.tl!==undefined){ const n=Number(t.dataset.tl); S.tlShift = n===0?0:S.tlShift+n; render(); return; }
-  if(t.dataset.go){ if(ROLES[S.role].sections.includes(t.dataset.go)){S.section=t.dataset.go; closeDrawer(); if(typeof umClose==="function")umClose(); render();} return; }
-  if(t.dataset.adtab){ ADMIN.tab=t.dataset.adtab; render(); return; }
+  if(t.dataset.go){ if(allowedSections().includes(t.dataset.go)){
+      S.deep=S.deep||{};
+      if(t.dataset.item)S.deep[t.dataset.go]=t.dataset.item; else delete S.deep[t.dataset.go];
+      S.section=t.dataset.go; closeDrawer(); if(typeof umClose==="function")umClose(); render();} return; }
+  if(t.dataset.theme){
+    THEME=t.dataset.theme; try{localStorage.setItem(themeKey(),THEME);}catch(e){}
+    applyTheme();
+    document.querySelectorAll('#pfTheme button').forEach(b=>b.classList.toggle('on',b.dataset.theme===THEME));
+    return;
+  }
+  if(t.dataset.adtab){ ADMIN.tab=t.dataset.adtab; if(t.dataset.adtab==='feedback')ADMIN.fb=null; render(); return; }
   if(t.dataset.newuser){ paInviteDrawer(); return; }
-  if(t.dataset.user){ openAdminUser(t.dataset.user); return; }
-  if(t.dataset.appReset){ paResetApp(S.adminUserId,t.dataset.app); return; }
+  if(t.dataset.toggleinactivecampus!==undefined){ ADMIN.showInactiveCampuses=t.checked; render(); return; }
+  if(t.dataset.toggleusers){
+    const id=t.dataset.toggleusers;
+    if(ADMIN.campusUsersOpen.has(id))ADMIN.campusUsersOpen.delete(id);else ADMIN.campusUsersOpen.add(id);
+    render();
+    return;
+  }
+  if(t.dataset.newcampus){ paCampusDrawer(); return; }
+  if(t.dataset.editcampus){ paCampusDrawer(t.dataset.editcampus); return; }
+  if(t.dataset.addloc){
+    const wrap=t.closest('[data-addlocfor]'), input=wrap.querySelector('input'), name=input.value.trim();
+    if(!name)return;
+    t.disabled=true;t.textContent='Adding…';
+    sb.from('campus_locations').insert({campus_id:t.dataset.addloc,location:name,active:true}).then(({error})=>{
+      if(error){t.disabled=false;t.textContent='Add location';alert("Couldn't add — "+(error.message||'try again.'));return;}
+      afterCampusEdit();
+    });
+    return;
+  }
+  if(t.dataset.deactivateloc){
+    t.disabled=true;t.textContent='Deactivating…';
+    sb.from('campus_locations').update({active:false}).eq('id',t.dataset.deactivateloc).then(({error})=>{
+      if(error){t.disabled=false;t.textContent='Deactivate';alert("Couldn't deactivate — "+(error.message||'try again.'));return;}
+      afterCampusEdit();
+    });
+    return;
+  }
+  if(t.dataset.addtime){
+    const wrap=t.closest('[data-addtimefor]'), input=wrap.querySelector('input'), label=input.value.trim();
+    if(!label)return;
+    const locId=wrap.dataset.addtimefor, campusId=wrap.dataset.campusfor;
+    const existing=(ADMIN.serviceTimes||[]).filter(x=>x.location_id===locId);
+    const sort_order=existing.length?Math.max(...existing.map(x=>x.sort_order))+1:0;
+    t.disabled=true;t.textContent='Adding…';
+    sb.from('campus_service_times').insert({campus_id:campusId,location_id:locId,gathering_type:'sunday',service_label:label,sort_order,active:true}).then(({error})=>{
+      if(error){t.disabled=false;t.textContent='Add';alert("Couldn't add — "+(error.message||'try again.'));return;}
+      afterCampusEdit();
+    });
+    return;
+  }
+  if(t.dataset.rmtime){
+    sb.from('campus_service_times').update({active:false}).eq('id',t.dataset.rmtime).then(({error})=>{
+      if(error){alert("Couldn't remove — "+(error.message||'try again.'));return;}
+      afterCampusEdit();
+    });
+    return;
+  }
+  if(t.dataset.fb){ feedbackDrawer(t.dataset.fb); return; }
+  if(t.dataset.gp!==undefined){ S.goalsPath=t.dataset.gp; S.section='goals'; render(); return; }
+  if(t.dataset.user){ S.from='admin'; S.adminUserId=t.dataset.user; S.section='admin-user'; render(); return; }
+  if(t.dataset.pinv){ paInviteDrawer(t.dataset.pinv); return; }
+  if(t.dataset.pinvsend){
+    const v=(ADMIN.pending||[]).find(x=>x.id===t.dataset.pinvsend);if(!v)return;
+    if(!confirm('Send the invite email to '+(v.name||v.email)+' ('+v.email+') now?'))return;
+    t.disabled=true;t.textContent='Sending…';
+    paSendInvite(v).catch(ex=>String((ex&&ex.message)||ex)).then(errMsg=>{
+      if(errMsg){t.disabled=false;t.textContent='Send invite';paNote("Couldn't send to "+v.email+' — '+errMsg,true);return;}
+      paNote('Invite sent to '+v.email+'.');
+      ADMIN.profs=null;if(S.section==='admin')render();
+    });
+    return;
+  }
+  if(t.dataset.pinvdel){
+    const v=(ADMIN.pending||[]).find(x=>x.id===t.dataset.pinvdel);if(!v)return;
+    if(!confirm('Remove the pending invite for '+(v.name||v.email)+'? No email was ever sent.'))return;
+    sb.from('pending_invites').delete().eq('id',v.id).then(({error})=>{
+      if(error){paNote("Couldn't remove — "+(error.message||'please try again.'),true);return;}
+      ADMIN.profs=null;if(S.section==='admin')render();
+    });
+    return;
+  }
   if(t.dataset.view){ S.view=t.dataset.view; render(); return; }
   if(t.dataset.nav!==undefined){
     const n=Number(t.dataset.nav);
@@ -1549,66 +2667,12 @@ document.addEventListener('click',e=>{
     return;
   }
   if(t.dataset.back){ S.section=S.from||'calendar'; render(); return; }
-  if(t.dataset.pfSave){
-    const v=(document.getElementById('pfName')||{}).value?.trim(),n=document.getElementById('pfNote');
-    if(!v){if(n)n.textContent='Please enter a name.';return;}
-    sb.auth.getUser().then(({data:{user}})=>sb.from('profiles').update({display_name:v}).eq('id',user.id)).then(({error})=>{
-      if(error){if(n)n.textContent="Couldn't save — "+(error.message||'try again.');return;}
-      ME.name=v;ADMIN.profs=null;if(n)n.textContent='Name updated.';render();
-    });return;
-  }
-  if(t.dataset.pfReset){
-    const n=document.getElementById('pfNote');
-    sb.auth.resetPasswordForEmail(ME.email,{redirectTo:location.origin+'/'}).then(({error})=>{
-      if(n)n.textContent=error?("Couldn't send — "+(error.message||'try again.')):('Reset link sent to '+ME.email+'.');
-    });return;
-  }
-  if(t.dataset.pfAvatar){ document.getElementById('pfAvatarInput')?.click(); return; }
-  if(t.dataset.paAvatar){ document.getElementById('paAvatarInput')?.click(); return; }
-  if(t.dataset.rmCampus){
-    const appKey=t.dataset.app,cid=t.dataset.cid;
-    const cur=(ADMIN.viewUser.appCampuses||{})[appKey]||[];
-    const ids=cur.filter(x=>x!==cid);
-    paSaveAppCampuses(S.adminUserId,appKey,ids).then(ok=>{if(ok)paRefreshCampusBlock(appKey);});
-    return;
-  }
   if(t.dataset.day){ dayDrawer(t.dataset.day); return; }
   if(t.dataset.new){ newDrawer(); return; }
   if(t.dataset.task){
     const k=TASKS.find(x=>x.id===t.dataset.task); if(k) k.done=!k.done;
     const open=document.getElementById('drawer').classList.contains('open');
     render(); if(open) closeDrawer(); return;
-  }
-});
-document.addEventListener('change',e=>{
-  if(S.section!=='admin-user')return;
-  const globalRoleSel=e.target.closest('[data-global-role]');
-  if(globalRoleSel){ paSaveGlobalRole(globalRoleSel.dataset.id,globalRoleSel.value); return; }
-  const mainCampusSel=e.target.closest('[data-main-campus]');
-  if(mainCampusSel){
-    paSaveCampus(mainCampusSel.dataset.id,mainCampusSel.value||null).then(r=>{
-      const n=document.getElementById('paCampusNote2');
-      if(n)n.textContent=r===false?'':typeof r==='string'?r:'Saved.';
-    });
-    return;
-  }
-  const roleSel=e.target.closest('[data-app-role-override]');
-  if(roleSel){ paSaveRoleOverride(S.adminUserId,roleSel.dataset.app,roleSel.value||null); return; }
-  const permCb=e.target.closest('[data-perm]');
-  if(permCb){ paTogglePerm(S.adminUserId,permCb.dataset.app,permCb.dataset.permKey,permCb.checked); return; }
-  const appAccessSel=e.target.closest('[data-app-access]');
-  if(appAccessSel){ paSetAppAccess(S.adminUserId,appAccessSel.dataset.app,appAccessSel.value==='yes'); return; }
-  const addCampusSel=e.target.closest('[data-add-campus]');
-  if(addCampusSel){
-    const appKey=addCampusSel.dataset.app,cid=addCampusSel.value;
-    if(!cid)return;
-    addCampusSel.value='';
-    const cur=(ADMIN.viewUser.appCampuses||{})[appKey]||[];
-    if(!cur.includes(cid)){
-      const ids=[...cur,cid];
-      paSaveAppCampuses(S.adminUserId,appKey,ids).then(ok=>{if(ok)paRefreshCampusBlock(appKey);});
-    }
-    return;
   }
 });
 document.getElementById('scrim').addEventListener('click',closeDrawer);
@@ -1655,6 +2719,19 @@ const mosaicAuthStorage={
   }
 };
 const sb=(typeof supabase!=="undefined")?supabase.createClient(SUPABASE_URL,SUPABASE_ANON,{auth:{storage:mosaicAuthStorage}}):null;
+/* Supabase only writes to storage when the session changes, so anyone who
+   signed in before the shared cookie existed still has their session in
+   localStorage only — and the embedded apps, which read the cookie, would
+   show their own login. Copy it across on load so one sign-in really is one
+   sign-in. */
+function primeSharedSession(session){
+  if(!AUTH_COOKIE_OK||!session)return;
+  const ref=SUPABASE_URL.replace(/^https?:\/\//,'').split('.')[0];
+  const key='sb-'+ref+'-auth-token';
+  if(_cookieGet(key))return;
+  let raw=null;try{raw=localStorage.getItem(key);}catch(e){}
+  try{mosaicAuthStorage.setItem(key,raw||JSON.stringify(session));}catch(e){}
+}
 const ME={email:null,role:null,name:null};
 /* Metrics roles → prototype role presets (which sections the rail shows).
    The Settings role switcher still works on top of this default. */
@@ -1719,60 +2796,178 @@ function prettyNameFromEmail(email){
 const cap=s=>s?s.charAt(0).toUpperCase()+s.slice(1):"";
 const umPop=document.createElement("div");umPop.className="um-pop";document.body.appendChild(umPop);
 function umClose(){umPop.classList.remove("open");}
+/* Appearance — per person, per device. Stored under the signed-in email so a
+   shared computer doesn't hand one person's choice to the next. */
+let THEME='system';
+let RAILMIN=false;
+function railKey(){return 'mosaic-rail:'+(ME.email||'anon');}
+function applyRail(){
+  document.body.classList.toggle('railmin',RAILMIN);
+  const b=document.getElementById('railToggle');
+  if(b){b.setAttribute('aria-label',RAILMIN?'Expand sidebar':'Collapse sidebar');
+        b.title=(RAILMIN?'Expand':'Collapse')+' sidebar (⌘\\)';}
+}
+function themeKey(){return 'mosaic-theme:'+(ME.email||'anon');}
+function applyTheme(){
+  const dark = THEME==='dark' || (THEME==='system' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  document.documentElement.classList.toggle('dark',dark);
+}
+function loadTheme(){
+  try{THEME=localStorage.getItem(themeKey())||'system';}catch(e){THEME='system';}
+  try{RAILMIN=localStorage.getItem(railKey())==='1';}catch(e){RAILMIN=false;}
+  applyRail();
+  applyTheme();
+}
+if(window.matchMedia)window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if(THEME==='system')applyTheme();});
+const initialsOf=n=>{const p=String(n||"").trim().split(/\s+/).filter(Boolean);return !p.length?"?":(p.length===1?p[0].slice(0,2):p[0][0]+p[p.length-1][0]).toUpperCase();};
+/* If the photo file has gone (deleted from storage, bad URL), fall back to
+   the initials rather than leaving a broken-image icon in the circle. */
+function avatarHtml(url,name){
+  const ini=esc(initialsOf(name));
+  return url
+    ? '<img src="'+esc(url)+'" alt="" onerror="if(this.parentNode)this.parentNode.textContent=\''+ini.replace(/'/g,"\\'")+'\'">'
+    : ini;
+}
 function umHtml(){
   const isAdmin=ME.role==="admin";
-  const umAv=ME.avatar_url
-    ? '<img src="'+esc(ME.avatar_url)+'" alt="" style="width:36px;height:36px;border-radius:50%;object-fit:cover;flex:none;display:block">'
-    : '<div style="width:36px;height:36px;border-radius:50%;background:#4f7fd1;color:#fff;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;flex:none">'+esc((ME.name||'?').split(' ').map(w=>w[0]||'').slice(0,2).join('').toUpperCase())+'</div>';
-  return '<div class="um-head"><div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">'+umAv+'<div style="min-width:0"><div class="um-name">'+esc(ME.name||"")+'</div><div class="um-mail">'+esc(ME.email||"")+'</div></div></div>'+
-    '<span class="um-role">'+(isAdmin?"Admin · all campuses":esc(cap(ME.role||"")))+(ME.preview?" · viewing as staff":"")+"</span></div>"+
+  return '<div class="um-head"><span class="um-av">'+avatarHtml(ME.avatar_url,ME.name)+'</span>'+
+    '<div><div class="um-name">'+esc(ME.name||"")+'</div><div class="um-mail">'+esc(ME.email||"")+'</div>'+
+    '<span class="um-role">'+(isAdmin?"Admin · all campuses":esc(cap(ME.role||"")))+(ME.preview?" · viewing as staff":"")+"</span></div></div>"+
     '<button class="um-item" data-profile="1">'+ic("info")+'Profile</button>'+
-    (isAdmin?'<button class="um-item" data-go="admin">'+ic("settings")+'Admin</button>'+
+    (isAdmin?'<button class="um-item" data-go="settings">'+ic("settings")+'App settings</button>'+
+      '<button class="um-item" data-go="admin">'+ic("lock")+'Admin</button>'+
       '<button class="um-item" data-preview="1">'+ic("target")+(ME.preview?"Exit staff view":"View as staff")+"</button>":"")+
     '<div class="um-sep"></div><button class="um-item" data-logout="1">'+ic("x")+'Log Out</button>';
 }
+/* Profile — same shape as the Metrics profile page: your account details,
+   an editable name, and a password reset by email. Role and campus are set
+   by an administrator, so they're shown, not editable. */
 function pageProfile(){
+  setTimeout(()=>profilePage(),0);
+  return '<button class="back" data-back="1">'+ic('left')+'Back</button>'+
+    '<h1 style="margin:0 0 4px">Profile</h1>'+
+    '<p class="sub" style="margin:0 0 20px">Your account — your name and photo are yours to edit.</p>'+
+    '<div id="pfBody"><div class="empty">Loading…</div></div>';
+}
+async function profilePage(){
+  const host=document.getElementById('pfBody');
+  if(!host)return;
+  if(!ADMIN.campuses)await loadAdmin().catch(()=>{});
+  if(!document.getElementById('pfBody'))return;   // they navigated away while it loaded
   const roleLab=ME.role==='admin'?'Admin':cap(ME.role||'');
   const campusLab=ME.role==='admin'?'All campuses':(ME.campus_id?campusName(ME.campus_id):'—');
-  const initials=(ME.name||'?').split(' ').map(w=>w[0]||'').slice(0,2).join('').toUpperCase();
-  const avatarInner=ME.avatar_url
-    ? '<img src="'+esc(ME.avatar_url)+'" alt="" style="width:64px;height:64px;border-radius:50%;object-fit:cover;display:block">'
-    : '<div style="width:64px;height:64px;border-radius:50%;background:#4f7fd1;color:#fff;font-size:22px;font-weight:600;display:flex;align-items:center;justify-content:center">'+esc(initials)+'</div>';
-  const eyebrow='letter-spacing:.12em;text-transform:uppercase;color:var(--text2);font-size:10.5px;font-weight:700;margin:0 0 16px';
-  return '<div>'+
-    '<input type="file" id="pfAvatarInput" accept="image/*" style="display:none">'+
-    '<div style="display:flex;align-items:center;gap:14px;margin-bottom:28px">'+
-      '<div style="position:relative;flex:none;cursor:pointer" data-av-wrap data-pf-avatar="1" title="Change photo">'+
-        avatarInner+
-        '<div style="position:absolute;inset:0;border-radius:50%;background:rgba(0,0,0,.38);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .15s" class="av-overlay">'+
-          '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>'+
-        '</div>'+
-      '</div>'+
-      '<div>'+
-        '<div style="font-size:22px;font-weight:700;line-height:1.2">'+esc(ME.name||'')+'</div>'+
-        '<div style="font-size:13.5px;color:var(--text2);margin-top:3px">'+esc(ME.email||'')+'</div>'+
-        '<button data-pf-avatar="1" style="font-size:12px;color:var(--text2);text-decoration:underline;margin-top:4px;padding:0;background:none;border:none;cursor:pointer">Change photo</button>'+
-      '</div>'+
-    '</div>'+
-    '<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start;max-width:700px">'+
-      '<div class="pa-card" style="flex:1;min-width:240px;padding:20px 22px">'+
-        '<div style="'+eyebrow+'">Your account</div>'+
-        '<div class="kv"><span>Name</span><span><input id="pfName" class="pa-in" style="width:160px;padding:6px 9px;font-size:13px;text-align:right" value="'+esc(ME.name||'')+'"></span></div>'+
-        '<div class="kv"><span>Email</span><span style="font-size:13px">'+esc(ME.email||'')+'</span></div>'+
+  const eyebrow='letter-spacing:.13em;text-transform:uppercase;color:var(--text2);font-size:11px;font-weight:700';
+  host.innerHTML=
+    '<div class="pf-grid">'+
+      '<div class="pa-card pf-main">'+
+        '<div class="pf-cardsec" style="'+eyebrow+'">Your account</div>'+
+        '<div class="pf-av"><span class="ring" id="pfRing">'+avatarHtml(ME.avatar_url,ME.name)+'</span>'+
+          '<div><button class="btn-primary" id="pfPhotoBtn" style="padding:7px 13px;font-size:12.5px">'+(ME.avatar_url?'Change photo':'Upload photo')+'</button>'+
+          (ME.avatar_url?' <button class="gate-ghost" id="pfPhotoDel" style="display:inline;margin:0 0 0 8px">Remove</button>':'')+
+          '<div style="font-size:11.5px;color:var(--text2);margin-top:6px">JPG, PNG or WebP · up to 2 MB</div></div>'+
+          '<input type="file" id="pfPhotoIn" accept="image/jpeg,image/png,image/webp,image/gif" style="display:none"></div>'+
+        '<div class="kv"><span>Name</span><span><input id="pfName" class="pa-in" style="width:170px;padding:6px 9px;font-size:13px;text-align:right" value="'+esc(ME.name||'')+'"></span></div>'+
+        '<div class="kv"><span>Email</span><span>'+esc(ME.email||'')+'</span></div>'+
         '<div class="kv"><span>Role</span><span>'+esc(roleLab)+'</span></div>'+
         '<div class="kv" style="border-bottom:0"><span>Campus</span><span>'+esc(campusLab)+'</span></div>'+
-        '<button class="btn-primary" data-pf-save="1" style="margin-top:16px">Save name</button>'+
-        '<p style="font-size:12px;color:var(--text2);margin:10px 0 0;line-height:1.5">Your name is yours to edit. Role and campus are set by an administrator.</p>'+
+        '<button class="btn-primary" id="pfSaveName" style="margin-top:14px">Save name</button>'+
+        '<p style="font-size:12.5px;color:var(--text2);margin:14px 0 0;line-height:1.5">Role and campus are set by an administrator.</p>'+
       '</div>'+
-      '<div class="pa-card" style="flex:1;min-width:200px;padding:20px 22px">'+
-        '<div style="'+eyebrow+'">Password</div>'+
-        '<p style="font-size:13px;color:var(--text2);margin:0 0 16px;line-height:1.5">We\'ll email you a secure link to set a new password.</p>'+
-        '<button class="btn-primary" data-pf-reset="1">Email me a reset link</button>'+
+      '<div class="pf-side">'+
+        '<div class="pa-card">'+
+          '<div class="pf-cardsec" style="'+eyebrow+'">Password</div>'+
+          '<p style="font-size:13px;color:var(--text2);margin:0 0 12px">We\'ll email you a secure link to set a new password.</p>'+
+          '<button class="btn-primary" id="pfReset">Email me a reset link</button>'+
+        '</div>'+
+        '<div class="pa-card">'+
+          '<div class="pf-cardsec" style="'+eyebrow+'">Appearance</div>'+
+          '<div class="ap-seg" id="pfTheme">'+
+            ['light','dark','system'].map(t=>'<button data-theme="'+t+'" class="'+(THEME===t?'on':'')+'">'+cap(t)+'</button>').join('')+
+          '</div>'+
+          '<p style="font-size:12.5px;color:var(--text2);margin:10px 0 0;line-height:1.5">Just for you, on this device — nobody else\'s view changes. System follows your computer\'s setting. The apps shown inside the portal (Metrics, Comms, Planning) still render in their own light theme.</p>'+
+        '</div>'+
       '</div>'+
     '</div>'+
-    '<div id="pfNote" style="font-size:12.5px;margin-top:14px;color:var(--text2)"></div>'+
-  '</div>';
+    '<div id="pfNote" style="font-size:12.5px;margin-top:14px;color:var(--text2)"></div>';
+  /* photo upload — stored at avatars/<your user id>/<file>, which is the only
+     folder the storage policy lets you write to. */
+  const fileIn=document.getElementById('pfPhotoIn');
+  document.getElementById('pfPhotoBtn').addEventListener('click',()=>fileIn.click());
+  fileIn.addEventListener('change',async()=>{
+    const f=fileIn.files&&fileIn.files[0];if(!f)return;
+    const n=document.getElementById('pfNote');
+    if(f.size>2*1024*1024){n.textContent='That photo is over 2 MB — please pick a smaller one.';return;}
+    n.textContent='Uploading…';
+    const {data:{user}}=await sb.auth.getUser();
+    const ext=(f.name.split('.').pop()||'jpg').toLowerCase();
+    const path=user.id+'/avatar.'+ext;
+    const up=await sb.storage.from('avatars').upload(path,f,{upsert:true,contentType:f.type});
+    if(up.error){n.textContent="Couldn't upload — "+(up.error.message||'try again.');return;}
+    const {data:pub}=sb.storage.from('avatars').getPublicUrl(path);
+    const url=pub.publicUrl+'?v='+f.size+f.lastModified;   // bust the CDN cache on re-upload
+    const {error}=await sb.from('profiles').update({avatar_url:url}).eq('id',user.id);
+    if(error){n.textContent="Uploaded, but couldn't save it to your profile — "+(error.message||'try again.');return;}
+    ME.avatar_url=url;ADMIN.profs=null;
+    document.getElementById('pfRing').innerHTML=avatarHtml(url,ME.name);
+    n.textContent='Photo updated.';renderNav();
+  });
+  const del=document.getElementById('pfPhotoDel');
+  if(del)del.addEventListener('click',async()=>{
+    const n=document.getElementById('pfNote');
+    const {data:{user}}=await sb.auth.getUser();
+    const {error}=await sb.from('profiles').update({avatar_url:null}).eq('id',user.id);
+    if(error){n.textContent="Couldn't remove — "+(error.message||'try again.');return;}
+    ME.avatar_url=null;ADMIN.profs=null;
+    document.getElementById('pfRing').innerHTML=avatarHtml(null,ME.name);
+    n.textContent='Photo removed.';renderNav();
+  });
+  document.getElementById('pfSaveName').addEventListener('click',async()=>{
+    const v=document.getElementById('pfName').value.trim(),n=document.getElementById('pfNote');
+    if(!v){n.textContent='Please enter a name.';return;}
+    const {data:{user}}=await sb.auth.getUser();
+    const {error}=await sb.from('profiles').update({display_name:v}).eq('id',user.id);
+    if(error){n.textContent="Couldn't save — "+(error.message||'try again.');return;}
+    ME.name=v;ADMIN.profs=null;n.textContent='Name updated.';renderNav();
+  });
+  document.getElementById('pfReset').addEventListener('click',async()=>{
+    const n=document.getElementById('pfNote');
+    const {error}=await sb.auth.resetPasswordForEmail(ME.email,{redirectTo:location.origin+'/'});
+    n.textContent=error?("Couldn't send — "+(error.message||'try again.')):('Reset link sent to '+ME.email+'.');
+  });
 }
+/* The phone menu. Opening it dims the page behind, Escape and the scrim both
+   close it, and choosing a section closes it too — nobody wants to dismiss a
+   menu they have already finished with. */
+const railEl=document.querySelector(".rail"), scrimEl=document.getElementById("scrim");
+function railOpen(on){
+  railEl.classList.toggle("open",on);
+  scrimEl.classList.toggle("open",on);
+  const b=document.getElementById("mMenu");
+  if(b)b.setAttribute("aria-expanded",on?"true":"false");
+}
+document.getElementById("mMenu").addEventListener("click",e=>{
+  e.stopPropagation();railOpen(!railEl.classList.contains("open"));
+});
+document.getElementById("mAv").addEventListener("click",e=>{
+  e.stopPropagation();railOpen(false);
+  umPop.innerHTML=umHtml();umPop.classList.toggle("open");
+});
+document.getElementById("railToggle").addEventListener("click",e=>{
+  e.stopPropagation();RAILMIN=!RAILMIN;
+  try{localStorage.setItem(railKey(),RAILMIN?'1':'0');}catch(_){}
+  applyRail();
+});
+document.addEventListener("keydown",e=>{
+  if((e.metaKey||e.ctrlKey)&&e.key==="\\"){
+    e.preventDefault();RAILMIN=!RAILMIN;
+    try{localStorage.setItem(railKey(),RAILMIN?'1':'0');}catch(_){}
+    applyRail();
+  }
+});
+document.getElementById("mClose").addEventListener("click",e=>{e.stopPropagation();railOpen(false);});
+scrimEl.addEventListener("click",()=>railOpen(false));
+document.addEventListener("keydown",e=>{if(e.key==="Escape")railOpen(false);});
+railEl.addEventListener("click",e=>{if(e.target.closest("[data-go]"))railOpen(false);});
 document.querySelector(".rail-foot").addEventListener("click",e=>{
   if(!ME.email)return;
   umPop.innerHTML=umHtml();
@@ -1782,68 +2977,53 @@ document.querySelector(".rail-foot").addEventListener("click",e=>{
 document.addEventListener("click",e=>{
   if(umPop.classList.contains("open")&&!umPop.contains(e.target)&&!e.target.closest(".rail-foot"))umClose();
 });
-/* Avatar upload helpers */
-async function uploadAvatar(file,userId,noteEl){
-  const ext=file.name.split('.').pop().toLowerCase()||'jpg';
-  const path=userId+'/avatar.'+ext;
-  if(noteEl)noteEl.textContent='Uploading…';
-  const {error:upErr}=await sb.storage.from('avatars').upload(path,file,{upsert:true,contentType:file.type});
-  if(upErr){if(noteEl)noteEl.textContent="Upload failed — "+upErr.message;return null;}
-  const {data:{publicUrl}}=sb.storage.from('avatars').getPublicUrl(path);
-  const bust=publicUrl+(publicUrl.includes('?')?'&':'?')+'t='+Date.now();
-  const {error:dbErr}=await sb.from('profiles').update({avatar_url:bust}).eq('id',userId);
-  if(dbErr){if(noteEl)noteEl.textContent="Saved file but couldn't update profile — "+dbErr.message;return null;}
-  return bust;
-}
-document.addEventListener('change',async e=>{
-  if(e.target.id==='pfAvatarInput'){
-    const file=e.target.files[0];if(!file)return;
-    const {data:{user}}=await sb.auth.getUser();
-    const url=await uploadAvatar(file,user.id,document.getElementById('pfNote'));
-    if(url){ME.avatar_url=url;render();}
-    return;
-  }
-  if(e.target.id==='paAvatarInput'){
-    const file=e.target.files[0];if(!file)return;
-    const uid=e.target.dataset.uid;if(!uid)return;
-    const note=document.getElementById('paResetNote');
-    const url=await uploadAvatar(file,uid,note);
-    if(url&&ADMIN.viewUser){ADMIN.viewUser.u={...ADMIN.viewUser.u,avatar_url:url};render();}
-    return;
-  }
-});
 /* Admin table inline edits (delegated: the table re-renders) */
 document.addEventListener("change",async e=>{
+  /* Role and campus are edited both in the table and on a person's own page.
+     Re-render either way: changing someone to Admin removes the per-app campus
+     pickers, so the page has to redraw, not just the list. */
   const rs=e.target.closest("select.pa-role");
-  if(rs){const r=await paSaveRole(rs.dataset.id,rs.value);if(S.section==="admin")render();if(typeof r==="string")paNote(r);return;}
+  if(rs){const r=await paSaveRole(rs.dataset.id,rs.value);if(S.section==="admin"||S.section==="admin-user")render();if(typeof r==="string")paNote(r);return;}
   const cs=e.target.closest("select.pa-campus");
-  if(cs){const r=await paSaveCampus(cs.dataset.id,cs.value);if(S.section==="admin")render();if(typeof r==="string")paNote(r);return;}
+  if(cs){const r=await paSaveCampus(cs.dataset.id,cs.value);if(S.section==="admin"||S.section==="admin-user")render();if(typeof r==="string")paNote(r);return;}
 });
 let BOOTED=false;
 const PATH_SECTION={"/":"home","/home":"home","/calendar":"calendar","/comms":"comms","/pm":"planning","/planning":"planning","/facilities":"facilities","/metrics":"numbers","/numbers":"numbers","/goals":"goals","/budgets":"budgets","/giving":"giving","/settings":"settings","/admin":"admin"};
 async function enterPortal(){
   const {data:{user}}=await sb.auth.getUser();
   if(!user)return;
+  try{const {data:s}=await sb.auth.getSession();primeSharedSession(s&&s.session);}catch(e){}
   ME.email=user.email;
-  const {data:prof}=await sb.from("profiles").select("role,display_name,full_name,campus_id,avatar_url").eq("id",user.id).single();
-  if(prof){ME.role=prof.role;ME.name=prof.display_name||prof.full_name;ME.campus_id=prof.campus_id;ME.avatar_url=prof.avatar_url||null;}
+  const {data:prof}=await sb.from("profiles").select("role,display_name,full_name,campus_id,avatar_url,app_access,campus_ids").eq("id",user.id).single();
+  if(prof){ME.role=prof.role;ME.name=prof.display_name||prof.full_name;ME.campus_id=prof.campus_id;ME.avatar_url=prof.avatar_url;ME.app_access=prof.app_access;ME.campus_ids=prof.campus_ids;}
   if(!ME.name||ME.name.includes("@"))ME.name=prettyNameFromEmail(ME.email);
   if(ROLE_PRESET[ME.role])S.role=ROLE_PRESET[ME.role];
+  loadTheme();
   const want=PATH_SECTION[location.pathname.replace(/\/+$/,"")||"/"];
-  if(want&&ROLES[S.role].sections.includes(want))S.section=want;
+  if(want&&allowedSections().includes(want))S.section=want;
   const who=document.getElementById("who"),av=document.querySelector(".rail-foot .avatar");
   if(who)who.textContent=ME.name;
-  if(av){
-    if(ME.avatar_url){
-      av.innerHTML='<img src="'+esc(ME.avatar_url)+'" alt="" style="width:24px;height:24px;border-radius:50%;object-fit:cover;display:block">';
-      av.style.background='none';
-    } else {
-      av.textContent=(ME.name||"?").charAt(0).toUpperCase();
-      av.style.background='';
-    }
-  }
+  if(av)av.innerHTML=avatarHtml(ME.avatar_url,ME.name);
   $g("gate").classList.add("hide");
-  if(!BOOTED){BOOTED=true;await loadLive();render();}
+  if(!BOOTED){
+    BOOTED=true;await loadLive();render();
+    // The shared calendar is extra context, so it loads after the page is
+    // usable and re-renders when it lands. Awaiting it before the first paint
+    // meant one slow Microsoft call left staff staring at an empty screen.
+    loadCalendar().then(()=>{if(BOOTED)render();});
+    /* Come back to the tab and you get current data. There's no push from
+       Outlook or the planning board, so a tab left open all afternoon would
+       otherwise still show the morning. Refetch on return, at most once a
+       minute, and never while someone is mid-edit in a drawer. */
+    let lastLoad=Date.now();
+    document.addEventListener('visibilitychange',async()=>{
+      if(document.hidden)return;
+      if(Date.now()-lastLoad<60000)return;
+      if(document.getElementById('drawer').classList.contains('open'))return;
+      lastLoad=Date.now();await loadLive();render();
+      loadCalendar().then(()=>render());
+    });
+  }
 }
 (function initAuth(){
   if(!sb){gateNote("Can't reach the sign-in service — check your connection and reload the page.","err");return;}
@@ -1852,7 +3032,7 @@ async function enterPortal(){
   if(recovering)gateMode("recover");
   if(inviting)gateNote("Welcome to the Mosaic Portal! Choose a password to finish setting up your account.","ok");
   sb.auth.onAuthStateChange(event=>{if(event==="PASSWORD_RECOVERY")gateMode("recover");});
-  sb.auth.getSession().then(({data})=>{if(data.session&&!recovering)enterPortal();});
+  sb.auth.getSession().then(({data})=>{if(data.session){primeSharedSession(data.session);if(!recovering)enterPortal();}});
 })();
 </script>
 </body>
