@@ -78,11 +78,13 @@ html.dark #previewBar{background:#2a2a2a}
 #previewBar .pb-exit{border:none;cursor:pointer;font-family:inherit;letter-spacing:inherit;font-size:12.5px;font-weight:600;
   background:#f59e0b;color:#000;border-radius:999px;padding:5px 14px;margin-left:2px}
 #previewBar .pb-exit:hover{filter:brightness(1.08)}
-#previewBar .pb-campus{border:none;background:transparent;color:inherit;font:inherit;letter-spacing:inherit;
-  cursor:pointer;padding:0;min-width:60px;max-width:150px;appearance:none;-webkit-appearance:none}
-#previewBar .pb-campus option{color:#000}
-#previewBar .pb-campus:focus{outline:2px solid #f59e0b;outline-offset:3px;border-radius:4px}
-#previewBar .pb-role{color:#f59e0b;font-weight:600}
+#previewBar .pb-campus,#previewBar .pb-role{border:none;background:transparent;color:inherit;font:inherit;letter-spacing:inherit;
+  cursor:pointer;padding:0;appearance:none;-webkit-appearance:none}
+#previewBar .pb-campus{min-width:60px;max-width:160px}
+#previewBar .pb-role{color:#f59e0b;font-weight:600;min-width:40px}
+#previewBar .pb-campus option,#previewBar .pb-role option{color:#000}
+#previewBar .pb-campus:hover,#previewBar .pb-role:hover{color:#f59e0b}
+#previewBar .pb-campus:focus,#previewBar .pb-role:focus{outline:2px solid #f59e0b;outline-offset:3px;border-radius:4px}
 body.previewing .main{padding-bottom:76px}
 @media(max-width:480px){.pb-label{display:none}}
 
@@ -2676,28 +2678,36 @@ function _showPreviewBanner(){
     bar=document.createElement('div');
     bar.id='previewBar';
     document.body.appendChild(bar);
-    bar.addEventListener('click',e=>{
-      if(e.target.classList.contains('pb-exit'))exitPreview();
-    });
+    bar.addEventListener('click',e=>{if(e.target.classList.contains('pb-exit'))exitPreview();});
     bar.addEventListener('change',e=>{
       if(e.target.classList.contains('pb-campus')){
         _previewCampusId=e.target.value;
-        _showPreviewBanner(); // re-render banner to update selection
+      }
+      if(e.target.classList.contains('pb-role')){
+        const newRole=e.target.value;
+        ME.previewRole=newRole;
+        S.role=PREVIEW_ROLE_PRESET[newRole]||'comms';
+        if(!allowedSections().includes(S.section))S.section='home';
+        _showPreviewBanner(); // re-render to update exit button label
+        render();
       }
     });
   }
   const campuses=(ADMIN.campuses||[]).filter(c=>c.active!==false);
   const roleLabel=PREVIEW_ROLE_LABEL[ME.previewRole]||ME.previewRole||'';
   const eyeSvg='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+  const roleOpts=Object.keys(PREVIEW_ROLE_LABEL).map(r=>'<option value="'+r+'"'+(r===ME.previewRole?' selected':'')+'>'+PREVIEW_ROLE_LABEL[r]+'</option>').join('');
   let campusHtml='';
   if(campuses.length>1){
     const opts=campuses.map(c=>'<option value="'+c.id+'"'+(c.id===_previewCampusId?' selected':'')+'>'+esc(c.name)+'</option>').join('');
-    campusHtml=' · <select class="pb-campus" aria-label="Preview campus">'+opts+'</select>';
+    campusHtml=' · <select class="pb-campus" aria-label="Switch campus">'+opts+'</select>';
   } else if(campuses.length===1){
     campusHtml=' · <span>'+esc(campuses[0].name)+'</span>';
   }
   bar.innerHTML=eyeSvg+
-    '<span><span class="pb-label">Previewing as </span><span class="pb-role">'+esc(roleLabel)+'</span>'+campusHtml+'</span>'+
+    '<span><span class="pb-label">Previewing as </span>'+
+    '<select class="pb-role" aria-label="Switch role">'+roleOpts+'</select>'+
+    campusHtml+'</span>'+
     '<button class="pb-exit" type="button">Exit '+esc(roleLabel)+' view</button>';
 }
 
