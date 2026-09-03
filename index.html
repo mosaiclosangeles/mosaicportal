@@ -2734,9 +2734,9 @@ document.addEventListener('click',e=>{
   if(t.dataset.pickertoggle){
     if(!ADMIN.campuses)loadAdmin().then(()=>{_previewCampusId=_previewPickCampus();umPop.innerHTML=umHtml();});
     else _previewCampusId=_previewCampusId||_previewPickCampus();
-    _pickerOpen=!_pickerOpen; umPop.innerHTML=umHtml(); return;
+    _pickerOpen=!_pickerOpen; umPop.innerHTML=umHtml(); e.stopImmediatePropagation(); return;
   }
-  if(t.dataset.pickerrole){ _pickerRole=t.dataset.pickerrole; umPop.innerHTML=umHtml(); return; }
+  if(t.dataset.pickerrole){ _pickerRole=t.dataset.pickerrole; umPop.innerHTML=umHtml(); e.stopImmediatePropagation(); return; }
   if(t.dataset.previewgo){
     const sel=document.getElementById('umPickerCampus');
     if(sel)_previewCampusId=sel.value;
