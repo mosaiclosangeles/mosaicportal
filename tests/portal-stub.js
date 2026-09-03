@@ -43,7 +43,8 @@ function builder(table){
 const client={
   auth:{
     getUser:()=>Promise.resolve({data:{user:{id:'me',email:PROFILE.email}}}),
-    getSession:()=>Promise.resolve({data:{session:{user:{id:'me'}}}}),
+    getSession:()=>Promise.resolve({data:{session:{user:{id:'me'},
+      access_token:'stub-access-token',refresh_token:'stub-refresh-token'}}}),
     onAuthStateChange:()=>({data:{subscription:{unsubscribe(){}}}}),
     signOut:()=>Promise.resolve({}),
     signInWithPassword:()=>Promise.resolve({data:{},error:null}),

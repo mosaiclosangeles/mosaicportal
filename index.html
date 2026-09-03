@@ -2602,6 +2602,37 @@ function render(){
     if(!allowedSections().includes(S.section))S.section='home'; render();});
 }
 
+/* ---- handing the sign-in to an embedded app ----
+   The portal signs a person in once for every app. That used to travel
+   entirely in the cookie on .mosaic.org, which works in a normal window and
+   does not work in every one — a private window is where it failed, and
+   Chrome is narrowing what a framed page may read from storage regardless.
+
+   So the frame asks its parent instead, and the parent is us. Both ends check
+   the other's origin against *.mosaic.org and reply to that exact origin,
+   never "*", so no other page can ask for a token or receive one. The
+   localhost arm only opens when the portal itself is being served from
+   localhost, which is only ever the test harness.
+
+   The embedded app runs with autoRefreshToken off, so handing over the
+   refresh token does not restart the rotation race that broke this: the
+   portal stays the only client refreshing. */
+const EMBED_TRUSTED=o=>/^https:\/\/[a-z0-9-]+\.mosaic\.org$/.test(o)||
+  ((location.hostname==='127.0.0.1'||location.hostname==='localhost')&&
+   /^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(o));
+window.addEventListener('message',async e=>{
+  if(!EMBED_TRUSTED(e.origin))return;
+  if((e.data||{}).type!=='mosaic-auth-request')return;
+  if(!sb||!e.source)return;
+  const {data}=await sb.auth.getSession();
+  const s=data&&data.session;
+  // No session yet means the person is still signing in here. Staying quiet
+  // is right: the frame keeps asking, and gets an answer when there is one.
+  if(!s||!s.access_token||!s.refresh_token)return;
+  try{e.source.postMessage(
+    {type:'mosaic-auth',access_token:s.access_token,refresh_token:s.refresh_token},e.origin);}catch(_){}
+});
+
 /* ============================ events ============================ */
 // Keep ADMIN.campusOpen an always-accurate mirror of which <details> cards are open,
 // so any re-render (renaming a campus, toggling inactive campuses, editing a location)

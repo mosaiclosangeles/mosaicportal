@@ -35,6 +35,20 @@ That last one is the least obvious: the delegated click handler starts with one
 long `closest()` selector, and an attribute missing from it never gets as far
 as its `if`. The Facilities sub-menu was inert for exactly that reason.
 
+**The portal hands its sign-in to the apps it frames.** An embedded app posts
+`mosaic-auth-request` to its parent and the portal replies with the session;
+the app calls `setSession()` and gets in. This exists because the cookie on
+`.mosaic.org` is not readable in every window — a private one is where it
+failed — and because Chrome is narrowing what a framed page may read from
+storage. Both ends check the other's origin against `*.mosaic.org` and post
+to that exact origin, never `"*"`.
+
+**An embedded app must run with `autoRefreshToken:false`.** Refresh tokens
+rotate on use. Two clients refreshing one cookie means whichever goes second
+spends a token the first already spent, gets a 400 and drops its session —
+which is precisely how Facilities came to show a password box inside a portal
+the person had just signed into. The portal is the only client that refreshes.
+
 **Facility bookings are a fifth calendar source.** `loadFacilities()` reads
 `v_fac_requests` out of the same Supabase project with the signed-in person's
 own session, so RLS decides what they see. It draws `block_start`/`block_end`
