@@ -11,11 +11,19 @@ Metrics, Comms, Planning and Goals are embedded live from their own sites.
 ## The embedded apps are not copies
 
 The portal loads each app live from its own address, so a change shipped to
-Metrics, Comms, Planning or Goals appears here with no deploy. Two things are
-the portal's own and do not follow automatically: **Home and Calendars**, which
-read the planning and comms data directly, and the **Goals sub-menu**, which is
-a hand-written list in `GOALS_NAV` — a page added inside Goals has to be added
-there too.
+Metrics, Comms, Planning, Facilities or Goals appears here with no deploy.
+Three things are the portal's own and do not follow automatically: **Home and
+Calendars**, which read the planning, comms and facilities data directly, and
+the **Goals and Facilities sub-menus**, which are hand-written lists in
+`GOALS_NAV` and `FAC_NAV` — a page added inside either app has to be added
+there too, or it will not appear in the portal.
+
+**Facility bookings are a fifth calendar source.** `loadFacilities()` reads
+`v_fac_requests` out of the same Supabase project with the signed-in person's
+own session, so RLS decides what they see. It draws `block_start`/`block_end`
+rather than `start_at`/`end_at`: a booking is the room being unavailable, and
+that includes setup and teardown — reading `start_at` would show a 2pm setup
+as a 5pm wedding and leave the room apparently free at three.
 
 ## Somebody already decided this — ask before undoing it
 
