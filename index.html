@@ -767,7 +767,7 @@ const SECTIONS = [
   {id:'planning',label:'Planning',icon:'board',h:'var(--milestone)',t:'var(--milestone-t)',url:'https://pm.mosaic.org'},
   {group:'MEASURE'},
   {id:'numbers',label:'Metrics',icon:'chart',h:'var(--session)',t:'var(--session-t)',url:'https://metrics.mosaic.org'},
-  {id:'goals',label:'Goals',icon:'target',h:'var(--magenta)',t:'var(--magenta-t)',url:'https://goals.mosaic.org'},
+  {id:'goals',label:'Goals',icon:'target',beta:true,restricted:true,h:'var(--magenta)',t:'var(--magenta-t)',url:'https://goals.mosaic.org'},
   {id:'budgets',label:'Budgets',icon:'wallet',beta:true,restricted:true,h:'var(--indigo)',t:'var(--indigo-t)'},
   {id:'giving',label:'Giving',icon:'heart',beta:true,restricted:true,h:'var(--lime)',t:'var(--lime-t)'},
   /* Settings lives in the account menu (click your name), not the rail. */
@@ -775,7 +775,7 @@ const SECTIONS = [
 ];
 const PALETTE = ['--neutral','--red','--milestone','--amber','--lime','--session','--gathering','--indigo','--comms','--magenta'];
 const ROLES = {
-  comms:{name:'Comms / staff',sections:['home','calendar','comms','planning','numbers','goals']},
+  comms:{name:'Comms / staff',sections:['home','calendar','comms','planning','numbers']},
   leadership:{name:'Leadership',sections:['home','calendar','comms','planning','numbers','goals','budgets','giving','settings','admin']},
   ops:{name:'Ops / event management',sections:['home','calendar','planning']},
   volunteer:{name:'Volunteer lead',sections:['home','calendar']}
