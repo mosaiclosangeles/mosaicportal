@@ -79,6 +79,19 @@ Who you are most likely to be touching:
 | **Austin** (austin@mosaic.org) | repos and infrastructure setup |
 | **Another Claude session** | commits authored by `Claude` — same rules apply |
 
+**A commit says a session made it, never which person was driving it.** Hannita
+and Paola both work through a second Claude account, and everything either of
+them ships is authored by `Claude` all the same. So never resolve a `Claude`
+commit to a person, and never treat one as your own session's work — say what
+the commit changed and when, and ask. Guessing "that was you" is how a
+collision gets waved through.
+
+**Fetch before you look.** The other session pushes to the same branch, so a
+working copy can be behind without saying so, and a `grep` of a stale file
+reads exactly like a fact. `git fetch` first, then check — reporting "there is
+no X here" off an unfetched checkout has already sent one design down the wrong
+road.
+
 How to find out, in about a minute:
 
 - `git log -S"<the exact text you are about to change>" -- <file>` — who last
