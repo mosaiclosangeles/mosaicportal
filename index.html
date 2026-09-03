@@ -2599,7 +2599,7 @@ function newDrawer(){
 }
 
 /* ============================ render ============================ */
-const SECTION_PATH={home:'/',calendar:'/calendar',comms:'/comms',planning:'/pm',numbers:'/metrics',goals:'/goals',budgets:'/budgets',giving:'/giving',settings:'/settings',admin:'/admin'};
+const SECTION_PATH={home:'/',calendar:'/calendar',comms:'/comms',planning:'/pm',facilities:'/facilities',numbers:'/metrics',goals:'/goals',budgets:'/budgets',giving:'/giving',settings:'/settings',admin:'/admin'};
 function render(){
   renderNav();
   if(S.section!=='event'&&SECTION_PATH[S.section]&&location.pathname!==SECTION_PATH[S.section]){
@@ -2613,6 +2613,7 @@ function render(){
     : S.section==='planning'?pageEmbed('planning')
     : S.section==='numbers'?pageEmbed('numbers')
     : S.section==='goals'?pageEmbed('goals')
+    : S.section==='facilities'?pageEmbed('facilities')
     : S.section==='budgets'?pageBudgets()
     : S.section==='giving'?pageGiving()
     : S.section==='admin'?pageAdmin()
@@ -2730,7 +2731,7 @@ document.addEventListener('toggle',e=>{
   if(d.open)ADMIN.campusOpen.add(d.dataset.campus);else ADMIN.campusOpen.delete(d.dataset.campus);
 },true);
 document.addEventListener('click',e=>{
-  const t=e.target.closest('[data-go],[data-view],[data-nav],[data-filter],[data-ev],[data-day],[data-task],[data-new],[data-pick],[data-everyone],[data-tl],[data-back],[data-logout],[data-preview],[data-previewexit],[data-previewgo],[data-pickertoggle],[data-pickerrole],[data-profile],[data-fb],[data-newuser],[data-gp],[data-user],[data-pinv],[data-pinvsend],[data-pinvdel],[data-adtab],[data-theme],[data-newcampus],[data-editcampus],[data-addloc],[data-deactivateloc],[data-addtime],[data-rmtime],[data-toggleinactivecampus],[data-toggleusers]');
+  const t=e.target.closest('[data-go],[data-view],[data-nav],[data-filter],[data-ev],[data-day],[data-task],[data-new],[data-pick],[data-everyone],[data-tl],[data-back],[data-logout],[data-preview],[data-previewexit],[data-previewgo],[data-pickertoggle],[data-pickerrole],[data-profile],[data-fb],[data-newuser],[data-gp],[data-fp],[data-user],[data-pinv],[data-pinvsend],[data-pinvdel],[data-adtab],[data-theme],[data-newcampus],[data-editcampus],[data-addloc],[data-deactivateloc],[data-addtime],[data-rmtime],[data-toggleinactivecampus],[data-toggleusers]');
   if(!t) return;
   if(t.dataset.logout){ (sb?sb.auth.signOut():Promise.resolve()).then(()=>location.reload()); return; }
   if(t.dataset.pickertoggle){
@@ -3205,7 +3206,7 @@ document.addEventListener("change",async e=>{
   if(cs){const r=await paSaveCampus(cs.dataset.id,cs.value);if(S.section==="admin"||S.section==="admin-user")render();if(typeof r==="string")paNote(r);return;}
 });
 let BOOTED=false;
-const PATH_SECTION={"/":"home","/home":"home","/calendar":"calendar","/comms":"comms","/pm":"planning","/planning":"planning","/metrics":"numbers","/numbers":"numbers","/goals":"goals","/budgets":"budgets","/giving":"giving","/settings":"settings","/admin":"admin"};
+const PATH_SECTION={"/":"home","/home":"home","/calendar":"calendar","/comms":"comms","/pm":"planning","/planning":"planning","/facilities":"facilities","/numbers":"numbers","/metrics":"numbers","/goals":"goals","/budgets":"budgets","/giving":"giving","/settings":"settings","/admin":"admin"};
 async function enterPortal(){
   const {data:{user}}=await sb.auth.getUser();
   if(!user)return;
