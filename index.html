@@ -233,6 +233,7 @@ html.dark .pa-name{color:var(--text)}
 .pa-tabs{display:inline-flex;gap:2px;background:#f2f2f1;border-radius:9px;padding:3px;margin:0 0 18px}
 .pa-tabs button{border:0;background:none;font-family:inherit;letter-spacing:inherit;font-size:12.5px;padding:6px 13px;border-radius:6px;color:#5c5c5c;cursor:pointer}
 .pa-tabs button.on{background:#fff;color:#000;font-weight:500;box-shadow:0 0 0 1px #e6e6e5}
+.pa-dot{display:inline-block;width:6px;height:6px;background:var(--gathering);border-radius:50%;margin-left:5px;vertical-align:middle;position:relative;top:-1px}
 .rp-desc{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:10px;margin-bottom:18px}
 .rp-card{border:1px solid #e6e6e5;border-radius:10px;padding:14px}
 .rp-card .rp-role{font-size:11.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;margin-bottom:6px}
@@ -1479,16 +1480,22 @@ function pageAdminFeedback(){
     '</tbody></table></div>';
 }
 async function loadFeedback(){
+  if(ADMIN.fbLoading)return;
+  ADMIN.fbLoading=true;
   const {data,error}=await sb.from('portal_feedback').select('*').order('created_at',{ascending:false});
+  ADMIN.fbLoading=false;
   ADMIN.fbErr=error?(error.message||'please try again'):null;
   ADMIN.fb=data||[];
   if(S.section==='admin')render();
 }
 function pageAdmin(){
   if(ME.role!=='admin')return '<div class="page-head"><div><h1>Admin</h1></div></div><div class="empty">Only admins can open this.</div>';
+  if(ADMIN.fb===null&&!ADMIN.fbErr)loadFeedback();
+  const hasNew=ADMIN.tab!=='feedback'&&Array.isArray(ADMIN.fb)&&ADMIN.fb.some(f=>f.status==='new');
+  const fbDot=hasNew?'<span class="pa-dot"></span>':'';
   const tabs='<div class="pa-tabs"><button data-adtab="users" class="'+(ADMIN.tab!=='roles'&&ADMIN.tab!=='feedback'&&ADMIN.tab!=='campuses'?'on':'')+'">Users</button>'+
     '<button data-adtab="campuses" class="'+(ADMIN.tab==='campuses'?'on':'')+'">Campuses</button>'+
-    '<button data-adtab="feedback" class="'+(ADMIN.tab==='feedback'?'on':'')+'">Feedback</button></div>';
+    '<button data-adtab="feedback" class="'+(ADMIN.tab==='feedback'?'on':'')+'">Feedback'+fbDot+'</button></div>';
   if(ADMIN.tab==='feedback')
     return '<div class="page-head"><div><h1>Admin</h1><div class="sub">What staff have reported from inside the portal</div></div></div>'+tabs+pageAdminFeedback();
   if(ADMIN.tab==='roles')
@@ -2799,7 +2806,7 @@ document.addEventListener('click',e=>{
     document.querySelectorAll('#pfTheme button').forEach(b=>b.classList.toggle('on',b.dataset.theme===THEME));
     return;
   }
-  if(t.dataset.adtab){ ADMIN.tab=t.dataset.adtab; if(t.dataset.adtab==='feedback')ADMIN.fb=null; render(); return; }
+  if(t.dataset.adtab){ ADMIN.tab=t.dataset.adtab; if(t.dataset.adtab==='feedback'){ADMIN.fb=null;ADMIN.fbLoading=false;} render(); return; }
   if(t.dataset.newuser){ paInviteDrawer(); return; }
   if(t.dataset.toggleinactivecampus!==undefined){ ADMIN.showInactiveCampuses=t.checked; render(); return; }
   if(t.dataset.toggleusers){
