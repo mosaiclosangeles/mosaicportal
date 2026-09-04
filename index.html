@@ -855,7 +855,8 @@ const ROLES = {
   comms:{name:'Comms / staff',sections:['home','calendar','comms','planning','facilities','numbers']},
   leadership:{name:'Leadership',sections:['home','calendar','comms','planning','facilities','numbers','goals','budgets','giving','settings','admin']},
   ops:{name:'Ops / event management',sections:['home','calendar','planning','facilities']},
-  volunteer:{name:'Volunteer lead',sections:['home','calendar','facilities']}
+  volunteer:{name:'Volunteer lead',sections:['home','calendar','facilities']},
+  campus_pastor:{name:'Campus Pastor',sections:['home','calendar','comms','planning','facilities','numbers']}
 };
 const BUDGETS=[
   {k:'Facilities — NYC',b:72000,a:51400},
@@ -1207,7 +1208,7 @@ function campusSortIndex(name){
   return onlineIdx>=0?onlineIdx-0.5:CAMPUS_ORDER.length;
 }
 const ADMIN={profs:null,campuses:null,pending:null,err:null,fb:null,fbErr:null,q:'',role:'all',loading:false,tab:'users',apps:null,appPerms:null,appDefaults:null,campusOpen:new Set(),showInactiveCampuses:false,campusUsersOpen:new Set(),regions:null};
-const ROLE_LIST=['admin','staff','leader','volunteer'];
+const ROLE_LIST=['admin','staff','campus_pastor','leader','volunteer'];
 const SECTION_LABEL=id=>{const s=SECTIONS.find(x=>x.id===id);return s?s.label:id;};
 function adminName(p){const n=p.display_name||p.full_name||'—';return n.includes('@')?prettyNameFromEmail(n):n;}
 async function loadAdmin(){
@@ -1327,6 +1328,7 @@ function permSummary(p){
 const RP_ROLES=[
   {name:'Admin',color:'var(--amber-d)',desc:'Full access across every campus and every section — sees all of the portal, manages users, roles and campuses, and is the only role that can open Budgets and Giving.'},
   {name:'Staff',color:'var(--gathering-d)',desc:"Campus team member. Full working portal for their own campus — calendar, comms, planning and metrics — and can submit and edit that campus's numbers. Can't manage users or see other campuses."},
+  {name:'Campus Pastor',color:'var(--indigo-d)',desc:"Same access as Staff for their campus — calendar, comms, planning and metrics. Used for campus pastors who are not paid staff, or paid staff whose primary role differs from their pastoral one."},
   {name:'Leader',color:'var(--text2)',desc:"Lightweight view of their own campus — home, calendar and planning, plus submitting their campus's numbers. This is the default for new accounts."},
   {name:'Volunteer',color:'var(--session-d)',desc:'The lightest role — home and calendar for their own campus, view-only. No submitting, editing or managing. Great for on-the-ground helpers.'}
 ];
@@ -1499,7 +1501,7 @@ function pageAdmin(){
     '<button class="btn-primary" data-newuser="1">New user</button></div>'+tabs;
   if(!ADMIN.profs&&!ADMIN.err){loadAdmin();return head+'<div class="empty">Loading users…</div>';}
   if(ADMIN.err)return head+'<div class="banner">'+ic('info')+'<div>Couldn\'t load users — '+esc(ADMIN.err)+'</div></div>';
-  const rank={admin:0,staff:1,leader:2,volunteer:3};
+  const rank={admin:0,staff:1,campus_pastor:2,leader:3,volunteer:4};
   let rows=ADMIN.profs.slice().sort((a,b)=>(rank[a.role]??9)-(rank[b.role]??9)||adminName(a).localeCompare(adminName(b)));
   const q=ADMIN.q.trim().toLowerCase();
   if(ADMIN.role!=='all')rows=rows.filter(p=>p.role===ADMIN.role);
@@ -2667,7 +2669,7 @@ window.addEventListener('message',async e=>{
 });
 
 /* ============================ preview (view as staff/leader/volunteer) ============================ */
-const PREVIEW_ROLE_PRESET={staff:'comms',leader:'ops',volunteer:'volunteer'};
+const PREVIEW_ROLE_PRESET={staff:'comms',campus_pastor:'comms',leader:'ops',volunteer:'volunteer'};
 
 function _previewPickCampus(){
   // Use already-loaded campuses list, falling back gracefully if not loaded yet
@@ -2965,7 +2967,7 @@ let _pickerRole='staff';      // selected role in the "View as" picker
 let _pickerOpen=false;        // whether the picker is expanded in the user menu
 /* Metrics roles → prototype role presets (which sections the rail shows).
    The Settings role switcher still works on top of this default. */
-const ROLE_PRESET={admin:"leadership",staff:"comms",leader:"ops",volunteer:"volunteer"};
+const ROLE_PRESET={admin:"leadership",staff:"comms",campus_pastor:"comms",leader:"ops",volunteer:"volunteer"};
 const $g=id=>document.getElementById(id);
 function gateNote(msg,kind){const n=$g("gateNote");n.textContent=msg;n.className="gate-note show "+(kind||"err");}
 function gateMode(mode){
