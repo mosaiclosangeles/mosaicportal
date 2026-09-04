@@ -196,6 +196,16 @@ html.dark .pu-danger{background:transparent;border-color:#5c2a2a;color:#e88b8b}
 .pu-perm input{margin:0;width:14px;height:14px;flex:none;cursor:pointer}
 .pu-perm-tag{font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--gathering-d)}
 .pu-perm-ov{font-weight:500}
+.pu-perms[data-grouped]{flex-direction:column;gap:10px}
+.pu-perm-group{display:flex;flex-direction:column;gap:0}
+.pu-perm-children{display:flex;flex-wrap:wrap;gap:6px 14px;padding-left:22px;margin-top:6px}
+.pu-perm-locked input{pointer-events:none}
+.pu-perm-locked>span:first-of-type{color:var(--text2)}
+.pu-lock-ico{font-size:9px;margin-left:2px}
+.pu-dep-dlg{position:fixed;inset:0;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;z-index:9999}
+.pu-dep-box{background:var(--surface);border:1px solid var(--hairline);border-radius:10px;padding:18px 20px;max-width:340px;font-size:13.5px;line-height:1.5}
+.pu-dep-box p{margin:0 0 14px}
+.pu-dep-box .btns{display:flex;gap:8px;justify-content:flex-end}
 .pu-app{border-radius:7px}
 .pu-campuses{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:2px 8px 10px 8px;max-width:620px}
 .pu-campuses[hidden]{display:none}
@@ -1575,20 +1585,58 @@ function effectiveAppPerms(appKey,role,permOverrides){
     return {perm_key:p.perm_key,label:p.label,granted:ov?ov.granted:def,overridden:!!ov};
   });
 }
+/* Calendar perm hierarchy: parent key -> [child keys] */
+const PERM_CHILDREN={
+  calendar:{
+    view:['view_events','view_comms','view_mosaic_cal','view_travel_pto','view_facility_bookings'],
+    read_write:['write_planning','write_comms','write_facilities']
+  }
+};
+/* Calendar write_* sub-perms require Read/Write on another app */
+const PERM_DEP={
+  write_planning:{app_key:'planning',perm_key:'read_write',label:'Planning'},
+  write_comms:   {app_key:'comms',   perm_key:'read_write',label:'Comms'},
+  write_facilities:{app_key:'facilities',perm_key:'read_write',label:'Facilities'}
+};
 /* The named permissions inside one app, as tickboxes. A tick that differs
    from what the role gives is marked, so an exception is visible as an
-   exception rather than looking like the default. */
+   exception rather than looking like the default.
+   For calendar, child perms render indented under their parent; write_*
+   sub-perms are locked unless the user has read_write on the source app. */
 function puPermRow(sectionId,role,permOverrides,appOn){
   const key=appKeyFor(sectionId);
   const perms=effectiveAppPerms(key,role,permOverrides);
   if(!perms.length)return '';
-  return '<div class="pu-perms" data-permrow="'+esc(sectionId)+'"'+(appOn?'':' hidden')+'>'+
-    perms.map(p=>'<label class="pu-perm'+(p.overridden?' pu-perm-ov':'')+'">'+
-      '<input type="checkbox" data-perm data-papp="'+esc(key)+'" data-pkey="'+esc(p.perm_key)+'"'+(p.granted?' checked':'')+'>'+
+  const ch=PERM_CHILDREN[key]||{};
+  const childSet=new Set(Object.values(ch).flat());
+  const grouped=!!Object.keys(ch).length;
+  const renderPerm=(p,isChild)=>{
+    const dep=isChild?PERM_DEP[p.perm_key]:null;
+    let locked=false;
+    if(dep){
+      const dp=effectiveAppPerms(dep.app_key,role,permOverrides);
+      locked=!dp.some(x=>x.perm_key===dep.perm_key&&x.granted);
+    }
+    const cls='pu-perm'+(p.overridden?' pu-perm-ov':'')+(locked?' pu-perm-locked':'');
+    return '<label class="'+cls+'"'+(dep?' data-dep="'+esc(p.perm_key)+'"':'')+'>'+
+      '<input type="checkbox" data-perm data-papp="'+esc(key)+'" data-pkey="'+esc(p.perm_key)+'"'+
+        (p.granted&&!locked?' checked':'')+'>'+
       '<span>'+esc(p.label||p.perm_key)+'</span>'+
-      (p.overridden?'<span class="pu-perm-tag">changed</span>':'')+
-    '</label>').join('')+
-  '</div>';
+      (locked?'<span class="pu-lock-ico">🔒</span>':'')+
+      (!locked&&p.overridden?'<span class="pu-perm-tag">changed</span>':'')+
+    '</label>';
+  };
+  const rows=perms.filter(p=>!childSet.has(p.perm_key)).map(p=>{
+    const kids=(ch[p.perm_key]||[]).map(ck=>{
+      const cp=perms.find(x=>x.perm_key===ck);
+      return cp?renderPerm(cp,true):'';
+    }).join('');
+    if(!kids)return renderPerm(p,false);
+    return '<div class="pu-perm-group">'+renderPerm(p,false)+
+      '<div class="pu-perm-children">'+kids+'</div></div>';
+  }).join('');
+  return '<div class="pu-perms"'+(grouped?' data-grouped':'')+' data-permrow="'+esc(sectionId)+'"'+(appOn?'':' hidden')+'>'+
+    rows+'</div>';
 }
 /* The campuses a person can see inside one app: chips for the ones they have,
    a dropdown to add another. Hidden until the app itself is ticked, and never
@@ -1877,6 +1925,43 @@ async function paUserPage(id){
       const key=rm.dataset.capp;
       appCampuses[key]=(appCampuses[key]||[]).filter(x=>x!==rm.dataset.cid);
       redrawCampusRow(key);
+      return;
+    }
+    /* Locked write_* sub-perm: show a confirmation dialog before granting */
+    const depLbl=e.target.closest('label[data-dep]');
+    if(depLbl){
+      e.preventDefault();
+      const pk=depLbl.dataset.dep;
+      const d=PERM_DEP[pk];
+      if(!d)return;
+      const nm=depLbl.querySelector('span')?.textContent||pk;
+      const existing=document.getElementById('puDepDlg');
+      if(existing)existing.remove();
+      const dlg=document.createElement('div');
+      dlg.id='puDepDlg';
+      dlg.className='pu-dep-dlg';
+      dlg.innerHTML='<div class="pu-dep-box"><p>To let this user create or edit <strong>'+
+        esc(nm)+'</strong> content from Calendar, they also need <strong>Read/Write</strong> on the <strong>'+
+        esc(d.label)+'</strong> app. Grant both?</p>'+
+        '<div class="btns">'+
+        '<button id="puDepNo" style="padding:5px 14px;border-radius:6px;font-size:13px;border:1px solid var(--hairline);background:var(--fill);cursor:pointer">No, cancel</button>'+
+        '<button id="puDepYes" style="padding:5px 14px;border-radius:6px;font-size:13px;border:none;background:var(--gathering);color:#fff;cursor:pointer">Yes, grant both</button>'+
+        '</div></div>';
+      document.body.appendChild(dlg);
+      dlg.addEventListener('click',ev=>{
+        if(ev.target.id==='puDepNo'){dlg.remove();return;}
+        if(ev.target.id==='puDepYes'){
+          const depCb=document.querySelector('#auBody [data-perm][data-papp="'+d.app_key+'"][data-pkey="'+d.perm_key+'"]');
+          if(depCb)depCb.checked=true;
+          const cb=depLbl.querySelector('[data-perm]');
+          if(cb)cb.checked=true;
+          depLbl.classList.remove('pu-perm-locked');
+          depLbl.removeAttribute('data-dep');
+          const lock=depLbl.querySelector('.pu-lock-ico');
+          if(lock)lock.remove();
+          dlg.remove();
+        }
+      });
       return;
     }
   });
