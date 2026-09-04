@@ -1509,14 +1509,14 @@ function pageAdmin(){
   const archived=rows.filter(p=>p.archived_at);
   rows=rows.filter(p=>!p.archived_at);
   const activeTotal=ADMIN.profs.filter(p=>!p.archived_at).length;
-  const roleSel=p=>'<select class="pa-role" data-id="'+esc(p.id)+'">'+ROLE_LIST.map(r=>'<option value="'+r+'"'+(r===p.role?' selected':'')+'>'+cap(r)+'</option>').join('')+'</select>';
+  const roleSel=p=>'<select class="pa-role" data-id="'+esc(p.id)+'">'+ROLE_LIST.map(r=>'<option value="'+r+'"'+(r===p.role?' selected':'')+'>'+roleLabel(r)+'</option>').join('')+'</select>';
   const campusSel=p=>p.role==='admin'?'<span style="color:var(--text2)">All campuses</span>'
     :'<select class="pa-campus" data-id="'+esc(p.id)+'"><option value="">Select a campus</option>'+
       ADMIN.campuses.map(c=>'<option value="'+esc(c.id)+'"'+(c.id===p.campus_id?' selected':'')+'>'+esc(c.name)+'</option>').join('')+'</select>';
   return head+
     '<div class="pa-bar"><input id="paSearch" type="text" placeholder="Search by name…" value="'+esc(ADMIN.q)+'">'+
     '<select id="paRole"><option value="all"'+(ADMIN.role==='all'?' selected':'')+'>All roles</option>'+
-      ROLE_LIST.map(r=>'<option value="'+r+'"'+(ADMIN.role===r?' selected':'')+'>'+cap(r)+'</option>').join('')+'</select>'+
+      ROLE_LIST.map(r=>'<option value="'+r+'"'+(ADMIN.role===r?' selected':'')+'>'+roleLabel(r)+'</option>').join('')+'</select>'+
     '<span style="margin-left:auto;font-size:12.5px;color:var(--text2)">'+rows.length+' of '+activeTotal+' users</span></div>'+
     '<div id="paNote" class="banner" style="display:none"></div>'+
     '<div class="pa-card"><table class="pa-table"><thead><tr><th>Name</th><th>Role</th><th>Primary campus</th><th>Roles &amp; permissions</th></tr></thead><tbody>'+
@@ -1688,7 +1688,7 @@ async function paUserPage(id){
      only show the extras - otherwise changing Main campus would leave the
      old one saved and the new one missing. */
   if(p.campus_id&&!campusIds.includes(p.campus_id))campusIds.unshift(p.campus_id);
-  const roleOpts=ROLE_LIST.map(r=>'<option value="'+r+'"'+(r===p.role?' selected':'')+'>'+cap(r)+'</option>').join('');
+  const roleOpts=ROLE_LIST.map(r=>'<option value="'+r+'"'+(r===p.role?' selected':'')+'>'+roleLabel(r)+'</option>').join('');
   const camOpts='<option value="">Select a campus</option>'+(ADMIN.campuses||[]).map(c=>'<option value="'+esc(c.id)+'"'+(c.id===p.campus_id?' selected':'')+'>'+esc(c.name)+'</option>').join('');
   const lastActive=u&&u.last_sign_in_at;
   host.innerHTML=
@@ -1944,7 +1944,7 @@ function paInviteDrawer(pendingId){
     '<div style="display:flex;flex-direction:column;gap:12px;margin-top:16px">'+
     '<div><label class="pa-lbl">Full name</label><input id="nuName" class="pa-in" type="text" placeholder="Jane Doe" value="'+esc((pv&&pv.name)||'')+'"></div>'+
     '<div><label class="pa-lbl">Email</label><input id="nuEmail" class="pa-in" type="email" placeholder="jane@mosaic.org" value="'+esc((pv&&pv.email)||'')+'"></div>'+
-    '<div><label class="pa-lbl">Role</label><select id="nuRole" class="pa-in">'+['leader','staff','volunteer','admin'].map(r=>'<option value="'+r+'"'+((pv?pv.role:'leader')===r?' selected':'')+'>'+cap(r)+'</option>').join('')+'</select></div>'+
+    '<div><label class="pa-lbl">Role</label><select id="nuRole" class="pa-in">'+['leader','staff','campus_pastor','volunteer','admin'].map(r=>'<option value="'+r+'"'+((pv?pv.role:'leader')===r?' selected':'')+'>'+roleLabel(r)+'</option>').join('')+'</select></div>'+
     '<div id="nuCampusWrap"><label class="pa-lbl">Campus</label><select id="nuCampus" class="pa-in"><option value="">Select a campus</option>'+
       (ADMIN.campuses||[]).map(c=>'<option value="'+esc(c.id)+'"'+(pv&&pv.campus_id===c.id?' selected':'')+'>'+esc(c.name)+'</option>').join('')+'</select></div></div>'+
     '<div style="display:flex;gap:10px;align-items:center;margin-top:18px;flex-wrap:wrap">'+
@@ -3026,6 +3026,8 @@ function prettyNameFromEmail(email){
 }
 /* ---- account menu (metrics-style, at the rail foot) ---- */
 const cap=s=>s?s.charAt(0).toUpperCase()+s.slice(1):"";
+const ROLE_LABEL={admin:'Admin',staff:'Staff',campus_pastor:'Campus Pastor',leader:'Leader',volunteer:'Volunteer'};
+const roleLabel=r=>ROLE_LABEL[r]||cap(r);
 const umPop=document.createElement("div");umPop.className="um-pop";document.body.appendChild(umPop);
 function umClose(){umPop.classList.remove("open");}
 /* Appearance — per person, per device. Stored under the signed-in email so a
