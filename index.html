@@ -2727,7 +2727,7 @@ function _showPreviewBanner(){
       }
     });
   }
-  const ROLE_ACCENT={staff:'var(--gathering)',leader:'var(--milestone)',volunteer:'var(--session)'};
+  const ROLE_ACCENT={staff:'var(--gathering)',campus_pastor:'var(--indigo)',leader:'var(--milestone)',volunteer:'var(--session)'};
   bar.style.setProperty('--pb-accent',ROLE_ACCENT[ME.previewRole]||'var(--comms)');
   const campuses=(ADMIN.campuses||[]).filter(c=>c.active!==false);
   const roleLabel=PREVIEW_ROLE_LABEL[ME.previewRole]||ME.previewRole||'';
@@ -3060,7 +3060,7 @@ function avatarHtml(url,name){
     ? '<img src="'+esc(url)+'" alt="" onerror="if(this.parentNode)this.parentNode.textContent=\''+ini.replace(/'/g,"\\'")+'\'">'
     : ini;
 }
-const PREVIEW_ROLE_LABEL={staff:'Staff',leader:'Leader',volunteer:'Volunteer'};
+const PREVIEW_ROLE_LABEL={staff:'Staff',campus_pastor:'Campus Pastor',leader:'Leader',volunteer:'Volunteer'};
 function umPickerHtml(){
   const campuses=(ADMIN.campuses||[]).filter(c=>c.active!==false);
   const campusOpts=campuses.length
@@ -3069,7 +3069,7 @@ function umPickerHtml(){
   const roleBtn=r=>'<button type="button" class="'+(r===_pickerRole?'on':'')+'" data-pickerrole="'+r+'">'+PREVIEW_ROLE_LABEL[r]+'</button>';
   return '<div class="um-picker">'+
     '<label>Role</label>'+
-    '<div class="um-picker-roles">'+roleBtn('staff')+roleBtn('leader')+roleBtn('volunteer')+'</div>'+
+    '<div class="um-picker-roles">'+roleBtn('staff')+roleBtn('campus_pastor')+roleBtn('leader')+roleBtn('volunteer')+'</div>'+
     (campuses.length>1?'<label>Campus</label><select id="umPickerCampus">'+campusOpts+'</select>':'')+
     '<button class="um-picker-go" data-previewgo="1">Start preview</button>'+
   '</div>';
