@@ -212,8 +212,9 @@ html.dark .pu-danger{background:transparent;border-color:#5c2a2a;color:#e88b8b}
 .pu-dep-box .btns{display:flex;gap:8px;justify-content:flex-end}
 .pu-app{border-radius:7px}
 /* per-campus permissions toggle + matrix */
-.pu-pc-toggle{display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:500;cursor:pointer;padding:8px 0 0;margin-top:8px;border-top:1px solid var(--hairline)}
-.pu-pc-toggle input{width:14px;height:14px;margin:0;flex:none;cursor:pointer;accent-color:var(--gathering)}
+.pu-permhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.pu-pc-toggle{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text2);cursor:pointer;font-weight:400;white-space:nowrap}
+.pu-pc-toggle input{width:13px;height:13px;margin:0;flex:none;cursor:pointer;accent-color:var(--gathering)}
 .pu-pcmatrix{margin-top:10px;border:1px solid var(--hairline);border-radius:7px;overflow:hidden}
 .pu-pcmatrix[hidden]{display:none}
 .pu-pcm-head{display:grid;background:var(--fill);border-bottom:1px solid var(--hairline)}
@@ -1831,11 +1832,13 @@ async function paUserPage(id){
       const on=secs.includes(s.id);
       const camp=puCampusRow(s.id,appCampuses[s.id]||[],ADMIN.campuses||[],isAdminUser,true,campusIds);
       const perm=puPermRow(s.id,(p.role||'volunteer'),permOv,true);
-      const hasChildren=!!PERM_CHILDREN[appKeyFor(s.id)];
+      /* per-campus toggle: show for any app when 2+ campuses are selected */
+      const effCampIds=isAdminUser?(ADMIN.campuses||[]).map(c=>c.id):(appCampuses[s.id]||campusIds);
+      const showPcToggle=!isAdminUser&&effCampIds.length>=2;
       const pcOn=!!(pcOnMap[s.id]);
-      const matrix=hasChildren?puCampusPermMatrix(appKeyFor(s.id),appCampuses[s.id]||[],ADMIN.campuses||[],(p.role||'volunteer'),permOv,campusPermOv,pcOn,true):'';
-      const pcToggle=hasChildren?
-        '<label class="pu-pc-toggle"><input type="checkbox" data-pctoggle="'+esc(s.id)+'"'+(pcOn?' checked':'')+'> Per-Campus Permissions</label>':'';
+      const matrix=showPcToggle?puCampusPermMatrix(appKeyFor(s.id),effCampIds,ADMIN.campuses||[],(p.role||'volunteer'),permOv,campusPermOv,pcOn,true):'';
+      const pcToggle=showPcToggle?
+        '<label class="pu-pc-toggle"><input type="checkbox" data-pctoggle="'+esc(s.id)+'"'+(pcOn?' checked':'')+'> Per-campus</label>':'';
       return '<div class="pa-card pu-app" data-approw="'+esc(s.id)+'">'+
         '<div class="pu-apphead"><span class="pu-appname">'+esc(s.label)+(s.restricted?'<span class="pu-lock">'+ic('lock')+'</span>':'')+'</span>'+
           '<label class="pu-access">Access'+
@@ -1847,9 +1850,9 @@ async function paUserPage(id){
         '</div>'+
         '<div class="pu-appbody" data-appbody="'+esc(s.id)+'"'+(on?'':' hidden')+'>'+
           '<div class="pu-sublbl">Campuses</div>'+camp+
-          (perm?'<div class="pu-sublbl">Permissions</div>'+
+          (perm?
+            '<div class="pu-permhead"><div class="pu-sublbl" style="margin-bottom:0">Permissions</div>'+(pcToggle||'')+'</div>'+
             '<div data-permwrap="'+esc(s.id)+'">'+
-              (pcToggle?pcToggle:'')+
               '<div data-generalperm="'+esc(s.id)+'"'+(pcOn?' hidden':'')+'>'+perm+'</div>'+
               matrix+
             '</div>':'')+
@@ -2014,8 +2017,9 @@ async function paUserPage(id){
         if(mat){mat.hidden=!checked;}
         else if(checked){
           const key=appKeyFor(sid);
+          const ec=appCampuses[sid]||campusIds;
           const tmp=document.createElement('div');
-          tmp.innerHTML=puCampusPermMatrix(key,appCampuses[sid]||[],ADMIN.campuses||[],(p.role||'volunteer'),permOv,campusPermOv,true,true);
+          tmp.innerHTML=puCampusPermMatrix(key,ec,ADMIN.campuses||[],(p.role||'volunteer'),permOv,campusPermOv,true,true);
           if(tmp.firstChild)wrap.appendChild(tmp.firstChild);
         }
       }
