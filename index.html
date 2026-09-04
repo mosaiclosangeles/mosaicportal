@@ -196,12 +196,11 @@ html.dark .pu-danger{background:transparent;border-color:#5c2a2a;color:#e88b8b}
 .pu-perm input{margin:0;width:14px;height:14px;flex:none;cursor:pointer}
 .pu-perm-tag{font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--gathering-d)}
 .pu-perm-ov{font-weight:500}
-.pu-perms[data-grouped]{flex-direction:column;gap:6px}
-.pu-perm-group{display:flex;flex-direction:column;gap:0;width:100%}
-.pu-perm-group-head{display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;cursor:pointer}
+.pu-perm-group{display:contents}
+.pu-perm-group-head{display:flex;align-items:center;gap:5px;font-size:12.5px;font-weight:600}
 .pu-perm-group-head input{margin:0;width:14px;height:14px;flex:none;cursor:pointer;accent-color:var(--gathering)}
-.pu-perm-badge{font-size:10px;font-weight:600;background:var(--gathering-t);color:var(--gathering-d);border-radius:999px;padding:1px 8px;margin-left:4px;cursor:pointer;white-space:nowrap;border:none;font-family:inherit}
-.pu-perm-panel{margin-top:6px;padding:8px 10px;background:var(--fill);border:1px solid var(--hairline);border-radius:6px;display:flex;flex-wrap:wrap;gap:5px 14px}
+.pu-perm-badge{font-size:10px;font-weight:600;background:var(--gathering-t);color:var(--gathering-d);border-radius:999px;padding:1px 7px;cursor:pointer;white-space:nowrap;border:none;font-family:inherit;line-height:1.6}
+.pu-perm-panel{width:100%;padding:7px 10px;background:var(--fill);border:1px solid var(--hairline);border-radius:6px;display:flex;flex-wrap:wrap;gap:5px 14px;margin-top:2px}
 .pu-perm-panel[hidden]{display:none}
 .pu-perm-panel .pu-perm{font-size:12px}
 .pu-perm-locked input{pointer-events:none}
@@ -1663,7 +1662,7 @@ function puPermRow(sectionId,role,permOverrides,appOn){
       '<div class="pu-perm-panel" id="'+panelId+'" hidden>'+kids+'</div>'+
     '</div>';
   }).join('');
-  return '<div class="pu-perms"'+(grouped?' data-grouped':'')+' data-permrow="'+esc(sectionId)+'"'+(appOn?'':' hidden')+'>'+
+  return '<div class="pu-perms" data-permrow="'+esc(sectionId)+'"'+(appOn?'':' hidden')+'>'+
     rows+'</div>';
 }
 /* Per-campus permission matrix: permissions as rows, campuses as columns.
