@@ -215,18 +215,19 @@ html.dark .pu-danger{background:transparent;border-color:#5c2a2a;color:#e88b8b}
 .pu-permhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
 .pu-pc-toggle{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text2);cursor:pointer;font-weight:400;white-space:nowrap}
 .pu-pc-toggle input{width:13px;height:13px;margin:0;flex:none;cursor:pointer;accent-color:var(--gathering)}
-.pu-pcmatrix{margin-top:10px;border:1px solid var(--hairline);border-radius:7px;overflow:hidden}
+.pu-pcmatrix{margin-top:10px;border:1px solid var(--hairline);border-radius:7px;overflow-x:auto}
 .pu-pcmatrix[hidden]{display:none}
-.pu-pcm-head{display:grid;background:var(--fill);border-bottom:1px solid var(--hairline)}
-.pu-pcm-hc{font-size:10px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--text2);padding:5px 10px;text-align:center}
-.pu-pcm-hc:first-child{text-align:left}
+.pu-pcmatrix table{border-collapse:collapse;width:100%;min-width:max-content}
+.pu-pcmatrix thead tr{background:var(--fill);border-bottom:1px solid var(--hairline)}
+.pu-pcm-hc{font-size:10px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--text2);padding:6px 10px;text-align:center;white-space:nowrap}
+.pu-pcm-hc:first-child{text-align:left;white-space:nowrap}
 .pu-pcm-hc.campus-col{color:var(--gathering-d)}
-.pu-pcm-row{display:grid;border-bottom:1px solid var(--hairline);background:var(--surface)}
-.pu-pcm-row:last-child{border-bottom:none}
-.pu-pcm-row.alt{background:var(--fill)}
-.pu-pcm-cell{padding:5px 10px;font-size:12px;color:var(--text);display:flex;align-items:center}
-.pu-pcm-cell.c{justify-content:center}
-.pu-pcm-cell input{width:14px;height:14px;margin:0;cursor:pointer}
+.pu-pcmatrix tbody tr{border-bottom:1px solid var(--hairline);background:var(--surface)}
+.pu-pcmatrix tbody tr:last-child{border-bottom:none}
+.pu-pcmatrix tbody tr:nth-child(even){background:var(--fill)}
+.pu-pcm-cell{padding:5px 10px;font-size:12px;color:var(--text)}
+.pu-pcm-cell.c{text-align:center}
+.pu-pcm-cell input{width:14px;height:14px;margin:0;cursor:pointer;vertical-align:middle}
 .pu-campuses{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:2px 8px 10px 8px;max-width:620px}
 .pu-campuses[hidden]{display:none}
 .pu-chip{display:inline-flex;align-items:center;gap:4px;background:var(--fill);border:1px solid var(--hairline);border-radius:999px;padding:3px 8px 3px 11px;font-size:12.5px}
@@ -1673,20 +1674,18 @@ function puCampusPermMatrix(appKey,campusIds,allCampuses,role,permOverrides,camp
   if(!perms.length)return '';
   const camps=allCampuses.filter(c=>campusIds.includes(c.id));
   if(!camps.length)return '';
-  const cols=1+camps.length;
-  const gridStyle='grid-template-columns:1fr'+' 62px'.repeat(camps.length);
-  const rows=perms.map((p,i)=>{
+  const heads=camps.map(c=>'<th class="pu-pcm-hc campus-col">'+esc(c.name)+'</th>').join('');
+  const rows=perms.map(p=>{
     const cells=camps.map(c=>{
       const ov=(campusPermOv||[]).find(o=>o.app_key===appKey&&o.campus_id===c.id&&o.perm_key===p.perm_key);
       const chk=ov?ov.granted:p.granted;
-      return '<div class="pu-pcm-cell c"><input type="checkbox" data-campusperm data-capp="'+esc(appKey)+'" data-cid="'+esc(c.id)+'" data-cpkey="'+esc(p.perm_key)+'"'+(chk?' checked':'')+' aria-label="'+esc(p.label||p.perm_key)+' for '+esc(c.name)+'"></div>';
+      return '<td class="pu-pcm-cell c"><input type="checkbox" data-campusperm data-capp="'+esc(appKey)+'" data-cid="'+esc(c.id)+'" data-cpkey="'+esc(p.perm_key)+'"'+(chk?' checked':'')+' aria-label="'+esc(p.label||p.perm_key)+' for '+esc(c.name)+'"></td>';
     }).join('');
-    return '<div class="pu-pcm-row'+(i%2?' alt':'')+'" style="'+gridStyle+'"><div class="pu-pcm-cell">'+esc(p.label||p.perm_key)+'</div>'+cells+'</div>';
+    return '<tr><td class="pu-pcm-cell">'+esc(p.label||p.perm_key)+'</td>'+cells+'</tr>';
   }).join('');
-  const heads=camps.map(c=>'<div class="pu-pcm-hc campus-col">'+esc(c.name)+'</div>').join('');
   return '<div class="pu-pcmatrix" data-pcmatrix="'+esc(appKey)+'"'+(pcOn&&appOn?'':' hidden')+'>'+
-    '<div class="pu-pcm-head" style="'+gridStyle+'"><div class="pu-pcm-hc">Permission</div>'+heads+'</div>'+
-    rows+'</div>';
+    '<table><thead><tr><th class="pu-pcm-hc">Permission</th>'+heads+'</tr></thead>'+
+    '<tbody>'+rows+'</tbody></table></div>';
 }
 /* The campuses a person can see inside one app: chips for the ones they have,
    a dropdown to add another. Hidden until the app itself is ticked, and never
