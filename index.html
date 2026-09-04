@@ -196,11 +196,14 @@ html.dark .pu-danger{background:transparent;border-color:#5c2a2a;color:#e88b8b}
 .pu-perm input{margin:0;width:14px;height:14px;flex:none;cursor:pointer}
 .pu-perm-tag{font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--gathering-d)}
 .pu-perm-ov{font-weight:500}
-.pu-perms[data-grouped]{flex-direction:column;gap:8px}
+.pu-perms[data-grouped]{flex-direction:column;gap:6px}
 .pu-perm-group{display:flex;flex-direction:column;gap:0;width:100%}
-.pu-perm-group>.pu-perm{font-weight:600}
-.pu-perm-children{display:flex;flex-wrap:wrap;gap:5px 13px;padding-left:16px;margin-top:6px;border-left:2px solid var(--indigo,#c4b5fd)}
-.pu-perm-children .pu-perm{font-size:12px;color:var(--text2)}
+.pu-perm-group-head{display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;cursor:pointer}
+.pu-perm-group-head input{margin:0;width:14px;height:14px;flex:none;cursor:pointer;accent-color:var(--gathering)}
+.pu-perm-badge{font-size:10px;font-weight:600;background:var(--gathering-t);color:var(--gathering-d);border-radius:999px;padding:1px 8px;margin-left:4px;cursor:pointer;white-space:nowrap;border:none;font-family:inherit}
+.pu-perm-panel{margin-top:6px;padding:8px 10px;background:var(--fill);border:1px solid var(--hairline);border-radius:6px;display:flex;flex-wrap:wrap;gap:5px 14px}
+.pu-perm-panel[hidden]{display:none}
+.pu-perm-panel .pu-perm{font-size:12px}
 .pu-perm-locked input{pointer-events:none}
 .pu-perm-locked>span:first-of-type{color:var(--text2)}
 .pu-lock-ico{font-size:9px;margin-left:2px}
@@ -1644,13 +1647,21 @@ function puPermRow(sectionId,role,permOverrides,appOn){
     '</label>';
   };
   const rows=perms.filter(p=>!childSet.has(p.perm_key)).map(p=>{
-    const kids=(ch[p.perm_key]||[]).map(ck=>{
-      const cp=perms.find(x=>x.perm_key===ck);
-      return cp?renderPerm(cp,true):'';
-    }).join('');
-    if(!kids)return renderPerm(p,false);
-    return '<div class="pu-perm-group">'+renderPerm(p,false)+
-      '<div class="pu-perm-children">'+kids+'</div></div>';
+    const childKeys=ch[p.perm_key]||[];
+    if(!childKeys.length)return renderPerm(p,false);
+    const childPerms=childKeys.map(ck=>perms.find(x=>x.perm_key===ck)).filter(Boolean);
+    const total=childPerms.length;
+    const on=childPerms.filter(c=>c.granted).length;
+    const badge=(on===total?total+' of '+total:on+' of '+total)+' ▸';
+    const panelId='pgp-'+esc(sectionId)+'-'+esc(p.perm_key);
+    const kids=childPerms.map(cp=>renderPerm(cp,true)).join('');
+    return '<div class="pu-perm-group">'+
+      '<div class="pu-perm-group-head" data-pghead="'+panelId+'">'+
+        '<input type="checkbox" data-perm data-papp="'+esc(key)+'" data-pkey="'+esc(p.perm_key)+'"'+(p.granted?' checked':'')+'>'+(p.label||p.perm_key)+
+        '<button class="pu-perm-badge" data-pgbadge="'+panelId+'" type="button">'+esc(badge)+'</button>'+
+      '</div>'+
+      '<div class="pu-perm-panel" id="'+panelId+'" hidden>'+kids+'</div>'+
+    '</div>';
   }).join('');
   return '<div class="pu-perms"'+(grouped?' data-grouped':'')+' data-permrow="'+esc(sectionId)+'"'+(appOn?'':' hidden')+'>'+
     rows+'</div>';
@@ -1966,6 +1977,17 @@ async function paUserPage(id){
       const key=rm.dataset.capp;
       appCampuses[key]=(appCampuses[key]||[]).filter(x=>x!==rm.dataset.cid);
       redrawCampusRow(key);
+      return;
+    }
+    /* Expand/collapse sub-perm panel via badge button */
+    const badge=e.target.closest('[data-pgbadge]');
+    if(badge){
+      const panel=document.getElementById(badge.dataset.pgbadge);
+      if(panel){
+        panel.hidden=!panel.hidden;
+        const open=!panel.hidden;
+        badge.textContent=badge.textContent.replace(/[▸▾]/,open?'▾':'▸');
+      }
       return;
     }
     /* Locked write_* sub-perm: show a confirmation dialog before granting */
