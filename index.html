@@ -1487,7 +1487,6 @@ async function loadFeedback(){
 function pageAdmin(){
   if(ME.role!=='admin')return '<div class="page-head"><div><h1>Admin</h1></div></div><div class="empty">Only admins can open this.</div>';
   const tabs='<div class="pa-tabs"><button data-adtab="users" class="'+(ADMIN.tab!=='roles'&&ADMIN.tab!=='feedback'&&ADMIN.tab!=='campuses'?'on':'')+'">Users</button>'+
-    '<button data-adtab="roles" class="'+(ADMIN.tab==='roles'?'on':'')+'">Roles & permissions</button>'+
     '<button data-adtab="campuses" class="'+(ADMIN.tab==='campuses'?'on':'')+'">Campuses</button>'+
     '<button data-adtab="feedback" class="'+(ADMIN.tab==='feedback'?'on':'')+'">Feedback</button></div>';
   if(ADMIN.tab==='feedback')
