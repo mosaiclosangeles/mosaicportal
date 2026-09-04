@@ -582,6 +582,20 @@ select{font:inherit;font-size:13px;padding:7px 10px;border:1px solid var(--hairl
   .pa-table{min-width:600px}
   .rp-table{min-width:600px}
 }
+/* ── New-event drawer form ────────────────────────────────── */
+.ne-section{margin-bottom:16px}
+.ne-section-sub{padding:14px;background:var(--fill);border-radius:10px;border:1px solid var(--hairline)}
+.ne-field{margin-bottom:11px}
+.ne-field:last-child{margin-bottom:0}
+.ne-label{display:block;font-size:12px;font-weight:500;color:var(--text2);margin-bottom:4px}
+.ne-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:11px}
+.ne-eyebrow{font-size:10.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text2);margin-bottom:12px}
+.ne-toggle-row{margin:14px 0}
+.ne-toggle-label{display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:500;cursor:pointer}
+.ne-toggle-label input[type=checkbox]{width:15px;height:15px;cursor:pointer;accent-color:var(--gathering);flex-shrink:0}
+.ne-info{display:flex;align-items:flex-start;gap:8px;font-size:12px;color:var(--text2);margin-top:8px;padding:9px 11px;background:var(--fill);border-radius:8px;line-height:1.4}
+.ne-info svg{flex-shrink:0;margin-top:1px;opacity:.55}
+html.dark .ne-section-sub,.dark .ne-section-sub{background:var(--fill)}
 </style>
 </head>
 <body>
@@ -1016,7 +1030,7 @@ function pageHome(){
   const upcoming=EVENTS.filter(e=>D(e.date)>=TODAY && e.type==='event').slice(0,5);
   const attn=ATTN.slice(0,6);
   return '<div class="page-head"><div><h1>Home</h1><div class="sub">'+pretty(TODAY)+' · week '+weekNum(TODAY)+'</div></div>'+
-   '<button class="btn-primary" data-go="planning">New event</button></div>'+
+   '<button class="btn-primary" data-new-event="1">New event</button></div>'+
    (DATA_ERR?'<div class="banner">'+ic('info')+'<div>'+esc(DATA_ERR)+'</div></div>':'')+
    '<div class="cards">'+
      card('This week',twEvents.length,twComms.length+' comms alongside','calendar','--session')+
@@ -2588,6 +2602,187 @@ function dayDrawer(k){
     '<span class="txt"><span class="name">'+esc(e.title)+'</span><span class="meta">'+esc(e.detail||'')+'</span></span>'+
     '<span class="tag">'+STATUS_LABEL[e.status]+'</span></button>').join('')+'</div>');
 }
+/* ── New-event popup ────────────────────────────────────────
+   Writes a planning board item and (optionally) a facility
+   request in a single drawer form.
+   Planning board lives at a separate Supabase project and uses
+   optimistic-concurrency mutations — same pattern as the board
+   itself (read → apply create op → PATCH with version guard).  */
+const PM_SB_URL='https://yrviwbqhjcrlxgozrgay.supabase.co';
+const PM_SB_KEY='sb_publishable_3o7Avv4DEhHW7i_k5DrH6Q_tYFLrgwg';
+function pmFetch(path,opts){
+  opts=opts||{};
+  const h=Object.assign({'apikey':PM_SB_KEY,'Authorization':'Bearer '+PM_SB_KEY,'Content-Type':'application/json'},opts.headers||{});
+  return fetch(PM_SB_URL+'/rest/v1/'+path,Object.assign({},opts,{headers:h}));
+}
+function neId(){return 'n'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);}
+
+async function openNewEventDrawer(){
+  let facCampuses=[];
+  try{const {data}=await sb.from('campuses').select('id,name').order('name');facCampuses=data||[];}catch(_){}
+  const todayStr=TODAY.toISOString().slice(0,10);
+  const fcOpts=facCampuses.map(c=>'<option value="'+esc(c.id)+'">'+esc(c.name)+'</option>').join('');
+  openDrawer(
+    '<h2 style="margin-top:0">New event</h2>'+
+    '<div class="ne-section">'+
+      '<div class="ne-field"><label class="ne-label">Title <span style="color:var(--magenta)">*</span></label>'+
+        '<input id="neTitle" class="pa-in" type="text" placeholder="Event name" autocomplete="off"></div>'+
+      '<div class="ne-row">'+
+        '<div class="ne-field"><label class="ne-label">Type</label>'+
+          '<select id="neType" class="pa-in">'+
+            '<option>Event</option><option>Gathering</option><option>Series</option>'+
+            '<option>Campaign</option><option>Program</option><option>Staff date</option>'+
+          '</select></div>'+
+        '<div class="ne-field"><label class="ne-label">Level</label>'+
+          '<select id="neLevel" class="pa-in"><option>Level 1</option><option>Level 2</option><option>Level 3</option></select></div>'+
+      '</div>'+
+      '<div class="ne-row">'+
+        '<div class="ne-field"><label class="ne-label">Date <span style="color:var(--magenta)">*</span></label>'+
+          '<input id="neDate" class="pa-in" type="date" value="'+todayStr+'"></div>'+
+        '<div class="ne-field"><label class="ne-label">End date</label>'+
+          '<input id="neDateEnd" class="pa-in" type="date"></div>'+
+      '</div>'+
+      '<div class="ne-field"><label class="ne-label">Campus</label>'+
+        '<input id="neCampus" class="pa-in" type="text" placeholder="e.g. LA, Pasadena, Global" autocomplete="off"></div>'+
+      '<div class="ne-field"><label class="ne-label">Description</label>'+
+        '<textarea id="neDesc" class="pa-in" rows="2" style="resize:vertical"></textarea></div>'+
+    '</div>'+
+    '<div class="ne-toggle-row">'+
+      '<label class="ne-toggle-label"><input type="checkbox" id="neFacToggle"> Also submit a facility request</label>'+
+    '</div>'+
+    '<div id="neFacSection" hidden class="ne-section ne-section-sub">'+
+      '<div class="ne-eyebrow">Facility request</div>'+
+      '<div class="ne-row">'+
+        '<div class="ne-field"><label class="ne-label">Request type</label>'+
+          '<select id="neFacType" class="pa-in">'+
+            '<option value="event">Event</option>'+
+            '<option value="facility_use">Facility use</option>'+
+            '<option value="filming">Filming</option>'+
+          '</select></div>'+
+        '<div class="ne-field"><label class="ne-label">Campus</label>'+
+          '<select id="neFacCampus" class="pa-in">'+fcOpts+'</select></div>'+
+      '</div>'+
+      '<div class="ne-row">'+
+        '<div class="ne-field"><label class="ne-label">Start time</label>'+
+          '<input id="neFacStart" class="pa-in" type="time"></div>'+
+        '<div class="ne-field"><label class="ne-label">End time</label>'+
+          '<input id="neFacEnd" class="pa-in" type="time"></div>'+
+      '</div>'+
+      '<div class="ne-row">'+
+        '<div class="ne-field"><label class="ne-label">Setup (min)</label>'+
+          '<input id="neFacSetup" class="pa-in" type="number" value="30" min="0" step="15"></div>'+
+        '<div class="ne-field"><label class="ne-label">Teardown (min)</label>'+
+          '<input id="neFacTeardown" class="pa-in" type="number" value="30" min="0" step="15"></div>'+
+      '</div>'+
+      '<div class="ne-row">'+
+        '<div class="ne-field"><label class="ne-label">Expected attendance</label>'+
+          '<input id="neFacAttendees" class="pa-in" type="number" min="1"></div>'+
+        '<div class="ne-field"><label class="ne-label">Purpose</label>'+
+          '<input id="neFacPurpose" class="pa-in" type="text" placeholder="What is this for?"></div>'+
+      '</div>'+
+      '<div class="ne-field"><label class="ne-label">Notes</label>'+
+        '<textarea id="neFacNotes" class="pa-in" rows="2" style="resize:vertical"></textarea></div>'+
+    '</div>'+
+    '<div class="ne-info">'+ic('calendar')+'<span>This event will appear in Calendars once added to the planning board.</span></div>'+
+    '<div class="ne-info" style="opacity:.6">'+ic('numbers')+'<span>Attendance can be submitted in Metrics after the event.</span></div>'+
+    '<div id="neErr" style="color:var(--magenta);font-size:13px;margin-top:8px;min-height:18px"></div>'+
+    '<button class="btn-primary" id="neSubmit" style="margin-top:14px;width:100%">Add to planning board</button>'
+  );
+  document.getElementById('neTitle').focus();
+  document.getElementById('neFacToggle').addEventListener('change',function(){
+    document.getElementById('neFacSection').hidden=!this.checked;
+    document.getElementById('neSubmit').textContent=this.checked
+      ?'Add to planning board + submit facility request'
+      :'Add to planning board';
+  });
+  document.getElementById('neSubmit').addEventListener('click',submitNewEvent);
+}
+
+async function submitNewEvent(){
+  const title=document.getElementById('neTitle').value.trim();
+  const date=document.getElementById('neDate').value;
+  const btn=document.getElementById('neSubmit');
+  const errEl=document.getElementById('neErr');
+  errEl.textContent='';
+  if(!title){errEl.textContent='Please enter a title.';return;}
+  if(!date){errEl.textContent='Please pick a date.';return;}
+  btn.disabled=true;btn.textContent='Saving…';
+  const item={
+    id:neId(),
+    title,
+    type:document.getElementById('neType').value,
+    scope:document.getElementById('neLevel').value,
+    campus:document.getElementById('neCampus').value.trim()||null,
+    date,
+    dateEnd:document.getElementById('neDateEnd').value||null,
+    status:'Not started',
+    description:document.getElementById('neDesc').value.trim()||null,
+    owners:ME&&ME.name?[ME.name]:[],
+    review:false
+  };
+  // Read current planning board state, apply create mutation, write back
+  // with version guard (retry up to 3× on concurrent-write conflict)
+  let pmOk=false;
+  for(let attempt=0;attempt<3;attempt++){
+    try{
+      const r=await pmFetch('planning_board_state?key=eq.mosaic-board-v2&select=data,version');
+      if(!r.ok)break;
+      const rows=await r.json();
+      if(!rows||!rows.length)break;
+      const row=rows[0];
+      const state=JSON.parse(JSON.stringify(row.data));
+      state.created=state.created||[];
+      if(!state.created.some(x=>x.id===item.id))state.created.push(item);
+      const w=await pmFetch(
+        'planning_board_state?key=eq.mosaic-board-v2&version=eq.'+row.version,
+        {method:'PATCH',headers:{'Prefer':'return=minimal'},
+         body:JSON.stringify({data:state,version:row.version+1})}
+      );
+      if(w.status===204){pmOk=true;break;}
+      // status 200 with 0 rows = version conflict; retry
+    }catch(_){break;}
+  }
+  if(!pmOk){
+    errEl.textContent="Couldn't save to planning board — please try again, or add it directly in Planning.";
+    btn.disabled=false;btn.textContent='Add to planning board';
+    return;
+  }
+  // Facility request (optional)
+  if(document.getElementById('neFacToggle').checked){
+    const st=document.getElementById('neFacStart').value;
+    const et=document.getElementById('neFacEnd').value;
+    const toTS=(d,t)=>d+'T'+(t||'00:00')+':00';
+    let userId=null;
+    try{const {data:{user}}=await sb.auth.getUser();userId=user&&user.id;}catch(_){}
+    const {error}=await sb.from('fac_requests').insert({
+      request_type:document.getElementById('neFacType').value,
+      title,
+      purpose:document.getElementById('neFacPurpose').value.trim()||null,
+      campus_id:document.getElementById('neFacCampus').value||null,
+      requested_by:userId,
+      requester_name:ME&&ME.name||'',
+      requester_email:ME&&ME.email||'',
+      start_at:toTS(date,st),
+      end_at:toTS(date,et||st),
+      setup_minutes:Number(document.getElementById('neFacSetup').value)||0,
+      teardown_minutes:Number(document.getElementById('neFacTeardown').value)||0,
+      attendees:Number(document.getElementById('neFacAttendees').value)||null,
+      category:'Ministry',
+      requester_notes:document.getElementById('neFacNotes').value.trim()||null,
+      status:'submitted',
+      is_external:false,
+      details:{}
+    });
+    if(error){
+      errEl.textContent='Added to planning board ✓ — but facility request failed: '+(error.message||'unknown error')+'. Please submit it directly in Facilities.';
+      btn.disabled=false;btn.textContent='Close';
+      btn.addEventListener('click',closeDrawer,{once:true});
+      return;
+    }
+  }
+  closeDrawer();
+}
+
 function newDrawer(){
   openDrawer('<h1 style="font-size:22px">Creating happens in the source app</h1>'+
    '<div class="sub" style="margin-top:8px">The portal is read-only in v1. It reads and arranges; the four apps stay the systems of record.</div>'+
@@ -2762,7 +2957,7 @@ document.addEventListener('toggle',e=>{
   if(d.open)ADMIN.campusOpen.add(d.dataset.campus);else ADMIN.campusOpen.delete(d.dataset.campus);
 },true);
 document.addEventListener('click',e=>{
-  const t=e.target.closest('[data-go],[data-view],[data-nav],[data-filter],[data-ev],[data-day],[data-task],[data-new],[data-pick],[data-everyone],[data-tl],[data-back],[data-logout],[data-preview],[data-previewexit],[data-previewgo],[data-pickertoggle],[data-pickerrole],[data-profile],[data-fb],[data-newuser],[data-gp],[data-fp],[data-user],[data-pinv],[data-pinvsend],[data-pinvdel],[data-adtab],[data-theme],[data-newcampus],[data-editcampus],[data-addloc],[data-deactivateloc],[data-addtime],[data-rmtime],[data-toggleinactivecampus],[data-toggleusers]');
+  const t=e.target.closest('[data-go],[data-view],[data-nav],[data-filter],[data-ev],[data-day],[data-task],[data-new],[data-new-event],[data-pick],[data-everyone],[data-tl],[data-back],[data-logout],[data-preview],[data-previewexit],[data-previewgo],[data-pickertoggle],[data-pickerrole],[data-profile],[data-fb],[data-newuser],[data-gp],[data-fp],[data-user],[data-pinv],[data-pinvsend],[data-pinvdel],[data-adtab],[data-theme],[data-newcampus],[data-editcampus],[data-addloc],[data-deactivateloc],[data-addtime],[data-rmtime],[data-toggleinactivecampus],[data-toggleusers]');
   if(!t) return;
   if(t.dataset.logout){ (sb?sb.auth.signOut():Promise.resolve()).then(()=>location.reload()); return; }
   if(t.dataset.pickertoggle){
@@ -2788,6 +2983,7 @@ document.addEventListener('click',e=>{
   }
   if(t.dataset.everyone){ S.forEveryone=!S.forEveryone; render(); return; }
   if(t.dataset.tl!==undefined){ const n=Number(t.dataset.tl); S.tlShift = n===0?0:S.tlShift+n; render(); return; }
+  if(t.dataset.newEvent){openNewEventDrawer();return;}
   if(t.dataset.go){ if(allowedSections().includes(t.dataset.go)){
       S.deep=S.deep||{};
       if(t.dataset.item)S.deep[t.dataset.go]=t.dataset.item; else delete S.deep[t.dataset.go];
