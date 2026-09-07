@@ -496,10 +496,11 @@ h2{font-size:16px;font-weight:600;letter-spacing:-.015em;margin:0 0 6px}
 .scrim.open{opacity:1;pointer-events:auto}
 .drawer{position:fixed;top:0;right:0;bottom:0;width:396px;max-width:92vw;background:#fff;
   border-left:1px solid var(--hairline);transform:translateX(100%);transition:transform .22s ease;
-  overflow-y:auto;padding:20px 22px 40px;z-index:2}
+  overflow:hidden;z-index:2;display:flex;flex-direction:column}
 .drawer.open{transform:none}
-.drawer-close{position:absolute;top:16px;right:18px;color:var(--text2)}
+.drawer-close{position:absolute;top:16px;right:18px;color:var(--text2);background:none;border:0;padding:4px;cursor:pointer;z-index:1}
 .drawer-close svg{width:18px;height:18px}
+#drawerBody{flex:1;overflow-y:auto;padding:20px 22px 40px}
 [data-av-wrap]:hover .av-overlay{opacity:1!important}
 .tag{font-size:11px;padding:3px 8px;border-radius:6px;background:var(--fill);color:#4a4a4a;margin-right:5px}
 .kv{display:flex;justify-content:space-between;font-size:13px;padding:8px 0;border-bottom:1px solid var(--separator)}
