@@ -1612,7 +1612,7 @@ function effectiveAppPerms(appKey,role,permOverrides){
     return {perm_key:p.perm_key,label:p.label,granted:ov?ov.granted:def,overridden:!!ov};
   });
 }
-/* Calendar perm hierarchy: parent key -> [child keys] */
+/* Perm hierarchy: parent key -> [child keys] */
 const PERM_CHILDREN={
   calendar:{
     view:['view_events','view_comms','view_mosaic_cal','view_travel_pto','view_facility_bookings'],
