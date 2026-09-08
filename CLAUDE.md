@@ -49,7 +49,14 @@ spends a token the first already spent, gets a 400 and drops its session —
 which is precisely how Facilities came to show a password box inside a portal
 the person had just signed into. The portal is the only client that refreshes.
 
-**Facility bookings are a fifth calendar source.** `loadFacilities()` reads
+**The calendar has three sources, and they are not the item types.**
+`SOURCES` (Mosaic Calendar / Staff / Facilities) is a filter chip over one or
+more item types — Staff covers both `other` and `away`, and `comms` maps to no
+source at all, so it never draws. Filter through `shown(e)`, never through
+`S.filters.has(e.type)`, or the rows Loyda asked to be folded together come
+apart again. `tests/drive-portal.mjs` asserts the three by name.
+
+**Facility bookings are one of those sources.** `loadFacilities()` reads
 `v_fac_requests` out of the same Supabase project with the signed-in person's
 own session, so RLS decides what they see. It draws `block_start`/`block_end`
 rather than `start_at`/`end_at`: a booking is the room being unavailable, and
