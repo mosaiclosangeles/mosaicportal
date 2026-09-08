@@ -139,10 +139,10 @@ html.dark .banner{background:var(--surface);border-color:var(--hairline);color:v
 html.dark .cell,html.dark .wk-head div,html.dark .wk-body{border-color:var(--grid)}
 html.dark .row:hover{background:var(--fill)}
 /* permissions summary + editor */
-.pa-perm{border:0;background:none;padding:0;cursor:pointer;display:inline-flex;gap:5px;flex-wrap:wrap;font-family:inherit}
+.pa-perm{border:0;background:var(--fill);padding:0;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:7px;font-family:inherit;flex-shrink:0}
+.pa-perm:hover{background:var(--separator)}
 .pa-pill{font-size:11px;padding:2px 8px;border-radius:999px;background:var(--fill);color:#4a4a4a;white-space:nowrap}
 .pa-pill.custom{background:#e8f0fa;color:#2c4c85}
-.pa-perm:hover .pa-pill{background:#e6e6e4}
 .pu-head{display:flex;gap:14px;align-items:flex-start;margin-bottom:6px}
 .pu-head .ring{width:52px;height:52px;border-radius:50%;background:#e2e2e0;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:600;color:#5c5c5c;flex:none}
 .pu-head .ring img{width:100%;height:100%;object-fit:cover}
@@ -1368,17 +1368,8 @@ function relDays(ts){
   return Math.round(days/365)+'y ago';
 }
 function permSummary(p){
-  const secs=sectionsFor(p), cams=campusesFor(p);
-  const allCam=(ADMIN.campuses||[]).length;
-  const camLab=(p.role==='admin'&&!(p.campus_ids||[]).length)?'all campuses'
-    :cams.length===0?'no campus'
-    :cams.length===1?campusName(cams[0])
-    :cams.length===allCam?'all campuses'
-    :cams.length+' campuses';
-  const custom=!!(p.app_access||(p.campus_ids&&p.campus_ids.length));
-  return '<span class="pa-pill">'+secs.length+' of '+PERM_SECTIONS.length+' apps</span>'+
-    '<span class="pa-pill">'+esc(camLab)+'</span>'+
-    (custom?'<span class="pa-pill custom">custom</span>':'');
+  void p;
+  return '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M9.5 2.5l2 2-7 7H2.5v-2l7-7z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round" fill="none"/><path d="M8 4l2 2" stroke="currentColor" stroke-width="1.3"/></svg>';
 }
 /* Roles & permissions — Paola's reference matrix from the Metrics admin,
    adapted to the portal: what each role can reach across the whole app,
@@ -1589,7 +1580,7 @@ function pageAdmin(){
       '<span class="pa-av">'+avatarHtml(p.avatar_url,adminName(p))+'</span><span class="nm">'+esc(adminName(p))+'</span></button>'+
       (ME.email&&p.full_name===ME.email?' <span style="color:var(--text2);font-size:11.5px">(you)</span>':'')+'</td>'+
       '<td>'+roleSel(p)+'</td><td>'+campusSel(p)+'</td>'+
-      '<td><button class="pa-perm" data-user="'+esc(p.id)+'">'+permSummary(p)+'</button></td></tr>').join('')
+      '<td style="text-align:right"><button class="pa-perm" data-user="'+esc(p.id)+'" title="Edit permissions for '+esc(adminName(p))+'">'+permSummary(p)+'</button></td></tr>').join('')
       :'<tr><td colspan="4" style="color:var(--text2)">No users match.</td></tr>')+
     '</tbody></table></div>'+
     ((ADMIN.pending||[]).length?
