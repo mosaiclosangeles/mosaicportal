@@ -3477,8 +3477,10 @@ async function enterPortal(){
 (function initAuth(){
   if(!sb){gateNote("Can't reach the sign-in service — check your connection and reload the page.","err");return;}
   const inviting=location.hash.includes("type=invite");
-  const recovering=location.hash.includes("type=recovery")||inviting;
-  if(recovering)gateMode("recover");
+  // PKCE reset/invite links arrive as ?code= in the query string (not the hash)
+  const hasPkceCode=new URLSearchParams(location.search).has("code");
+  const recovering=location.hash.includes("type=recovery")||inviting||hasPkceCode;
+  if(recovering&&!inviting)gateMode("recover");
   if(inviting)gateNote("Welcome to the Mosaic Portal! Choose a password to finish setting up your account.","ok");
   sb.auth.onAuthStateChange(event=>{if(event==="PASSWORD_RECOVERY")gateMode("recover");});
   sb.auth.getSession().then(({data})=>{if(data.session){primeSharedSession(data.session);if(!recovering)enterPortal();}});
