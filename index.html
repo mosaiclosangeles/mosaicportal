@@ -229,6 +229,8 @@ html.dark .pu-danger{background:transparent;border-color:#5c2a2a;color:#e88b8b}
 .pu-pcm-cell:first-child{position:sticky;left:0;z-index:1;box-shadow:2px 0 0 var(--hairline)}
 .pu-pcm-cell.c{text-align:center}
 .pu-pcm-cell input{width:14px;height:14px;margin:0;cursor:pointer;vertical-align:middle}
+.pu-pcm-parent td{background:var(--surface)!important;font-weight:600;font-size:11px;letter-spacing:.02em;color:var(--text2)}
+.pu-pcm-child td:first-child{padding-left:26px;color:var(--text2);font-size:11.5px}
 .pu-campuses{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:2px 8px 10px 8px;max-width:620px}
 .pu-campuses[hidden]{display:none}
 .pu-chip{display:inline-flex;align-items:center;gap:4px;background:var(--fill);border:1px solid var(--hairline);border-radius:999px;padding:3px 8px 3px 11px;font-size:12.5px}
@@ -1699,13 +1701,22 @@ function puCampusPermMatrix(appKey,campusIds,allCampuses,role,permOverrides,camp
   const camps=allCampuses.filter(c=>campusIds.includes(c.id));
   if(!camps.length)return '';
   const heads=camps.map(c=>'<th class="pu-pcm-hc campus-col">'+esc(c.name)+'</th>').join('');
+  const ch=PERM_CHILDREN[appKey]||{};
+  const childSet=new Set(Object.values(ch).flat());
+  const parentSet=new Set(Object.keys(ch));
+  const emptyCols=camps.map(()=>'<td class="pu-pcm-cell"></td>').join('');
   const rows=perms.map(p=>{
+    if(parentSet.has(p.perm_key)){
+      /* Parent row — label only, no checkboxes */
+      return '<tr class="pu-pcm-parent"><td class="pu-pcm-cell">'+esc(p.label||p.perm_key)+'</td>'+emptyCols+'</tr>';
+    }
+    const isChild=childSet.has(p.perm_key);
     const cells=camps.map(c=>{
       const ov=(campusPermOv||[]).find(o=>o.app_key===appKey&&o.campus_id===c.id&&o.perm_key===p.perm_key);
       const chk=ov?ov.granted:p.granted;
       return '<td class="pu-pcm-cell c"><input type="checkbox" data-campusperm data-capp="'+esc(appKey)+'" data-cid="'+esc(c.id)+'" data-cpkey="'+esc(p.perm_key)+'"'+(chk?' checked':'')+' aria-label="'+esc(p.label||p.perm_key)+' for '+esc(c.name)+'"></td>';
     }).join('');
-    return '<tr><td class="pu-pcm-cell">'+esc(p.label||p.perm_key)+'</td>'+cells+'</tr>';
+    return '<tr'+(isChild?' class="pu-pcm-child"':'')+'><td class="pu-pcm-cell">'+esc(p.label||p.perm_key)+'</td>'+cells+'</tr>';
   }).join('');
   return '<div class="pu-pcmatrix" data-pcmatrix="'+esc(appKey)+'"'+(pcOn&&appOn?'':' hidden')+'>'+
     '<table><thead><tr><th class="pu-pcm-hc">Permission</th>'+heads+'</tr></thead>'+
