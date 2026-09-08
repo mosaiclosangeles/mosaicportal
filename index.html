@@ -1693,7 +1693,7 @@ function puPermRow(sectionId,role,permOverrides,appOn){
 /* Per-campus permission matrix: permissions as rows, campuses as columns.
    Shown instead of general permissions when per-campus mode is on. */
 function puCampusPermMatrix(appKey,campusIds,allCampuses,role,permOverrides,campusPermOv,pcOn,appOn){
-  const perms=effectiveAppPerms(appKey,role,permOverrides).filter(p=>!p.perm_key.startsWith('view_')&&!p.perm_key.startsWith('write_'));
+  const perms=effectiveAppPerms(appKey,role,permOverrides).filter(p=>!p.perm_key.startsWith('write_'));
   if(!perms.length)return '';
   const camps=allCampuses.filter(c=>campusIds.includes(c.id));
   if(!camps.length)return '';
