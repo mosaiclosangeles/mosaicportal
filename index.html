@@ -1626,6 +1626,7 @@ const PERM_CHILDREN={
     read_write:['submit_attendance','edit_entries','restore_entries']
   },
   goals:{
+    view:['view_general','view_staff_dashboard','view_admin_console'],
     read_write:['create_assign_goals','edit_publish_goals','manage_team_assessments']
   },
   planning:{
@@ -1693,7 +1694,7 @@ function puPermRow(sectionId,role,permOverrides,appOn){
 /* Per-campus permission matrix: permissions as rows, campuses as columns.
    Shown instead of general permissions when per-campus mode is on. */
 function puCampusPermMatrix(appKey,campusIds,allCampuses,role,permOverrides,campusPermOv,pcOn,appOn){
-  const perms=effectiveAppPerms(appKey,role,permOverrides).filter(p=>!p.perm_key.startsWith('write_'));
+  const perms=effectiveAppPerms(appKey,role,permOverrides);
   if(!perms.length)return '';
   const camps=allCampuses.filter(c=>campusIds.includes(c.id));
   if(!camps.length)return '';
