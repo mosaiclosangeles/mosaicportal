@@ -628,8 +628,8 @@ select{font:inherit;font-size:13px;padding:7px 10px;border:1px solid var(--hairl
 <div id="gate">
   <div class="gate-card">
     <div class="gate-brand"><div class="mark"></div><div class="name">Mosaic Portal</div></div>
-    <h1>Welcome</h1>
-    <p class="gsub">Sign in with your Mosaic account.</p>
+    <h1 id="gTitle">Welcome</h1>
+    <p class="gsub" id="gSub">Sign in with your Mosaic account.</p>
     <div id="g-email-row">
       <label for="gEmail">Email</label>
       <input id="gEmail" type="email" autocomplete="email" placeholder="you@mosaic.org">
@@ -721,12 +721,48 @@ function pretty(dt){return ['Sunday','Monday','Tuesday','Wednesday','Thursday','
 
 /* ============================ data ============================ */
 const TYPES = {
-  event: {label:'Events',hue:'var(--gathering)',tint:'var(--gathering-t)',deep:'var(--gathering-d)',solid:'var(--gathering-s)'},
+  event: {label:'Mosaic Calendar',hue:'var(--gathering)',tint:'var(--gathering-t)',deep:'var(--gathering-d)',solid:'var(--gathering-s)'},
   comms: {label:'Comms', hue:'var(--amber)',    tint:'var(--amber-t)',    deep:'var(--amber-d)',    solid:'var(--amber-s)'},
-  other: {label:'Mosaic Calendar', hue:'var(--neutral)',  tint:'var(--neutral-t)',  deep:'var(--neutral-d)',  solid:'var(--neutral-s)'},
-  away:  {label:'Staff travel + PTO', hue:'var(--lime)', tint:'var(--lime-t)', deep:'var(--lime-d)', solid:'var(--lime-s)'},
-  facility:{label:'Facility bookings', hue:'var(--red)', tint:'var(--red-t)', deep:'var(--red-d)', solid:'var(--red-s)'}
+  other: {label:'Staff calendar', hue:'var(--lime)',  tint:'var(--lime-t)',  deep:'var(--lime-d)',  solid:'var(--lime-s)'},
+  away:  {label:'Time away', hue:'var(--lime)', tint:'var(--lime-t)', deep:'var(--lime-d)', solid:'var(--lime-s)'},
+  facility:{label:'Facilities', hue:'var(--red)', tint:'var(--red-t)', deep:'var(--red-d)', solid:'var(--red-s)'}
 };
+/* THE CALENDAR SHOWS THREE SOURCES, NOT FIVE — Loyda's cut, 8 Sep 2026.
+   Five chips read as redundant: "Events" and "Mosaic Calendar" are the same
+   thing to everybody but us, and travel + PTO is too granular to sit beside
+   them ("at that point you can do one that's birthdays"). The three that are
+   left each answer a different question, which is why they earn a row:
+
+     Mosaic Calendar — us as a church   (the planning board's own items)
+     Staff           — me as an employee (the shared Outlook calendar:
+                                          meetings, rehearsals, birthdays,
+                                          closures, and time away folded in)
+     Facilities      — us as a property  (bookings, setup and teardown)
+
+   Comms is deliberately NOT a source. It is internal, it has its own app, and
+   Loyda asked for it off the calendar; comm_events still load for Home's
+   count, they just have no source so nothing draws them here.
+
+   A source is a filter chip over one or more item types, so the underlying
+   data model is untouched — an item is still type 'other' or 'away', it is
+   only filtered and coloured as Staff. Filter through shown(), never through
+   S.filters.has(e.type), or the two rows fold back apart. */
+const SOURCES = {
+  mosaic:{label:'Mosaic Calendar',types:['event'],        hue:'var(--gathering)'},
+  staff: {label:'Staff',          types:['other','away'], hue:'var(--lime)'},
+  fac:   {label:'Facilities',     types:['facility'],     hue:'var(--red)'}
+};
+/* What each row actually holds, said plainly — this is the copy in Settings. */
+const SRC_NOTE={
+  mosaic:'Gatherings, series, campaigns and programs from the planning board',
+  staff: 'The shared Mosaic Calendar — meetings, rehearsals, birthdays, closures and time away',
+  fac:   'Room bookings from facilities.mosaic.org, setup and teardown included'
+};
+const TYPE_SOURCE={};
+Object.keys(SOURCES).forEach(k=>SOURCES[k].types.forEach(t=>{TYPE_SOURCE[t]=k;}));
+/* Does this entry belong to a source the person still has switched on?
+   An item whose type maps to no source (comms) is never on the calendar. */
+function shown(e){const src=TYPE_SOURCE[e.type];return !!src&&S.filters.has(src);}
 // status: done | scheduled | waiting | drafting
 /* ---- live data ----------------------------------------------------------
    EVENTS / CAMPAIGNS come from the planning board's queryable mirror
@@ -914,7 +950,7 @@ const S = {
   view:'week',
   anchor:new Date(TODAY),
   month:new Date(TODAY.getFullYear(),TODAY.getMonth(),1),
-  filters:new Set(['event','comms','other','away','facility']),
+  filters:new Set(Object.keys(SOURCES)),
   role:'comms',
   forEveryone:false,
   tlShift:0,
@@ -967,7 +1003,7 @@ function goalsNavItems(){
 }
 
 /* ============================ helpers ============================ */
-function evOn(dt){return EVENTS.filter(e=>e.date===key(dt) && S.filters.has(e.type));}
+function evOn(dt){return EVENTS.filter(e=>e.date===key(dt) && shown(e));}
 function statusStyle(e){
   const t=TYPES[e.type];
   if(e.status==='done')      return 'border-left-color:'+(t.solid||t.hue)+';background:'+(t.solid||t.hue)+';color:#fff';
@@ -1134,32 +1170,32 @@ function pageCalendar(){
   return head + (DATA_ERR?'<div class="banner">'+ic('info')+'<div>'+esc(DATA_ERR)+'</div></div>':'') + (S.view==='week' ? weekGrid(ws) : monthGrid()) + legend();
 }
 function filterBar(){
-  return '<div class="filters">'+Object.keys(TYPES).map(k=>
+  return '<div class="filters">'+Object.keys(SOURCES).map(k=>
     '<button class="chip '+(S.filters.has(k)?'on':'off')+'" data-filter="'+k+'">'+
-    '<span class="swatch" style="background:'+TYPES[k].hue+'"></span>'+TYPES[k].label+'</button>').join('')+
+    '<span class="swatch" style="background:'+SOURCES[k].hue+'"></span>'+SOURCES[k].label+'</button>').join('')+
     '<button class="chip" data-filter="__all">All</button></div>'+
-    ((S.filters.has('other')||S.filters.has('away')||S.filters.has('facility'))
+    ((S.filters.has('staff')||S.filters.has('fac'))
       ? '<div style="font-size:12px;color:var(--text2);margin:-8px 0 14px">'+
-        [(S.filters.has('other')||S.filters.has('away'))
-          ? (CAL_ON?'Mosaic Calendar shows the shared staff calendar — meetings, rehearsals, birthdays and closures. Staff travel + PTO pulls the time-away entries out of it.'
-                   :'The shared Mosaic Calendar isn\'t connected yet, so these two rows are empty.')
+        [S.filters.has('staff')
+          ? (CAL_ON?'Staff is the shared Mosaic Calendar — meetings, rehearsals, birthdays, closures, and time away.'
+                   :'The shared Mosaic Calendar isn\'t connected yet, so Staff is empty.')
           : '',
-         S.filters.has('facility')
-          ? 'Facility bookings come from facilities.mosaic.org, and show the room held — setup and teardown included, not just the event itself. Anything still waiting on a decision is drawn as waiting.'
+         S.filters.has('fac')
+          ? 'Facilities comes from facilities.mosaic.org, and shows the room held — setup and teardown included, not just the event itself. Anything still waiting on a decision is drawn as waiting.'
           : ''].filter(Boolean).join(' ')+'</div>'
       : '');
 }
 function legend(){
   return '<div class="legend">'+
-   '<span><i style="background:'+TYPES.comms.solid+'"></i>Sent</span>'+
-   '<span><i style="background:'+TYPES.comms.tint+';border:1px solid '+TYPES.comms.hue+'"></i>Scheduled</span>'+
-   '<span><i style="background:#fff;border:1px dashed '+TYPES.comms.hue+'"></i>Waiting on someone</span>'+
+   '<span><i style="background:'+TYPES.event.solid+'"></i>Sent</span>'+
+   '<span><i style="background:'+TYPES.event.tint+';border:1px solid '+TYPES.event.hue+'"></i>Scheduled</span>'+
+   '<span><i style="background:#fff;border:1px dashed '+TYPES.event.hue+'"></i>Waiting on someone</span>'+
    '<span><i style="background:#fcfcfb;border:1px solid var(--grid)"></i>Drafting</span>'+
    '<span style="margin-left:auto">Hue = type · fill = status</span></div>';
 }
 function barsFor(ws){
   const we=addDays(ws,6);
-  const rows=CAMPAIGNS.filter(c=>S.filters.has(c.type)&&D(c.start)<=we&&D(c.end)>=ws);
+  const rows=CAMPAIGNS.filter(c=>shown(c)&&D(c.start)<=we&&D(c.end)>=ws);
   if(!rows.length) return '';
   return rows.map(c=>{
     const s=Math.max(0,Math.round((D(c.start)-ws)/86400000));
@@ -2628,15 +2664,15 @@ function pageSettings(){
     '<select><option>Recent Sunday</option><option>Six-week trend</option><option>Kids + youth</option><option>Year to date</option><option>NYC vs LA</option></select></div>'+
     '<div class="set-row"><div><div class="k">Default calendar view</div><div class="d">Phone always renders as a list.</div></div>'+
     '<select><option>Week</option><option>Month</option></select></div>'+
-    '<h2 style="margin-top:28px">Type colours</h2>'+
-    '<div class="sub" style="margin-bottom:14px">Pick the colour for each type. Hue means type, fill means status — so changing a hue changes it everywhere that type appears.</div>'+
-    Object.keys(TYPES).map(k=>
-      '<div class="set-row"><div><div class="k">'+TYPES[k].label+'</div>'+
-      '<div class="d">Currently '+TYPES[k].label.toLowerCase()+' events and chips</div></div>'+
+    '<h2 style="margin-top:28px">Calendar colours</h2>'+
+    '<div class="sub" style="margin-bottom:14px">Pick the colour for each of the three sources. Hue means type, fill means status — so changing a hue changes it everywhere that source appears.</div>'+
+    Object.keys(SOURCES).map(k=>
+      '<div class="set-row"><div><div class="k">'+SOURCES[k].label+'</div>'+
+      '<div class="d">'+SRC_NOTE[k]+'</div></div>'+
       '<div class="swatches" data-type="'+k+'">'+PALETTE.map(p=>
-        '<button class="sw'+(('var('+p+')')===TYPES[k].hue?' sel':'')+'" data-pick="'+k+'|'+p+'" '+
+        '<button class="sw'+(('var('+p+')')===SOURCES[k].hue?' sel':'')+'" data-pick="'+k+'|'+p+'" '+
         'style="background:var('+p+')" aria-label="'+p.replace('--','')+'">'+
-        (('var('+p+')')===TYPES[k].hue?ic('check'):'')+'</button>').join('')+'</div></div>').join('')+
+        (('var('+p+')')===SOURCES[k].hue?ic('check'):'')+'</button>').join('')+'</div></div>').join('')+
     '<div class="set-row"><div><div class="k">Set for everyone</div>'+
     '<div class="d">Apply these colours across the whole staff team rather than just your account.</div></div>'+
     '<button class="tick'+(S.forEveryone?' done':'')+'" data-everyone="1" style="border-radius:5px;width:20px;height:20px" '+
@@ -2808,7 +2844,7 @@ function eventDrawer(id){
   openDrawer(h);
 }
 function dayDrawer(k){
-  const d=D(k), evs=EVENTS.filter(e=>e.date===k&&S.filters.has(e.type));
+  const d=D(k), evs=EVENTS.filter(e=>e.date===k&&shown(e));
   openDrawer('<h1 style="font-size:22px">'+pretty(d)+'</h1><div class="sub">'+evs.length+' items</div>'+
     '<div style="margin-top:16px">'+evs.map(e=>'<button class="row" data-ev="'+e.id+'">'+
     '<span class="swatch" style="background:'+TYPES[e.type].hue+';margin-top:6px"></span>'+
@@ -3006,11 +3042,16 @@ document.addEventListener('click',e=>{
   if(t.dataset.previewexit){ _pickerOpen=false; exitPreview(); umClose(); return; }
   if(t.dataset.profile){ umClose(); S.from=S.section||'home'; S.section='profile'; render(); return; }
   if(t.dataset.pick){
-    const [type,tok]=t.dataset.pick.split('|');
-    TYPES[type].hue='var('+tok+')';
-    TYPES[type].tint='var('+tok+'-t)';
-    TYPES[type].deep='var('+tok+'-d)';
-    TYPES[type].solid='var('+tok+'-s)';
+    const [src,tok]=t.dataset.pick.split('|');
+    // A source can cover more than one item type, so recolour all of them —
+    // Staff would otherwise change on the chip and not on the calendar.
+    SOURCES[src].hue='var('+tok+')';
+    SOURCES[src].types.forEach(type=>{
+      TYPES[type].hue='var('+tok+')';
+      TYPES[type].tint='var('+tok+'-t)';
+      TYPES[type].deep='var('+tok+'-d)';
+      TYPES[type].solid='var('+tok+'-s)';
+    });
     render(); return;
   }
   if(t.dataset.everyone){ S.forEveryone=!S.forEveryone; render(); return; }
@@ -3108,7 +3149,7 @@ document.addEventListener('click',e=>{
     render(); return;
   }
   if(t.dataset.filter){
-    if(t.dataset.filter==='__all'){ S.filters=new Set(Object.keys(TYPES)); }
+    if(t.dataset.filter==='__all'){ S.filters=new Set(Object.keys(SOURCES)); }
     else if(S.filters.has(t.dataset.filter)){ S.filters.delete(t.dataset.filter); }
     else { S.filters.add(t.dataset.filter); }
     render(); return;
@@ -3195,18 +3236,38 @@ let _pickerOpen=false;        // whether the picker is expanded in the user menu
 const ROLE_PRESET={admin:"leadership",staff:"comms",campus_pastor:"comms",leader:"ops",volunteer:"volunteer"};
 const $g=id=>document.getElementById(id);
 function gateNote(msg,kind){const n=$g("gateNote");n.textContent=msg;n.className="gate-note show "+(kind||"err");}
+/* THE HEADING SAYS WHAT THE SCREEN IS. Loyda, 8 Sep: a person who clicked
+   "choose a new password" in their email and lands on a card headed "Welcome —
+   sign in with your Mosaic account" has no way to tell the link worked. The
+   fields used to change with the mode and the heading did not, so every mode
+   looked like the sign-in screen. Add a mode, add its line here. */
+const GATE_COPY={
+  signin: ["Welcome","Sign in with your Mosaic account.",""],
+  forgot: ["Reset your password","Enter your email and we'll send you a link.",""],
+  recover:["Reset your password","Choose a new password below.",""],
+  invite: ["Welcome to Mosaic","Choose a password to finish setting up your account.",
+           "Your account is ready — pick a password and you're in."],
+  // A PKCE link on its own does not say whether it was an invite or a reset,
+  // so this wording has to be true of both. Never guess: telling an invited
+  // person they are "resetting" a password they have never had is the bug.
+  setpass:["Choose your password","Pick a password below — it's what you'll sign in with from now on.",""]
+};
 function gateMode(mode){
+  const setting=mode==="recover"||mode==="invite"||mode==="setpass";
   const show=(id,on)=>{const el=$g(id);if(el)el.style.display=on?"":"none";};
-  show("g-email-row",mode!=="recover");
+  show("g-email-row",!setting);
   show("g-pass-row",mode==="signin");
-  show("g-newpass-rows",mode==="recover");
+  show("g-newpass-rows",setting);
   show("gLoginBtn",mode==="signin");
   show("gSendResetBtn",mode==="forgot");
-  show("gUpdatePassBtn",mode==="recover");
+  show("gUpdatePassBtn",setting);
   show("gForgotLink",mode==="signin");
   show("gBackToSignIn",mode==="forgot");
+  const copy=GATE_COPY[mode]||GATE_COPY.signin;
+  $g("gTitle").textContent=copy[0];
+  $g("gSub").textContent=copy[1];
   const n=$g("gateNote");if(n)n.className="gate-note";
-  if(mode==="recover")gateNote("You're resetting your password — choose a new one below.","ok");
+  if(copy[2])gateNote(copy[2],"ok");
 }
 $g("gForgotLink").addEventListener("click",()=>gateMode("forgot"));
 $g("gBackToSignIn").addEventListener("click",()=>gateMode("signin"));
@@ -3509,14 +3570,30 @@ async function enterPortal(){
 }
 (function initAuth(){
   if(!sb){gateNote("Can't reach the sign-in service — check your connection and reload the page.","err");return;}
-  const inviting=location.hash.includes("type=invite");
-  // PKCE reset/invite links arrive as ?code= in the query string (not the hash)
-  const hasPkceCode=new URLSearchParams(location.search).has("code");
-  const recovering=location.hash.includes("type=recovery")||inviting||hasPkceCode;
-  if(recovering&&!inviting)gateMode("recover");
-  if(inviting)gateNote("Welcome to the Mosaic Portal! Choose a password to finish setting up your account.","ok");
-  sb.auth.onAuthStateChange(event=>{if(event==="PASSWORD_RECOVERY")gateMode("recover");});
-  sb.auth.getSession().then(({data})=>{if(data.session){primeSharedSession(data.session);if(!recovering)enterPortal();}});
+  /* A reset or invite link reaches us one of two ways. The old implicit flow
+     puts type=recovery or type=invite in the hash. PKCE puts ?code= in the
+     query string and, on its own, says NOTHING about which of the two it was —
+     which is why an invited person was being shown the recovery copy.
+     So: read the type wherever it turns up, and when there is none, use
+     wording true of either until supabase-js tells us. It fires
+     PASSWORD_RECOVERY for a recovery link and not for an invite, so the card
+     corrects itself a moment later.
+     (The lasting fix is on the email side: point the invite template at
+     ?token_hash=…&type=invite so the type is always there.) */
+  const hash=new URLSearchParams(location.hash.replace(/^#/,""));
+  const qs=new URLSearchParams(location.search);
+  const linkType=hash.get("type")||qs.get("type")||"";
+  const hasPkceCode=qs.has("code");
+  const inviting=linkType==="invite";
+  const recovering=linkType==="recovery";
+  // Any of the three means the person is here to set a password, so don't
+  // drop them into the portal before they have one.
+  const settingPassword=inviting||recovering||hasPkceCode;
+  if(inviting)gateMode("invite");
+  else if(recovering)gateMode("recover");
+  else if(hasPkceCode)gateMode("setpass");
+  sb.auth.onAuthStateChange(event=>{if(event==="PASSWORD_RECOVERY"&&!inviting)gateMode("recover");});
+  sb.auth.getSession().then(({data})=>{if(data.session){primeSharedSession(data.session);if(!settingPassword)enterPortal();}});
 })();
 </script>
 </body>

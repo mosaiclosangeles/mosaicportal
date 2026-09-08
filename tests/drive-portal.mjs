@@ -35,7 +35,7 @@ await step('clicking it embeds the app, not Settings',async()=>{
   await p.click('#nav button[data-go="facilities"]');
   await p.waitForSelector('.embed-wrap iframe',{timeout:6000});
   const txt=await p.textContent('#main');
-  if(/Prototype controls|Type colours/.test(txt))
+  if(/Prototype controls|Calendar colours/.test(txt))
     throw new Error('it rendered the Settings page');
   const src=await p.getAttribute('.embed-wrap iframe','src');
   console.log('       iframe src: '+src);
@@ -74,10 +74,19 @@ await p.close();
 
 console.log('--- facility bookings on the calendar ---');
 p=await open('/calendar');
-await step('the Facility bookings chip is there',async()=>{
+// Three sources, not five — Loyda's cut, 8 Sep 2026. Asserted because the
+// last two label decisions on this calendar were undone by a later session
+// that had no way to know they were decisions.
+await step('the calendar offers three sources and no more',async()=>{
   const chips=await p.$$eval('.filters .chip',n=>n.map(x=>x.textContent.trim()));
   console.log('       '+chips.join(' | '));
-  if(!chips.some(c=>/Facility bookings/.test(c)))throw new Error('no chip');
+  const want=['Mosaic Calendar','Staff','Facilities','All'];
+  if(chips.join('|')!==want.join('|'))
+    throw new Error('expected '+want.join(' | ')+', got '+chips.join(' | '));
+});
+await step('comms is not a calendar source',async()=>{
+  const leaks=await p.evaluate(()=>TYPE_SOURCE.comms!==undefined||shown({type:'comms'}));
+  if(leaks)throw new Error('comms is back on the calendar');
 });
 await step('the bookings actually land in the calendar',async()=>{
   const got=await p.evaluate(()=>EVENTS.filter(e=>e.type==='facility').map(e=>e.title+' ['+e.status+'] '+e.detail));
@@ -98,9 +107,9 @@ await step('they use the blocked window, not the event times',async()=>{
 });
 await step('a chip click filters them off again',async()=>{
   const before=await p.$$eval('.ev,.evchip,[data-ev]',n=>n.length);
-  await p.click('.filters .chip:has-text("Facility bookings")');
+  await p.click('.filters .chip:has-text("Facilities")');
   await p.waitForTimeout(300);
-  const has=await p.evaluate(()=>S.filters.has('facility'));
+  const has=await p.evaluate(()=>S.filters.has('fac'));
   if(has)throw new Error('the filter did not come off');
 });
 await p.screenshot({path:'portal-calendar.png'});
