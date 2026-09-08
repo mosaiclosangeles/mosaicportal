@@ -1574,13 +1574,13 @@ function pageAdmin(){
       ROLE_LIST.map(r=>'<option value="'+r+'"'+(ADMIN.role===r?' selected':'')+'>'+roleLabel(r)+'</option>').join('')+'</select>'+
     '<span style="margin-left:auto;font-size:12.5px;color:var(--text2)">'+rows.length+' of '+activeTotal+' users</span></div>'+
     '<div id="paNote" class="banner" style="display:none"></div>'+
-    '<div class="pa-card"><table class="pa-table"><thead><tr><th>Name</th><th>Role</th><th>Primary campus</th><th>Roles &amp; permissions</th></tr></thead><tbody>'+
+    '<div class="pa-card"><table class="pa-table"><thead><tr><th>Name</th><th>Role</th><th>Primary campus</th><th style="text-align:center">Roles &amp; permissions</th></tr></thead><tbody>'+
     (rows.length?rows.map(p=>'<tr>'+
       '<td><button class="pa-name" data-user="'+esc(p.id)+'" title="Open '+esc(adminName(p))+'">'+
       '<span class="pa-av">'+avatarHtml(p.avatar_url,adminName(p))+'</span><span class="nm">'+esc(adminName(p))+'</span></button>'+
       (ME.email&&p.full_name===ME.email?' <span style="color:var(--text2);font-size:11.5px">(you)</span>':'')+'</td>'+
       '<td>'+roleSel(p)+'</td><td>'+campusSel(p)+'</td>'+
-      '<td style="text-align:right"><button class="pa-perm" data-user="'+esc(p.id)+'" title="Edit permissions for '+esc(adminName(p))+'">'+permSummary(p)+'</button></td></tr>').join('')
+      '<td style="text-align:center"><button class="pa-perm" data-user="'+esc(p.id)+'" title="Edit permissions for '+esc(adminName(p))+'">'+permSummary(p)+'</button></td></tr>').join('')
       :'<tr><td colspan="4" style="color:var(--text2)">No users match.</td></tr>')+
     '</tbody></table></div>'+
     ((ADMIN.pending||[]).length?
