@@ -217,6 +217,9 @@ html.dark .pu-danger{background:transparent;border-color:#5c2a2a;color:#e88b8b}
 .pu-perm-locked input{pointer-events:none}
 .pu-perm-locked>span:first-of-type{color:var(--text2)}
 .pu-lock-ico{font-size:9px;margin-left:2px}
+.pu-perm-tip{position:relative;display:inline-flex;align-items:center;color:var(--text2);font-size:10.5px;cursor:default;margin-left:3px;line-height:1}
+.pu-perm-tip::after{content:attr(data-tip);position:absolute;left:50%;bottom:calc(100% + 6px);transform:translateX(-50%);background:#1e1e2e;color:#f0f0f8;border-radius:6px;padding:6px 10px;font-size:11.5px;white-space:normal;pointer-events:none;opacity:0;transition:opacity .15s;z-index:300;box-shadow:0 3px 10px rgba(0,0,0,.28);width:200px;text-align:center;line-height:1.45}
+.pu-perm-tip:hover::after{opacity:1}
 .pu-dep-dlg{position:fixed;inset:0;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;z-index:9999}
 .pu-dep-box{background:var(--surface);border:1px solid var(--hairline);border-radius:10px;padding:18px 20px;max-width:340px;font-size:13.5px;line-height:1.5}
 .pu-dep-box p{margin:0 0 14px}
@@ -1649,6 +1652,11 @@ const PERM_CHILDREN={
     read_write:['submit_request','manage_requests','manage_spaces']
   }
 };
+/* Hover tooltips for soft/hard delete — explains the distinction inline */
+const PERM_TIPS={
+  soft_delete:'Archives the item — hidden from view but can be restored',
+  hard_delete:'Permanently removes from the database — cannot be undone'
+};
 /* Calendar write_* sub-perms require Read/Write on another app */
 const PERM_DEP={
   write_planning:{app_key:'planning',perm_key:'read_write',label:'Planning'},
@@ -1679,6 +1687,7 @@ function puPermRow(sectionId,role,permOverrides,appOn){
       '<input type="checkbox" data-perm data-papp="'+esc(key)+'" data-pkey="'+esc(p.perm_key)+'"'+
         (p.granted&&!locked?' checked':'')+'>'+
       '<span>'+esc(p.label||p.perm_key)+'</span>'+
+      (PERM_TIPS[p.perm_key]?'<span class="pu-perm-tip" data-tip="'+esc(PERM_TIPS[p.perm_key])+'">ⓘ</span>':'')+
       (locked?'<span class="pu-lock-ico">🔒</span>':'')+
       (!locked&&p.overridden?'<span class="pu-perm-tag">changed</span>':'')+
     '</label>';
