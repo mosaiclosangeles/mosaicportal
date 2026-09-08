@@ -1473,7 +1473,7 @@ function pageAdminCampuses(){
       '<div class="cc-kv"><span>Users assigned</span><span>'+
         (total?'<button type="button" class="linkout" data-toggleusers="'+esc(c.id)+'">'+ppl(total)+'</button>':ppl(total))+
       '</span></div>'+
-      (usersOpen&&total?'<div class="cc-users">'+people.map(p=>'<div class="cc-user"><span>'+esc(adminName(p))+'</span><span class="pa-pill">'+esc(cap(p.role))+'</span></div>').join('')+'</div>':'')+
+      (usersOpen&&total?'<div class="cc-users">'+people.map(p=>'<div class="cc-user"><button class="pa-name" data-user="'+esc(p.id)+'" style="font-size:13px">'+esc(adminName(p))+'</button><span class="pa-pill">'+esc(cap(p.role))+'</span></div>').join('')+'</div>':'')+
       '<div class="cc-body">'+
         locations.map(l=>{
           const times=timesFor(l.id);
