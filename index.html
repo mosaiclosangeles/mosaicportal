@@ -1268,6 +1268,7 @@ function campusSortIndex(name){
 }
 const ADMIN={profs:null,campuses:null,pending:null,err:null,fb:null,fbErr:null,q:'',role:'all',loading:false,tab:'users',apps:null,appPerms:null,appDefaults:null,campusOpen:new Set(),showInactiveCampuses:false,campusUsersOpen:new Set(),regions:null};
 const ROLE_LIST=['admin','staff','campus_pastor','leader','volunteer'];
+const roleLabel=r=>(ROLES[r]&&ROLES[r].name)||cap(r);
 const SECTION_LABEL=id=>{const s=SECTIONS.find(x=>x.id===id);return s?s.label:id;};
 function adminName(p){const n=p.display_name||p.full_name||'—';return n.includes('@')?prettyNameFromEmail(n):n;}
 async function loadAdmin(){
@@ -1473,7 +1474,7 @@ function pageAdminCampuses(){
       '<div class="cc-kv"><span>Users assigned</span><span>'+
         (total?'<button type="button" class="linkout" data-toggleusers="'+esc(c.id)+'">'+ppl(total)+'</button>':ppl(total))+
       '</span></div>'+
-      (usersOpen&&total?'<div class="cc-users">'+people.map(p=>'<div class="cc-user"><button class="pa-name" data-user="'+esc(p.id)+'" style="font-size:13px">'+esc(adminName(p))+'</button><span class="pa-pill">'+esc(cap(p.role))+'</span></div>').join('')+'</div>':'')+
+      (usersOpen&&total?'<div class="cc-users">'+people.map(p=>'<div class="cc-user"><button class="pa-name" data-user="'+esc(p.id)+'" style="font-size:13px">'+esc(adminName(p))+'</button><span class="pa-pill">'+esc(roleLabel(p.role))+'</span></div>').join('')+'</div>':'')+
       '<div class="cc-body">'+
         locations.map(l=>{
           const times=timesFor(l.id);
@@ -1592,7 +1593,7 @@ function pageAdmin(){
         '<span class="pa-av">'+avatarHtml(null,v.name||v.email)+'</span><span class="nm">'+esc(v.name||v.email)+'</span></button>'+
         ' <span style="font-size:11px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;color:var(--milestone-d,#8a6d00);border:1px solid var(--hairline);border-radius:999px;padding:3px 9px;white-space:nowrap">Invite pending</span></td>'+
         '<td style="color:var(--text2)">'+esc(v.email)+'</td>'+
-        '<td style="color:var(--text2)">'+cap(v.role)+(v.role!=='admin'&&v.campus_id?' · '+esc(campusName(v.campus_id)):'')+'</td>'+
+        '<td style="color:var(--text2)">'+roleLabel(v.role)+(v.role!=='admin'&&v.campus_id?' · '+esc(campusName(v.campus_id)):'')+'</td>'+
         '<td style="text-align:right;white-space:nowrap"><button class="btn-primary" data-pinvsend="'+esc(v.id)+'" style="padding:6px 12px;font-size:12px">Send invite</button> '+
         '<button class="gate-ghost" data-pinvdel="'+esc(v.id)+'" style="margin:0;padding:6px 12px;font-size:12px">Remove</button></td></tr>').join('')+
       '</tbody></table></div>':'')+
