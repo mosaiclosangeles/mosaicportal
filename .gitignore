@@ -1,0 +1,4 @@
+# Built by the test harness from index.html — see tests/README.md
+tests/portal.html
+# Screenshots drive-portal.mjs writes on each run
+tests/*.png
