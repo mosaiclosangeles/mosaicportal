@@ -90,6 +90,26 @@ history entry, because the page behind it has not changed. The old full-page
 Loyda's review called "really off", and which was a second grid to keep in
 step with the first.
 
+**Home's cards are numbers you can open.** A card with a list carries
+`data-cardlist`; clicking it calls `openList()`, which draws the items behind
+the number in the SAME dialog `openCard()` uses, so picking a row swaps the
+contents for the full record rather than stacking a second thing over the
+first — and the record carries a way back to the list it came from. What each
+card counts is read at click time by `cardListOf()`, never stored, so the list
+and the number printed above it cannot disagree; the test asserts they match.
+That is also why `CLOSEOUT` is the items and not a tally. Click, not hover: a
+hover panel is unreachable on a phone, which is where these get read.
+
+**A home campus is a preference; `campus_id` is a permission.** Metrics scopes
+what a person may SEE by `profiles.campus_id`, which is an admin's to set, so
+the campus somebody picks for themselves had to be its own column
+(`home_campus_id`) — otherwise setting your own default would re-scope your own
+access. It only ever fills a form in. RLS could not restrict which columns a
+self-update touches, so `profiles_self_update` is paired with a trigger that
+puts role, campus, access and archived-state back for anyone but an admin; the
+trigger skips writes with no `auth.uid()`, so the service role and the edge
+functions still work.
+
 **A location that is a link is "Online", and a link is followable.** Outlook
 keeps the meeting URL in the location field, so an Arena call arrived with a
 70-character Zoom address standing where the room should be — in the card's

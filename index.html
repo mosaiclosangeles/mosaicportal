@@ -432,6 +432,17 @@ h1{font-size:30px;font-weight:600;letter-spacing:-.03em;margin:0;line-height:1.1
 h2{font-size:16px;font-weight:600;letter-spacing:-.015em;margin:0 0 6px}
 .btn-primary{background:var(--gathering);color:#fff;font-size:13px;font-weight:500;padding:9px 16px;border-radius:var(--r-btn)}
 .btn-primary:hover{filter:brightness(.94)}
+/* Home's New, matching "+ Add item" on the planning board: black, and read
+   across rather than stacked. It was the blue btn-primary with an unsized
+   icon, which pushed the label onto its own line and made a tall square of it.
+   Hannita, 10 Sep: "black and more horizontal, just how we have the black
+   button in the planning app." */
+.btn-new{display:inline-flex;align-items:center;gap:7px;background:#111;color:#fff;
+  font-size:13.5px;font-weight:500;padding:10px 18px;border-radius:var(--r-btn);
+  border:0;font-family:inherit;letter-spacing:inherit;cursor:pointer;white-space:nowrap}
+.btn-new:hover{background:#000}
+.btn-new svg{flex:none}
+html.dark .btn-new{background:#fff;color:#111}
 .btn-ghost{border:1px solid var(--hairline);font-size:13px;padding:8px 14px;border-radius:var(--r-btn)}
 .btn-ghost:hover{background:var(--fill)}
 
@@ -1012,7 +1023,9 @@ function campusesOnCalendar(){
    METRICS comes from the Mosaic Metrics view v_service_totals using the
    signed-in person's own session. The four apps stay the systems of record;
    the portal reads and arranges. */
-let EVENTS=[], CAMPAIGNS=[], METRICS={}, TASKS=[], ATTN=[], CLOSEOUT=0, DATA_ERR=null, CAL_ON=false;
+// CLOSEOUT is the items themselves, not a count: a number on a card you can
+// open has to be able to say WHICH things it is counting.
+let EVENTS=[], CAMPAIGNS=[], METRICS={}, TASKS=[], ATTN=[], CLOSEOUT=[], DATA_ERR=null, CAL_ON=false;
 const PM_URL='https://yrviwbqhjcrlxgozrgay.supabase.co';
 const PM_KEY='sb_publishable_3o7Avv4DEhHW7i_k5DrH6Q_tYFLrgwg';
 async function pmGet(q){
@@ -1022,7 +1035,7 @@ async function pmGet(q){
 }
 const CE_STATUS={sent:'done',approved:'done',complete:'done',scheduled:'scheduled',waiting:'waiting','waiting for approval':'waiting',proposed:'drafting','in progress':'drafting',incomplete:'drafting'};
 function mapLive(pis,ces){
-  EVENTS=[];CAMPAIGNS=[];ATTN=[];CLOSEOUT=0;
+  EVENTS=[];CAMPAIGNS=[];ATTN=[];CLOSEOUT=[];
   pis.forEach(r=>{
     if(r.deleted||!r.date)return;   // undated items live on the board, not a calendar
     const title=r.title||(r.is_sunday?'Sunday Gathering':'(untitled)');
@@ -1064,7 +1077,8 @@ function mapLive(pis,ces){
     }
     const id='pm:'+r.id;
     EVENTS.push(Object.assign({},base,{id,date:r.date,status:(r.status==='Complete'||past)?'done':'scheduled'}));
-    if(past&&!r.parent_id&&r.status&&r.status!=='Complete')CLOSEOUT++;
+    if(past&&!r.parent_id&&r.status&&r.status!=='Complete')
+      CLOSEOUT.push({evId:id,title,date:r.date,meta:(r.campus||'')+' · '+((r.owners||[])[0]||'')});
     if(r.is_sunday&&!r.speaker&&!past&&D(r.date)<=addDays(TODAY,42))
       ATTN.push({evId:id,title:'No speaker yet — '+title,date:r.date,meta:(r.campus||'')+' · '+((r.owners||[])[0]||'')});
     if(r.needs_review&&!past)
@@ -1678,15 +1692,15 @@ function pageHome(){
   const hi=firstNameOf(ME.name);
   return '<div class="page-head"><div><h1>'+(hi?'Hi, '+esc(hi)+'!':'Hi!')+'</h1>'+
    '<div class="sub">'+esc(homeLine())+'</div></div>'+
-   '<button class="btn-primary" data-newmenu="1">'+ic('plus')+' New</button>'+
+   '<button class="btn-new" data-newmenu="1">'+ic('plus','width:15px;height:15px')+'New</button>'+
    newMenu()+'</div>'+
    (DATA_ERR?'<div class="banner">'+ic('info')+'<div>'+esc(DATA_ERR)+'</div></div>':'')+
    '<div class="cards">'+
      card('On your plate this week',twEvents.length,
-          twIsMine?'yours on the board':'across the board — nothing is yours this week','planning','--session')+
-     card('Waiting on you',attn.length,'items waiting on you to look at','calendar','--magenta')+
-     card('To close out',CLOSEOUT,
-          CLOSEOUT===0?'nothing passed its date':'you have '+(CLOSEOUT===1?'a thing':'a couple of things')+' to close out','planning','--milestone')+
+          twIsMine?'yours on the board':'across the board — nothing is yours this week','planning','--session','plate')+
+     card('Waiting on you',ATTN.length,'items waiting on you to look at','calendar','--magenta','waiting')+
+     card('To close out',CLOSEOUT.length,
+          CLOSEOUT.length===0?'nothing passed its date':'you have '+(CLOSEOUT.length===1?'a thing':'a couple of things')+' to close out','planning','--milestone','closeout')+
      card(homeCampusName()?"This week's attendance in "+esc(homeCampusName()):"This week's attendance",
           m?m.a:'—',
           (m?((delta>=0?'+':'')+delta+'% vs recent avg'):'no data yet')+
@@ -1751,11 +1765,36 @@ function homeCampusName(){
   const c=CAMPUSES.find(x=>x.id===homeCampusId());
   return c?c.name:'';
 }
-function card(k,v,n,go,c){
+/* A NUMBER YOU CAN OPEN.
+   Every one of these counts something, and the number on its own leaves you to
+   go and find out which things — so a card with a list opens that list in the
+   same floating card the calendar uses, and picking a row swaps it for the
+   full record. Hannita, 10 Sep: "can it tell me the list of items? … and if I
+   click on it it can take me to that direct card."
+   Click, not hover: a hover panel is unreachable on a phone, and this is the
+   card people open on a phone between meetings. Cards with nothing to list
+   still go to their section, which is what they always did. */
+function card(k,v,n,go,c,list){
   const bg=c?'background:var('+c+'-t);border-color:transparent':'';
   const fg=c?'color:var('+c+'-d)':'';
-  return '<button class="card" data-go="'+go+'" style="'+bg+'"><div class="k" style="'+fg+';font-weight:500">'+k+
+  const act=list?'data-cardlist="'+list+'"':'data-go="'+go+'"';
+  return '<button class="card" '+act+' style="'+bg+'"><div class="k" style="'+fg+';font-weight:500">'+k+
    '</div><div class="v" style="'+fg+'">'+v+'</div><div class="n">'+n+'</div></button>';
+}
+/* What each openable card is counting. Read at click time rather than stored,
+   so the list cannot disagree with the number printed above it. */
+function cardListOf(kind){
+  const ws=weekStartOf(TODAY), we=addDays(ws,6);
+  if(kind==='plate'){
+    const all=EVENTS.filter(e=>{const d=D(e.date);return d>=ws&&d<=we&&e.type==='event';});
+    const mine=all.filter(ownedByMe);
+    return {title:mine.length?'On your plate this week':'On the board this week',
+            rows:(mine.length?mine:all).map(e=>({evId:e.id,title:e.title,date:e.date,
+              meta:[e.owner,e.campus,e.phase].filter(Boolean).join(' · ')}))};
+  }
+  if(kind==='waiting')return {title:'Waiting on you',rows:ATTN.slice()};
+  if(kind==='closeout')return {title:'To close out',rows:CLOSEOUT.slice()};
+  return {title:'',rows:[]};
 }
 function taskRow(t){
   return '<button class="row" data-task="'+t.id+'"><span class="tick'+(t.done?' done':'')+'">'+(t.done?ic('check'):'')+'</span>'+
@@ -3468,17 +3507,45 @@ function pmId(e){
    URL for it and no history entry, because the thing behind it has not
    changed. Clicking an entry inside the card — a comm, a related row — swaps
    the card's contents rather than stacking another. */
+/* The list behind a number, in the same dialog the full card uses — so
+   picking a row swaps the contents rather than opening a second thing over
+   the first. openCard() remembers which list it came from, so there is a way
+   back that is not "close it and start again". */
+function openList(kind){
+  const {title,rows}=cardListOf(kind);
+  S.cardList=kind; S.eventId=null;
+  const body=document.getElementById('cardBody');
+  body.innerHTML='<h1 style="font-size:22px;margin:0 0 4px">'+esc(title)+'</h1>'+
+    '<div class="sub" style="margin-bottom:18px">'+
+      (rows.length?rows.length+(rows.length===1?' item':' items'):'Nothing here right now')+'</div>'+
+    (rows.length
+      ? rows.map(r=>'<button class="row" data-ev="'+esc(r.evId)+'">'+
+          '<span class="when">'+(r.date?fmt(D(r.date)):'')+'</span>'+
+          '<span class="txt"><span class="name">'+esc(r.title||'')+'</span>'+
+          '<span class="meta">'+esc(r.meta||'')+'</span></span></button>').join('')
+      : '<div class="empty">Nothing here right now.</div>');
+  body.scrollTop=0;
+  document.getElementById('cardWrap').classList.add('open');
+  document.getElementById('cardWrap').setAttribute('aria-hidden','false');
+  document.getElementById('cardScrim').classList.add('open');
+  S.cardOpen=true;
+}
 function openCard(id){
   if(!EVENTS.some(x=>x.id===id))return;
   S.eventId=id; S.cardOpen=true;
-  document.getElementById('cardBody').innerHTML=pageEvent();
+  // Arriving from a list, there has to be a way back to it that is not
+  // "close this and start again".
+  const back=S.cardList
+    ? '<button class="back" data-cardback="1">'+ic('left')+'Back to '+esc(cardListOf(S.cardList).title.toLowerCase())+'</button>'
+    : '';
+  document.getElementById('cardBody').innerHTML=back+pageEvent();
   document.getElementById('cardBody').scrollTop=0;
   document.getElementById('cardWrap').classList.add('open');
   document.getElementById('cardWrap').setAttribute('aria-hidden','false');
   document.getElementById('cardScrim').classList.add('open');
 }
 function closeCard(){
-  S.cardOpen=false;
+  S.cardOpen=false; S.cardList=null;
   document.getElementById('cardWrap').classList.remove('open');
   document.getElementById('cardWrap').setAttribute('aria-hidden','true');
   document.getElementById('cardScrim').classList.remove('open');
@@ -4076,7 +4143,7 @@ document.addEventListener('click',e=>{
   /* Both sides of the merge added to this list — [data-mp] is the Metrics rail,
      [data-newmenu]/[data-newthing] the New menu. Every one of them has to be
      here or its buttons are simply dead. */
-  const t=e.target.closest('[data-go],[data-view],[data-nav],[data-filter],[data-ev],[data-day],[data-task],[data-new],[data-pick],[data-everyone],[data-tl],[data-back],[data-logout],[data-preview],[data-previewexit],[data-previewgo],[data-pickertoggle],[data-pickerrole],[data-profile],[data-fb],[data-newuser],[data-gp],[data-fp],[data-mp],[data-user],[data-pinv],[data-pinvsend],[data-pinvdel],[data-adtab],[data-theme],[data-newcampus],[data-editcampus],[data-addloc],[data-deactivateloc],[data-addtime],[data-rmtime],[data-toggleinactivecampus],[data-toggleusers],[data-newmenu],[data-newthing]');
+  const t=e.target.closest('[data-go],[data-view],[data-nav],[data-filter],[data-ev],[data-day],[data-task],[data-new],[data-pick],[data-everyone],[data-tl],[data-back],[data-logout],[data-preview],[data-previewexit],[data-previewgo],[data-pickertoggle],[data-pickerrole],[data-profile],[data-fb],[data-newuser],[data-gp],[data-fp],[data-mp],[data-user],[data-pinv],[data-pinvsend],[data-pinvdel],[data-adtab],[data-theme],[data-newcampus],[data-editcampus],[data-addloc],[data-deactivateloc],[data-addtime],[data-rmtime],[data-toggleinactivecampus],[data-toggleusers],[data-newmenu],[data-newthing],[data-cardlist],[data-cardback]');
   if(!t) return;
   /* The New menu on Home. It has to come before data-new below, and be its own
      attribute: data-new is the Calendars drawer, and one of these buttons
@@ -4236,6 +4303,8 @@ document.addEventListener('click',e=>{
     closeDrawer(); openCard(t.dataset.ev);
     return;
   }
+  if(t.dataset.cardlist){ openList(t.dataset.cardlist); return; }
+  if(t.dataset.cardback){ openList(S.cardList); return; }
   if(t.dataset.back){ S.section=S.from||'home'; render(); return; }
   if(t.dataset.day){ dayDrawer(t.dataset.day); return; }
   if(t.dataset.new){ newDrawer(); return; }

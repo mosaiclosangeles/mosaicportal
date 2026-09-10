@@ -62,6 +62,67 @@ await step('a sub-menu click changes the page the iframe loads',async()=>{
 });
 await p.screenshot({path:'portal-facilities.png'});
 
+/* A number you can open. The count on a Home card is useless on its own if it
+   takes a hunt to find out which things it counts, so the card opens the list
+   and a row opens the full record — in the same dialog, not a second one over
+   the first. */
+console.log('--- the Home cards open what they count ---');
+await step('a card opens the list of what it is counting',async()=>{
+  await p.click('#nav button[data-go="home"]');
+  await p.waitForTimeout(400);
+  // The stub's board has nothing flagged, so seed one thing to wait on —
+  // an empty list would assert nothing about a list.
+  await p.evaluate(()=>{
+    const e=EVENTS.find(x=>x.type==='event')||EVENTS[0];
+    ATTN.push({evId:e.id,title:'No speaker yet — '+e.title,date:e.date,meta:'LA · Carlos'});
+    render();
+  });
+  const counted=await p.$eval('.card[data-cardlist="waiting"] .v',n=>n.textContent.trim());
+  await p.click('.card[data-cardlist="waiting"]');
+  await p.waitForTimeout(300);
+  const r=await p.evaluate(()=>({
+    open:document.getElementById('cardWrap').classList.contains('open'),
+    rows:document.querySelectorAll('#cardBody .row[data-ev]').length,
+    heading:(document.querySelector('#cardBody h1')||{}).textContent
+  }));
+  console.log('       card says '+counted+', list shows '+r.rows+' — "'+r.heading+'"');
+  if(!r.open)throw new Error('the card did not open a list');
+  if(String(r.rows)!==counted)
+    throw new Error('the list and the number disagree: '+counted+' vs '+r.rows);
+});
+await step('picking a row opens that record, with a way back',async()=>{
+  await p.click('#cardBody .row[data-ev]');
+  await p.waitForTimeout(300);
+  const r=await p.evaluate(()=>({
+    back:!!document.querySelector('#cardBody [data-cardback]'),
+    full:(document.getElementById('cardBody').textContent||'').length,
+    list:document.querySelectorAll('#cardBody .row[data-ev]').length
+  }));
+  console.log('       '+JSON.stringify(r));
+  if(!r.back)throw new Error('no way back to the list it came from');
+  if(r.full<60)throw new Error('the record opened empty');
+  await p.click('#cardBody [data-cardback]');
+  await p.waitForTimeout(250);
+  const back=await p.evaluate(()=>document.querySelectorAll('#cardBody .row[data-ev]').length);
+  if(!back)throw new Error('back did not return to the list');
+  await p.keyboard.press('Escape');
+  await p.waitForTimeout(200);
+  await p.evaluate(()=>{ATTN.pop();render();});
+});
+await step('the New button is one horizontal black button',async()=>{
+  const r=await p.evaluate(()=>{
+    const b=document.querySelector('.btn-new');
+    if(!b)return null;
+    const cs=getComputedStyle(b), box=b.getBoundingClientRect();
+    return {bg:cs.backgroundColor,w:Math.round(box.width),h:Math.round(box.height),
+            text:b.textContent.trim()};
+  });
+  console.log('       '+JSON.stringify(r));
+  if(!r)throw new Error('the New button is gone');
+  if(r.h>52)throw new Error('it is still stacked, not horizontal: '+r.h+'px tall');
+  if(r.w<=r.h)throw new Error('it is taller than it is wide');
+  if(!/^rgb\(17, 17, 17\)$/.test(r.bg))throw new Error('it is not black: '+r.bg);
+});
 console.log('--- metrics tabs on the rail ---');
 // Four edits, not one (see CLAUDE.md). The easiest to miss is the closest()
 // list at the top of the click handler: without [data-mp] there, the sub-menu
