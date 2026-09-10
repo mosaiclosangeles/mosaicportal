@@ -191,6 +191,30 @@ await step('they use the blocked window, not the event times',async()=>{
   if(!r.detail.includes(r.blockHour))
     throw new Error('the detail line is not showing the blocked start');
 });
+// Every entry opens the same card, whatever system it came from. The old
+// split — a full page for board items, a narrow drawer for everything else —
+// meant the shape of the card told you where the data lived, and the two
+// renderers drifted because nothing made them agree.
+await step('every entry opens the same card, not a drawer',async()=>{
+  const seen=[];
+  for(const type of ['facility']){
+    const id=await p.evaluate(t=>{const e=EVENTS.find(x=>x.type===t);return e&&e.id;},type);
+    if(!id)continue;
+    await p.click(`.ev[data-ev="${id}"]`);
+    await p.waitForTimeout(350);
+    const r=await p.evaluate(()=>({
+      section:S.section,
+      drawer:document.getElementById('drawer').classList.contains('open')
+    }));
+    seen.push(type+':'+JSON.stringify(r));
+    if(r.section!=='event')throw new Error(type+' did not open the card: '+r.section);
+    if(r.drawer)throw new Error(type+' opened the old drawer');
+    await p.click('[data-back]'); await p.waitForTimeout(250);
+  }
+  console.log('       '+seen.join(' | '));
+  const gone=await p.evaluate(()=>typeof eventDrawer==='undefined');
+  if(!gone)throw new Error('the second renderer is back');
+});
 await step('a chip click filters them off again',async()=>{
   const before=await p.$$eval('.ev,.evchip,[data-ev]',n=>n.length);
   await p.click('.filters .chip:has-text("Facilities")');
