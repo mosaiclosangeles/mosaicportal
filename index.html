@@ -3632,8 +3632,10 @@ function openCard(id){
   S.eventId=id; S.cardOpen=true;
   // Arriving from a list, there has to be a way back to it that is not
   // "close this and start again".
+  // The section titles already read as phrases ("To close out"), so prefixing
+  // "Back to " gave "Back to to close out". The label is enough on its own.
   const back=S.cardList
-    ? '<button class="back" data-cardback="1">'+ic('left')+'Back to '+esc(cardListOf(S.cardList).title.toLowerCase())+'</button>'
+    ? '<button class="back" data-cardback="1">'+ic('left')+esc(cardListOf(S.cardList).title)+'</button>'
     : '';
   document.getElementById('cardBody').innerHTML=back+pageEvent();
   document.getElementById('cardBody').scrollTop=0;
@@ -4299,7 +4301,12 @@ document.addEventListener('click',e=>{
       if(t.dataset.item)S.deep[t.dataset.go]=t.dataset.item; else delete S.deep[t.dataset.go];
       // Going somewhere by hand drops any prefill that section was carrying.
       if(S.navBook)delete S.navBook[t.dataset.go];
-      S.section=t.dataset.go; closeDrawer(); if(typeof umClose==="function")umClose(); render();} return; }
+      /* Close the card first. Going to a section from inside one used to leave
+         it floating over the app it had just opened — and with ?item= working,
+         that meant the portal's card sitting on top of the board's own drawer
+         for the very same event. */
+      S.section=t.dataset.go; closeCard(); closeDrawer();
+      if(typeof umClose==="function")umClose(); render();} return; }
   if(t.dataset.theme){
     THEME=t.dataset.theme; try{localStorage.setItem(themeKey(),THEME);}catch(e){}
     applyTheme();

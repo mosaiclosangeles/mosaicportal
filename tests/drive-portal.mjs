@@ -104,6 +104,9 @@ await step('picking a row opens that record, with a way back',async()=>{
   console.log('       '+JSON.stringify(r));
   if(!r.back)throw new Error('no way back to the list it came from');
   if(r.full<60)throw new Error('the record opened empty');
+  const label=(await p.textContent('#cardBody [data-cardback]')).trim();
+  console.log('       back reads: "'+label+'"');
+  if(/\bto to\b/i.test(label))throw new Error('the back label stutters: '+label);
   await p.click('#cardBody [data-cardback]');
   await p.waitForTimeout(250);
   const back=await p.evaluate(()=>document.querySelectorAll('#cardBody .row[data-ev]').length);
@@ -111,6 +114,25 @@ await step('picking a row opens that record, with a way back',async()=>{
   await p.keyboard.press('Escape');
   await p.waitForTimeout(200);
   await p.evaluate(()=>{ATTN.pop();render();});
+});
+/* Leaving for a section has to take the card with it. With ?item= working, a
+   card left open sat on top of the board's own drawer for the same event. */
+await step('going to a section closes the card it was clicked from',async()=>{
+  await p.click('#nav button[data-go="calendar"]');
+  await p.waitForTimeout(300);
+  await p.click('#main .cell .ev[data-ev]');
+  await p.waitForTimeout(300);
+  const opened=await p.evaluate(()=>document.getElementById('cardWrap').classList.contains('open'));
+  if(!opened)throw new Error('the card did not open to begin with');
+  await p.click('#cardBody [data-go="planning"], #cardBody [data-go="comms"]');
+  await p.waitForTimeout(400);
+  const r=await p.evaluate(()=>({
+    card:document.getElementById('cardWrap').classList.contains('open'),
+    scrim:document.getElementById('cardScrim').classList.contains('open'),
+    section:S.section}));
+  console.log('       '+JSON.stringify(r));
+  if(r.card||r.scrim)throw new Error('the card is still over the app it opened');
+  await p.click('#nav button[data-go="home"]'); await p.waitForTimeout(300);
 });
 await step('the New button is one horizontal black button',async()=>{
   const r=await p.evaluate(()=>{
