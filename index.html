@@ -437,6 +437,23 @@ h2{font-size:16px;font-weight:600;letter-spacing:-.015em;margin:0 0 6px}
 .chip.on{background:var(--fill);border-color:#dedede;color:#000;font-weight:500}
 .chip.off{opacity:.45}
 .swatch{width:7px;height:7px;border-radius:2px;flex:none}
+/* A drawer that asks for something is still a card: a head that says what it
+   is, a body, and the actions on their own row — the shape of the item card,
+   so the portal does not change language between reading and writing. */
+.dcard-head{padding:0 0 14px;border-bottom:1px solid var(--separator);margin-bottom:18px}
+.dcard-head h2{margin:0;font-size:19px;font-weight:600;letter-spacing:-.02em}
+.dcard-head .sub{margin-top:4px;font-size:13px;color:var(--text2);line-height:1.5}
+.dcard-body{display:flex;flex-direction:column;gap:13px}
+.dcard-foot{display:flex;gap:10px;align-items:center;flex-wrap:wrap;
+  margin-top:20px;padding-top:16px;border-top:1px solid var(--separator)}
+/* Saying nothing after a write is how people lose an afternoon, so this is a
+   block that holds its ground, not grey text under a button. */
+.dnote{display:none;margin-top:14px;padding:11px 13px;border-radius:var(--r-ctrl);
+  font-size:13px;line-height:1.45}
+.dnote.show{display:block}
+.dnote.ok{background:var(--session-t);color:var(--session-d)}
+.dnote.err{background:var(--red-t);color:var(--red-d)}
+.dnote.warn{background:var(--amber-t);color:var(--amber-d)}
 .campussel{margin-left:auto;font-family:inherit;font-size:12px;color:var(--text);
   background:var(--surface);border:1px solid var(--hairline);border-radius:var(--r-ctrl);
   padding:5px 9px;cursor:pointer}
@@ -1373,7 +1390,7 @@ function campusSortIndex(name){
   const onlineIdx=CAMPUS_ORDER.indexOf('Mosaic Online');
   return onlineIdx>=0?onlineIdx-0.5:CAMPUS_ORDER.length;
 }
-const ADMIN={profs:null,campuses:null,pending:null,err:null,fb:null,fbErr:null,q:'',role:'all',loading:false,tab:'users',apps:null,appPerms:null,appDefaults:null,campusOpen:new Set(),showInactiveCampuses:false,campusUsersOpen:new Set(),regions:null};
+const ADMIN={notice:null,profs:null,campuses:null,pending:null,err:null,fb:null,fbErr:null,q:'',role:'all',loading:false,tab:'users',apps:null,appPerms:null,appDefaults:null,campusOpen:new Set(),showInactiveCampuses:false,campusUsersOpen:new Set(),regions:null};
 const ROLE_LIST=['admin','staff','campus_pastor','leader','volunteer'];
 const SECTION_LABEL=id=>{const s=SECTIONS.find(x=>x.id===id);return s?s.label:id;};
 function adminName(p){const n=p.display_name||p.full_name||'—';return n.includes('@')?prettyNameFromEmail(n):n;}
@@ -1669,7 +1686,7 @@ function pageAdmin(){
     return '<div class="page-head"><div><h1>Admin</h1><div class="sub">Every campus, and who\'s assigned to each</div></div>'+
       (ME.role==='admin'?'<button class="btn-primary" data-newcampus="1">New campus</button>':'')+'</div>'+tabs+pageAdminCampuses();
   const head='<div class="page-head"><div><h1>Admin</h1><div class="sub">User management · every app, one account list</div></div>'+
-    '<button class="btn-primary" data-newuser="1">New user</button></div>'+tabs;
+    '<button class="btn-primary" data-newuser="1">New user</button></div>'+tabs+paNoticeHTML();
   if(!ADMIN.profs&&!ADMIN.err){loadAdmin();return head+'<div class="empty">Loading users…</div>';}
   if(ADMIN.err)return head+'<div class="banner">'+ic('info')+'<div>Couldn\'t load users — '+esc(ADMIN.err)+'</div></div>';
   const rank={admin:0,staff:1,campus_pastor:2,leader:3,volunteer:4};
@@ -1689,7 +1706,6 @@ function pageAdmin(){
     '<select id="paRole"><option value="all"'+(ADMIN.role==='all'?' selected':'')+'>All roles</option>'+
       ROLE_LIST.map(r=>'<option value="'+r+'"'+(ADMIN.role===r?' selected':'')+'>'+roleLabel(r)+'</option>').join('')+'</select>'+
     '<span style="margin-left:auto;font-size:12.5px;color:var(--text2)">'+rows.length+' of '+activeTotal+' users</span></div>'+
-    '<div id="paNote" class="banner" style="display:none"></div>'+
     '<div class="pa-card"><table class="pa-table"><thead><tr><th>Name</th><th>Role</th><th>Primary campus</th><th>Roles &amp; permissions</th></tr></thead><tbody>'+
     (rows.length?rows.map(p=>'<tr>'+
       '<td><button class="pa-name" data-user="'+esc(p.id)+'" title="Open '+esc(adminName(p))+'">'+
@@ -1866,7 +1882,24 @@ function puCampusRow(appKey,selectedIds,allCampuses,isAdminUser,appOn,personCamp
     : '';
   return wrap(chips+add);
 }
-function paNote(msg,err){const n=document.getElementById('paNote');if(!n)return;n.style.display='flex';n.style.borderColor=err?'var(--red)':'var(--hairline)';n.innerHTML=ic('info')+'<div>'+esc(msg)+'</div>';clearTimeout(paNote._t);paNote._t=setTimeout(()=>{const x=document.getElementById('paNote');if(x)x.style.display='none';},4500);}
+/* HELD IN STATE, NOT JUST IN THE DOM. Sending an invite nulls ADMIN.profs on
+   the way out, so the page repaints as "Loading users…" — a branch that has no
+   banner element in it at all — and a message written straight to the DOM was
+   gone before anyone could read it. Nobody could tell an invite from a
+   no-op. Keep it in ADMIN.notice and let the page draw it, so it survives the
+   reload and the re-render that follows. */
+function paNote(msg,err){
+  ADMIN.notice={msg:String(msg),err:!!err};
+  clearTimeout(paNote._t);
+  paNote._t=setTimeout(()=>{ADMIN.notice=null;if(S.section==='admin')render();},6000);
+  if(S.section==='admin')render();
+}
+function paNoticeHTML(){
+  const n=ADMIN.notice;
+  if(!n)return '<div id="paNote" class="banner" style="display:none"></div>';
+  return '<div id="paNote" class="banner" style="border-color:'+(n.err?'var(--red)':'var(--hairline)')+'">'+
+    ic('info')+'<div>'+esc(n.msg)+'</div></div>';
+}
 async function paSaveGlobalRole(id,next){
   const note=document.getElementById('paRoleNote');
   const result=await paSaveRole(id,next);
@@ -2292,47 +2325,61 @@ async function paSendInvite(v){
 }
 function paInviteDrawer(pendingId){
   const pv=pendingId?(ADMIN.pending||[]).find(x=>x.id===pendingId):null;
-  openDrawer('<h2 style="margin-top:0">'+(pv?'Pending invite':'New user')+'</h2><div class="sub">'+(pv?'No email has gone out yet — edit the details, send the invite, or remove it.':'Send the invite now, or save it to send once you\'ve announced the portal.')+'</div>'+
-    '<div style="display:flex;flex-direction:column;gap:12px;margin-top:16px">'+
+  openDrawer('<div class="dcard-head"><h2>'+(pv?'Pending invite':'New user')+'</h2><div class="sub">'+(pv?'No email has gone out yet — edit the details, send the invite, or remove it.':'Send the invite now, or save it to send once you\'ve announced the portal.')+'</div></div>'+
+    '<div class="dcard-body">'+
     '<div><label class="pa-lbl">Full name</label><input id="nuName" class="pa-in" type="text" placeholder="Jane Doe" value="'+esc((pv&&pv.name)||'')+'"></div>'+
     '<div><label class="pa-lbl">Email</label><input id="nuEmail" class="pa-in" type="email" placeholder="jane@mosaic.org" value="'+esc((pv&&pv.email)||'')+'"></div>'+
     '<div><label class="pa-lbl">Role</label><select id="nuRole" class="pa-in">'+['leader','staff','campus_pastor','volunteer','admin'].map(r=>'<option value="'+r+'"'+((pv?pv.role:'leader')===r?' selected':'')+'>'+roleLabel(r)+'</option>').join('')+'</select></div>'+
     '<div id="nuCampusWrap"><label class="pa-lbl">Campus</label><select id="nuCampus" class="pa-in"><option value="">Select a campus</option>'+
       (ADMIN.campuses||[]).map(c=>'<option value="'+esc(c.id)+'"'+(pv&&pv.campus_id===c.id?' selected':'')+'>'+esc(c.name)+'</option>').join('')+'</select></div></div>'+
-    '<div style="display:flex;gap:10px;align-items:center;margin-top:18px;flex-wrap:wrap">'+
+    '<div class="dcard-foot">'+
     '<button class="btn-primary" id="nuSend">Send invite</button>'+
     '<button class="gate-ghost" id="nuLater" style="margin:0">'+(pv?'Save changes':'Save for later — no email')+'</button></div>'+
-    '<div id="nuNote" style="font-size:12.5px;color:var(--text2);margin-top:10px"></div>');
+    '<div id="nuNote" class="dnote"></div>');
+  const nuNote=(msg,kind)=>{const n=document.getElementById('nuNote');
+    if(n){n.textContent=msg;n.className='dnote show '+(kind||'warn');}};
   const roleSel=document.getElementById('nuRole'),wrap=document.getElementById('nuCampusWrap');
   const sync=()=>{wrap.style.display=roleSel.value==='admin'?'none':'';};
   roleSel.addEventListener('change',sync);sync();
   const read=()=>{
     const name=document.getElementById('nuName').value.trim(),email=document.getElementById('nuEmail').value.trim().toLowerCase();
     const role=roleSel.value,campus_id=role==='admin'?null:(document.getElementById('nuCampus').value||null);
-    const note=document.getElementById('nuNote');
-    if(!name){note.textContent='Please enter a name.';return null;}
-    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){note.textContent='Please enter a valid email.';return null;}
+    if(!name){nuNote('Please enter a name.','warn');return null;}
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){nuNote('Please enter a valid email.','warn');return null;}
     return {name,email,role,campus_id};
   };
   document.getElementById('nuSend').addEventListener('click',async()=>{
     const v=read();if(!v)return;
-    const note=document.getElementById('nuNote');
     const btn=document.getElementById('nuSend');btn.disabled=true;btn.textContent='Sending…';
     const errMsg=await paSendInvite(v).catch(ex=>String((ex&&ex.message)||ex));
     btn.disabled=false;btn.textContent='Send invite';
-    if(errMsg){note.textContent="Couldn't send invite — "+errMsg;return;}
-    note.textContent='Invite sent to '+v.email+'.';
-    ADMIN.profs=null;setTimeout(()=>{closeDrawer();if(S.section==='admin')render();},900);
+    if(errMsg){nuNote("Couldn't send invite — "+errMsg,'err');return;}
+    nuNote('Invite sent to '+v.email+'.','ok');
+    // The confirmation used to live in the drawer and the drawer closed on top
+    // of it, so nobody saw it: a write with nothing to show for it. Say it
+    // again on the page the drawer closes onto, AFTER the re-render, or the
+    // render wipes the banner it was just put in.
+    ADMIN.profs=null;
+    setTimeout(()=>{
+      closeDrawer();
+      if(S.section==='admin')render();
+      paNote('Invite sent to '+v.email+'. They have an email with a link to choose a password.');
+    },900);
   });
   document.getElementById('nuLater').addEventListener('click',async()=>{
     const v=read();if(!v)return;
-    const note=document.getElementById('nuNote');
     const {error}=pv
       ?await sb.from('pending_invites').update(v).eq('id',pv.id)
       :await sb.from('pending_invites').upsert(v,{onConflict:'email'});
-    if(error){note.textContent="Couldn't save — "+(error.message||'please try again.');return;}
-    note.textContent=pv?'Saved.':'Saved — no email sent. It\'s listed under “Invite pending” until you send it.';
-    ADMIN.profs=null;setTimeout(()=>{closeDrawer();if(S.section==='admin')render();},1100);
+    if(error){nuNote("Couldn't save — "+(error.message||'please try again.'),'err');return;}
+    const saved=pv?'Saved.':'Saved — no email sent. It\'s listed under “Invite pending” until you send it.';
+    nuNote(saved,'ok');
+    ADMIN.profs=null;
+    setTimeout(()=>{
+      closeDrawer();
+      if(S.section==='admin')render();
+      paNote(pv?'Changes saved. No email has gone out.':'Saved for '+v.email+' — no email sent yet. It is under “Invite pending”.');
+    },1100);
   });
 }
 
