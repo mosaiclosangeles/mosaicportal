@@ -56,6 +56,19 @@ source at all, so it never draws. Filter through `shown(e)`, never through
 `S.filters.has(e.type)`, or the rows Loyda asked to be folded together come
 apart again. `tests/drive-portal.mjs` asserts the three by name.
 
+**A comm belongs to an event by subject, not by date.** `comm_events` carries
+no reference to the item it serves, so the link is inferred: `commRelated()`
+asks whether every distinctive word in the *comm's* name appears in the event's
+(`subjectWords()` strips the channel and timing words — email, text, promo,
+weekday names — and stems plurals), and `commWindow()` limits it to the item's
+own Kick-Off→Debrief runway from the mirror, or ±21 days without one. It reads
+one way on purpose: a comm is named more narrowly than the event it serves, so
+"Bible Studies" reaches "Regional Bible Studies" but "ERM Text" reaches neither
+Team Huddle nor Men's Camp. Same-day was the first rule and it hung two ERM
+sends off a staff birthday; exact title was the second and matched almost
+nothing. The lasting fix is upstream — an item reference on `comm_events` —
+after which this becomes an exact match.
+
 **Facility bookings are one of those sources.** `loadFacilities()` reads
 `v_fac_requests` out of the same Supabase project with the signed-in person's
 own session, so RLS decides what they see. It draws `block_start`/`block_end`

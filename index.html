@@ -539,6 +539,21 @@ html.dark .hovercard{box-shadow:0 6px 22px rgba(0,0,0,.5)}
 .bars{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));padding-top:4px}
 .bar{font-size:10px;padding:2px 7px;border-radius:4px;margin:0 3px 4px;overflow:hidden;
   white-space:nowrap;text-overflow:ellipsis;text-align:left;width:calc(100% - 6px)}
+/* Five key moments, drawn as diamonds so they never read as phases. */
+.mstrip{display:flex;gap:0;align-items:flex-start;overflow-x:auto;padding:4px 0 2px}
+.mspt{flex:1;min-width:74px;text-align:center;font-size:11px;color:var(--text2)}
+.mspt b{display:block;color:var(--text);font-weight:600;font-size:11.5px}
+.msdia{width:9px;height:9px;background:var(--milestone);transform:rotate(45deg);
+  border-radius:1px;margin:0 auto 7px;display:block}
+.mspt.past .msdia{background:var(--neutral)}
+/* Affirmations are not tasks: ticking one means "this is now true". */
+.rq{font-size:13px;color:var(--text2);margin:0 0 9px}
+.aff{display:flex;gap:9px;align-items:flex-start;font-size:13.5px;color:var(--text2);margin-bottom:7px}
+.aff.on{color:var(--text)}
+.affbox{width:15px;height:15px;border-radius:4px;border:1.5px solid var(--grid);flex:none;
+  margin-top:2px;display:flex;align-items:center;justify-content:center;color:#fff}
+.aff.on .affbox{background:var(--session-d);border-color:var(--session-d)}
+.affbox svg{width:10px;height:10px}
 .legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:14px;font-size:11.5px;color:var(--text2)}
 .legend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px;vertical-align:0}
 
@@ -595,6 +610,8 @@ html.dark .hovercard{box-shadow:0 6px 22px rgba(0,0,0,.5)}
 .mini{display:flex;gap:22px;margin:4px 0 2px}
 .mini .v{font-size:24px;font-weight:600;letter-spacing:-.02em;line-height:1.05}
 .mini .k{font-size:11.5px;color:var(--text2);margin-top:2px}
+.foot-links .foot-out{font-size:13px;color:var(--gathering);text-decoration:none}
+.foot-links .foot-out:hover{text-decoration:underline}
 .foot-links button{font-family:inherit;letter-spacing:inherit;font-size:13px;color:var(--gathering);background:none;border:0;padding:0;cursor:pointer}
 .foot-links button:hover{text-decoration:underline}
 .kv button{font-family:inherit;letter-spacing:inherit;font-size:inherit;background:none;border:0;padding:0;cursor:pointer}
@@ -831,15 +848,51 @@ const TYPES = {
    only filtered and coloured as Staff. Filter through shown(), never through
    S.filters.has(e.type), or the two rows fold back apart. */
 const SOURCES = {
-  mosaic:{label:'Mosaic Calendar',types:['event'],        hue:'var(--gathering)'},
-  staff: {label:'Staff',          types:['other','away'], hue:'var(--lime)'},
-  fac:   {label:'Facilities',     types:['facility'],     hue:'var(--red)'}
+  mosaic:{label:'Mosaic Calendar',hue:'var(--gathering)',tint:'var(--gathering-t)',deep:'var(--gathering-d)',solid:'var(--gathering-s)'},
+  staff: {label:'Staff',          hue:'var(--lime)',      tint:'var(--lime-t)',     deep:'var(--lime-d)',     solid:'var(--lime-s)'},
+  fac:   {label:'Facilities',     hue:'var(--red)',       tint:'var(--red-t)',      deep:'var(--red-d)',      solid:'var(--red-s)'}
 };
+/* WHICH ROW AN ENTRY BELONGS IN — decided by what it IS, not by which system
+   stores it. The first cut routed on the source, so "Mosaic Calendar" meant
+   "came from the planning board" and "Staff" meant "came from Outlook". Since
+   Outlook holds nearly everything, Staff swallowed the week: Mosaic Future,
+   Welcome to Mosaic and Discipleship all read as staff business.
+
+   Hannita's rule, 10 Sep, and it is the right one:
+     Mosaic Calendar — the church: board items, plus Outlook entries that are
+                       church activity
+     Staff           — the employee: PTO, birthdays, huddles, internal meetings
+     Facilities      — the building: the AC, the doors, rentals, bookings
+
+   An event that is BOTH — Men's Camp, a gathering with a room held — stays one
+   card under Mosaic Calendar and carries its facilities state as an attribute.
+   Drawing it twice is the duplication the merge just removed. Facilities holds
+   what is only about the building.
+
+   THE WEAK PART IS INTERNAL, AND IT IS DELIBERATELY NARROW. Splitting "Team
+   Huddle" from "Mosaic Future" needs a rule, and Outlook gives us only the
+   subject line today: calendar-events asks Graph for subject, times, location
+   and link, not categories. So these are whole phrases, not bare words —
+   "staff meeting" and not "staff", or "Regional Bible Study PM Staff Lead"
+   would file a Bible study under staff business. When categories are added to
+   that function, they should win over this outright. */
+const INTERNAL=/\b(huddle|staff meeting|staff zoom|staff lunch|all[- ]staff|team meeting|team zoom|arena call|1:1|one[- ]on[- ]one|check[- ]in|stand[- ]?up|b'?day|birthday|payroll|onboarding|performance review)\b/i;
+function laneOf(e){
+  if(!e)return null;
+  if(e.type==='facility')return 'fac';
+  if(e.type==='away')return 'staff';     // already detected as time away upstream
+  if(e.type==='event')return 'mosaic';   // the planning board is the church's own
+  if(e.type==='comms')return null;       // not a calendar source at all
+  return INTERNAL.test(e.title||'')?'staff':'mosaic';
+}
+/* Hue follows the row, not the item's type: the three categories are what the
+   calendar is now about, so they are what the colour has to mean. */
+function palOf(e){return SOURCES[laneOf(e)]||TYPES[e.type]||TYPES.event;}
 /* What each row actually holds, said plainly — this is the copy in Settings. */
 const SRC_NOTE={
-  mosaic:'Gatherings, series, campaigns and programs from the planning board',
-  staff: 'The shared Mosaic Calendar — meetings, rehearsals, birthdays, closures and time away',
-  fac:   'Room bookings from facilities.mosaic.org, setup and teardown included'
+  mosaic:'The church — gatherings, series, campaigns and programs, from the board and the shared calendar',
+  staff: 'Time away, birthdays, huddles and internal meetings — you as an employee',
+  fac:   'The building — the AC, the doors, rentals and bookings, setup and teardown included'
 };
 /* CAMPUS IS AN ATTRIBUTE, AND THE THREE SOURCES SPELL IT DIFFERENTLY.
    The planning board stores "LA" and "NYC" (its CAMPUS_BASE); facilities
@@ -860,12 +913,11 @@ function campusOf(e){
   if(!raw)return '';
   return CAMPUS_ALIAS[raw.toLowerCase()]||raw;
 }
-const TYPE_SOURCE={};
-Object.keys(SOURCES).forEach(k=>SOURCES[k].types.forEach(t=>{TYPE_SOURCE[t]=k;}));
+
 /* Does this entry belong to a source the person still has switched on?
    An item whose type maps to no source (comms) is never on the calendar. */
 function shown(e){
-  const src=TYPE_SOURCE[e.type];
+  const src=laneOf(e);
   if(!src||!S.filters.has(src))return false;
   // An entry with no campus — most of the shared staff calendar — belongs to
   // everybody, so a campus filter narrows the board without hiding it. A card
@@ -906,7 +958,19 @@ function mapLive(pis,ces){
     if(r.deleted||!r.date)return;   // undated items live on the board, not a calendar
     const title=r.title||(r.is_sunday?'Sunday Gathering':'(untitled)');
     const past=D(r.date)<TODAY;
+    /* The mirror carries more than the calendar was keeping: the board's own
+       type (Event, Program, Campaign, Staff date), its own status wording, the
+       time, the location and whether it repeats. Dropping them here is why the
+       card showed less than the board's drawer does.
+       Milestones and the Rhythm's ticks are NOT here — they live in
+       planning_board_state, which the mirror does not copy — so the card links
+       to Planning for those rather than inventing them. */
     const base={type:'event',title,campus:r.campus,level:r.level,phase:r.phase_now,speaker:r.speaker,
+      // The board's own id for this item, so a comm that names it (board_item_id)
+      // can be matched exactly instead of inferred from its subject.
+      itemId:r.id,
+      boardType:r.type,boardStatus:r.status,recur:r.recur,location:r.location,timeOfDay:r.time_of_day,
+      milestones:r.milestones||null,rhythm:r.rhythm||null,
       series:r.is_series?title:undefined,owner:(r.owners||[]).join(', '),desc:r.description,
       detail:(r.speaker?r.speaker+(r.is_sunday?' speaking':''):(r.type||''))+(r.campus&&r.campus!=='LA'?' · '+r.campus:'')};
     if(r.recur==='weekly'&&r.date_end){
@@ -917,7 +981,22 @@ function mapLive(pis,ces){
       }
       return;
     }
-    if(r.date_end&&r.date_end!==r.date){CAMPAIGNS.push({title,start:r.date,end:r.date_end,type:'event'});return;}
+    /* A RUN IS STILL AN EVENT. This used to push a multi-day item into
+       CAMPAIGNS and return, so Men's Camp existed on the calendar only as the
+       bar across the top — nothing to click, nothing to merge with, and the
+       richest record we hold about it (owner, phase, the sign-up notes, its
+       comms) was unreachable from the calendar. What you could click was the
+       shared calendar's bare copy, whose drawer had a title and a date in it
+       and nothing else.
+       So: keep the bar, which is what shows the shape of a run, AND put the
+       item on its start day like every other entry, carrying dateEnd. It is
+       how a facility booking has always worked. */
+    if(r.date_end&&r.date_end!==r.date){
+      CAMPAIGNS.push({title,start:r.date,end:r.date_end,type:'event',campus:r.campus});
+      EVENTS.push(Object.assign({},base,{id:'pm:'+r.id,date:r.date,dateEnd:r.date_end,
+        status:(r.status==='Complete'||D(r.date_end)<TODAY)?'done':'scheduled'}));
+      return;
+    }
     const id='pm:'+r.id;
     EVENTS.push(Object.assign({},base,{id,date:r.date,status:(r.status==='Complete'||past)?'done':'scheduled'}));
     if(past&&!r.parent_id&&r.status&&r.status!=='Complete')CLOSEOUT++;
@@ -932,6 +1011,9 @@ function mapLive(pis,ces){
     EVENTS.push({id:'ce:'+r.id,date:r.event_date,type:'comms',
       status:CE_STATUS[String(r.status||'').toLowerCase()]||'drafting',
       title:r.title||(r.type||'Comm'),
+      // Which planning item this message is for, when somebody said so. Null on
+      // everything written before comm_events had the column.
+      boardItem:r.board_item_id||null,
       detail:(r.subtitle||r.type||'')+(r.sender?' · '+r.sender:'')});
   });
   EVENTS.sort((a,b)=>D(a.date)-D(b.date));
@@ -941,7 +1023,7 @@ async function loadLive(){
   try{
     const [pis,ces]=await Promise.all([
       pmGet('planning_items?select=*&deleted=eq.false'),
-      pmGet('comm_events?select=id,event_date,type,title,subtitle,status,sender,archived&archived=eq.false')
+      pmGet('comm_events?select=id,event_date,type,title,subtitle,status,sender,archived,board_item_id&archived=eq.false')
     ]);
     mapLive(pis,ces);
   }catch(e){DATA_ERR="Couldn't load live planning data — "+e.message+". Showing an empty calendar; the planning board itself is unaffected.";}
@@ -1081,6 +1163,7 @@ const S = {
   newMenu:false,       // the New menu on Home, open or not
   navBook:null,        // per section: a form to open, and the event to fill it with
   facPath:'requests',   // which Facilities page the sub-menu has selected
+  numPath:'overview',   // and which Metrics view
   deep:{}   // section -> the item that section should open on arrival
 };
 
@@ -1114,6 +1197,21 @@ const FAC_NAV=[
   {page:'new',label:'New request'},
   {page:'calendar',label:'Calendar'},
   {page:'spaces',label:'Spaces & resources',admin:true}
+];
+/* Metrics' own tabs, on the rail. Hannita, 10 Sep: "the tabs at the top should
+   be now on the left hand side for the portal view… like here in the
+   facilities." Hand-written here, the same as FAC_NAV and GOALS_NAV — a view
+   added inside Metrics has to be added here too or it will not appear.
+   Not filtered by role: Metrics decides that. switchView() bounces a view the
+   person is not allowed back to Overview, so an entry they cannot use lands
+   somewhere sensible rather than nowhere. */
+const METRICS_NAV=[
+  {page:'overview', label:'Overview'},
+  {page:'campuses', label:'Campuses'},
+  {page:'kidsyouth',label:'Kids + Future'},
+  {page:'trends',   label:'Trends'},
+  {page:'report',   label:'Report'},
+  {page:'history',  label:'History'}
 ];
 function facNavItems(){
   const isAdmin=ME.role==='admin'&&!ME.preview;
@@ -1156,6 +1254,54 @@ function normTitle(t){
     .replace(/[\u2019'\u00b4\u02bc]/g,'')
     .toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
 }
+/* WHICH COMMS BELONG TO AN EVENT — by subject, not by date.
+   Hannita, 10 Sep: "a Team Huddle has nothing to do with an ERM text. For the
+   men's event it will be a men's text or the men's email. Even if it was a
+   past date or a future date within that week."
+
+   Both earlier rules were wrong in opposite directions. Same-day swept in
+   anything that happened to share a date; exact title matched almost nothing,
+   because a comm is named for its channel as much as its subject — "Bible
+   Studies" against "Regional Bible Study PM Staff Lead".
+
+   So: strip the words that describe the channel or the timing rather than the
+   subject, stem the plurals, and ask whether every distinctive word left in
+   the COMM's name appears in the event's. "Bible Studies" → bible, study, both
+   in "Regional Bible Study PM Staff Lead" — related. "ERM Text" → erm, which
+   is in neither Team Huddle nor Men's Camp — not related. It reads one way on
+   purpose: a comm is usually named more narrowly than the event it serves. */
+const COMM_GENERIC=/^(email|text|script|reminder|promo|invite|announcement|post|social|newsletter|recap|update|opportunitie|opportunity|tomorrow|today|week|weekly|thi|next|last|the|and|for|of|to|in|on|at|mosaic|sunday|monday|tuesday|wednesday|thursday|friday|saturday|mon|tue|wed|thu|fri|sat|sun)$/;
+function subjectWords(t){
+  return normTitle(t).split(' ')
+    .map(w=>w.replace(/s$/,''))              // studies → studie → study is close enough
+    .map(w=>w.replace(/ie$/,'y'))
+    .filter(w=>w.length>2&&!COMM_GENERIC.test(w));
+}
+/* How far either side of an event a comm can still be about it. With the
+   milestones now in the mirror that is the item's own runway — Kick-Off to
+   Debrief, which is exactly the window its promotion runs in. Without them,
+   three weeks either side. */
+function commWindow(e){
+  const ms=e.milestones;
+  if(ms&&ms.kickoff&&ms.debrief)return [D(ms.kickoff),D(ms.debrief)];
+  const a=D(e.date), b=D(e.dateEnd||e.date);
+  return [addDays(a,-21),addDays(b,21)];
+}
+/* Whether a comm belongs to an event.
+
+   When the comm carries board_item_id, that is not a guess — somebody said so,
+   by starting the message from that event's card — and it is the answer, both
+   ways: a comm claimed by one event must not also attach itself to another it
+   happens to share words with. This is the upstream fix the subject matching
+   below was always waiting for; it applies to messages written since
+   comm_events gained the column, and the inference still carries everything
+   written before that. */
+function commRelated(c,e){
+  if(c.boardItem)return c.boardItem===e.itemId;
+  const cw=subjectWords(c.title), ew=new Set(subjectWords(e.title));
+  if(!cw.length||!ew.size)return false;
+  return cw.every(w=>ew.has(w));
+}
 function mergeCards(list){
   const groups=new Map(), loose=[];
   list.forEach(e=>{
@@ -1167,19 +1313,35 @@ function mergeCards(list){
   });
   const out=loose;
   groups.forEach(parts=>{
-    // The planning board holds the richest record, so it leads when present.
-    const lead=SOURCE_RANK.map(t=>parts.find(x=>x.type===t)).find(Boolean)||parts[0];
+    // The planning board holds the richest record, so it leads when present —
+    // but only among the parts still on screen, or turning a row off would
+    // leave a card wearing the colour of a row that is not showing.
+    const pick=f=>SOURCE_RANK.map(t=>parts.find(x=>x.type===t&&f(x))).find(Boolean);
+    const lead=pick(shown)||pick(()=>true)||parts[0];
     out.push(Object.assign({},lead,{parts}));
   });
   return out;
 }
-function evOn(dt){return mergeCards(EVENTS.filter(e=>e.date===key(dt) && shown(e)));}
+/* MERGE FIRST, THEN FILTER — the order matters, and getting it backwards cost
+   Men's Camp its whole record. Filtering first meant each part was judged
+   alone: with the campus picker on Mexico, the board's LA item was dropped and
+   the shared calendar's "Mens Camp", which carries no campus, survived on its
+   own. The card left standing was the thin copy — a title, two dates, nothing
+   else — while the record with David, the phase and the description had been
+   thrown away before the merge could reach it.
+   So: group everything on the day, then keep the cards where SOMETHING is
+   still on screen. A filter decides which cards appear, never what a card is
+   allowed to know about itself. */
+function evOn(dt){
+  return mergeCards(EVENTS.filter(e=>e.date===key(dt)&&laneOf(e)))
+         .filter(c=>(c.parts||[c]).some(shown));
+}
 /* The dots under a merged card's name: one per source it drew from, in the
    order the sources are listed on the filter row. */
 function partDots(e){
   if(!e.parts||e.parts.length<2)return '';
   const seen=[];
-  e.parts.forEach(x=>{const src=TYPE_SOURCE[x.type];if(src&&!seen.includes(src))seen.push(src);});
+  e.parts.forEach(x=>{const src=laneOf(x);if(src&&!seen.includes(src))seen.push(src);});
   if(seen.length<2)return '';
   return '<span class="evdots">'+seen.map(src=>
     '<i style="background:'+SOURCES[src].hue+'" title="'+esc(SOURCES[src].label)+'"></i>').join('')+'</span>';
@@ -1202,7 +1364,7 @@ function partFacts(e){
   return f;
 }
 function statusStyle(e){
-  const t=TYPES[e.type];
+  const t=palOf(e);
   if(e.status==='done')      return 'background:'+(t.solid||t.hue)+';color:#fff';
   if(e.status==='scheduled') return 'background:'+t.tint+';color:'+t.deep;
   if(e.status==='waiting')   return 'background:var(--surface);color:'+t.deep+';border:1px dashed '+t.hue;
@@ -1254,6 +1416,11 @@ function renderNav(){
       (it.restricted?'<span class="lock" title="Restricted">'+ic('lock')+'</span>':'')+
       (it.beta?'<span class="badge">BETA</span>':(it.count?'<span class="count">'+it.count+'</span>':''))+
       '</button>');
+    if(it.id==='numbers'&&S.section==='numbers'){
+      out.push('<div class="subnav">'+METRICS_NAV.map(m=>
+        '<button data-mp="'+esc(m.page)+'" class="'+(S.numPath===m.page?'on':'')+'">'+
+        esc(m.label)+'</button>').join('')+'</div>');
+    }
     if(it.id==='facilities'&&S.section==='facilities'){
       out.push('<div class="subnav">'+facNavItems().map(f=>
         '<button data-fp="'+esc(f.page)+'" class="'+(S.facPath===f.page?'on':'')+'">'+
@@ -1406,7 +1573,7 @@ function filterBar(){
     ((S.filters.has('staff')||S.filters.has('fac'))
       ? '<div style="font-size:12px;color:var(--text2);margin:-8px 0 14px">'+
         [S.filters.has('staff')
-          ? (CAL_ON?'Staff is the shared Mosaic Calendar — meetings, rehearsals, birthdays, closures, and time away.'
+          ? (CAL_ON?'Staff is you as an employee — time away, birthdays, huddles and internal meetings. Everything else from the shared calendar is church activity, so it sits under Mosaic Calendar.'
                    :'The shared Mosaic Calendar isn\'t connected yet, so Staff is empty.')
           : '',
          S.filters.has('fac')
@@ -1426,9 +1593,9 @@ function campusPicker(){
 }
 function legend(){
   return '<div class="legend">'+
-   '<span><i style="background:'+TYPES.event.solid+'"></i>Sent</span>'+
-   '<span><i style="background:'+TYPES.event.tint+';border:1px solid '+TYPES.event.hue+'"></i>Scheduled</span>'+
-   '<span><i style="background:#fff;border:1px dashed '+TYPES.event.hue+'"></i>Waiting on someone</span>'+
+   '<span><i style="background:'+SOURCES.mosaic.solid+'"></i>Sent</span>'+
+   '<span><i style="background:'+SOURCES.mosaic.tint+';border:1px solid '+SOURCES.mosaic.hue+'"></i>Scheduled</span>'+
+   '<span><i style="background:#fff;border:1px dashed '+SOURCES.mosaic.hue+'"></i>Waiting on someone</span>'+
    '<span><i style="background:#fcfcfb;border:1px solid var(--grid)"></i>Drafting</span>'+
    '<span style="margin-left:auto">Hue = type · fill = status</span></div>';
 }
@@ -1487,12 +1654,16 @@ function pageEmbed(id){
   let src=sec.url;
   if(id==='goals')src+=(S.goalsPath==='/'?'':S.goalsPath);
   if(id==='facilities')src+=(src.includes('?')?'&':'?')+'page='+(S.facPath||'requests');
+  if(id==='numbers')src+=(src.includes('?')?'&':'?')+'view='+(S.numPath||'overview');
   /* Starting something for an event on the planning board — a room, a message,
      a set of numbers. None of those apps can be written from the board: it has
      no sign-in, and the tables behind them are RLS'd to auth.uid(). So it asks
      the portal to open the app's own form with the event already in it.
      Nothing here bypasses a check; it saves retyping, and it carries
-     board_item so what gets created stays tied to the event. */
+     board_item so what gets created stays tied to the event.
+
+     After the rail's own page/view, so page=new wins for the one arrival that
+     asked for a form. Metrics reads both and page=new takes precedence there. */
   const book=S.navBook&&S.navBook[id];
   if(book){
     if(book.page&&id!=='facilities')src+=(src.includes('?')?'&':'?')+'page='+encodeURIComponent(book.page);
@@ -2981,11 +3152,28 @@ function pmId(e){
 function pageEvent(){
   const e=EVENTS.find(x=>x.id===S.eventId);
   if(!e) return '<h1>Not found</h1>';
-  const d=D(e.date), t=TYPES[e.type], isSunday=(e.type==='event'&&d.getDay()===0);
+  const d=D(e.date), t=palOf(e), isSunday=(e.type==='event'&&d.getDay()===0);
+  // The card speaks for every part that merged into it, not just the lead.
+  const card=mergeCards(EVENTS.filter(x=>x.date===e.date&&laneOf(x))).find(x=>x.id===e.id)||e;
+  const facts=partFacts(card);
   const m=isSunday?metricFor(d):null;
   const days=Math.round((d-TODAY)/86400000);
   const camp=e.campaign||null;
-  const comms=EVENTS.filter(x=>x.type==='comms'&&((camp&&x.campaign===camp)||(!camp&&x.date===e.date)))
+  /* COMMS ARE MATCHED BY SUBJECT, NOT BY DATE.
+     comm_events carries id, event_date, type, title, subtitle, status and
+     sender — and nothing that points at an event or a campaign. Same-day was
+     the first guess and it was a collision, not a relationship: a staff
+     birthday came to own two ERM sends. Exact title was the second, and it
+     matched almost nothing, because a comm is named for its channel as much
+     as its subject.
+     So the link is the subject (commRelated) inside the event's own runway
+     (commWindow) — which is what "a men's text or the men's email, even if it
+     was a past date or a future date" actually means.
+     The real fix is still upstream: comm_events needs a reference to the item
+     it is for. Then this becomes an exact match and is right every time. */
+  const [winA,winB]=commWindow(e);
+  const commsForEvent=EVENTS.filter(x=>x.type==='comms'
+      &&D(x.date)>=winA&&D(x.date)<=winB&&commRelated(x,e))
                     .sort((a,b)=>D(a.date)-D(b.date));
   const subs=TASKS.filter(x=>(camp&&x.campaign===camp)||(!camp&&x.parent===e.title));
   const doneN=subs.filter(x=>x.done).length;
@@ -2997,34 +3185,59 @@ function pageEvent(){
     '<div style="margin-bottom:6px">'+
       '<span class="tag" style="background:'+t.tint+';color:'+t.deep+'">'+t.label+'</span>'+
       (e.phase?'<span class="tag" style="background:var(--milestone-t);color:var(--milestone-d)">'+esc(e.phase)+'</span>':'')+
-      '<span class="tag">'+STATUS_LABEL[e.status]+'</span>'+
+      // The board says "On track"; STATUS_LABEL speaks comms ("Sent"), which
+      // read as nonsense on a gathering that has simply happened.
+      '<span class="tag">'+esc(e.boardStatus||STATUS_LABEL[e.status])+'</span>'+
+      (e.boardType?'<span class="tag">'+esc(e.boardType)+'</span>':'')+
       (e.level?'<span class="tag" style="background:none;color:var(--text3);font-weight:500">'+esc(e.level)+'</span>':'')+
       (days>0?'<span style="font-size:12.5px;color:var(--text2);float:right;padding-top:4px">in '+days+' days</span>'
              :(days===0?'<span style="font-size:12.5px;color:var(--gathering);float:right;padding-top:4px">today</span>':''))+
     '</div>'+
     '<h1 style="font-size:26px">'+esc(e.title)+'</h1>'+
-    '<div class="sub">'+pretty(d)+(e.detail?' · '+esc(e.detail):'')+(e.campus?' · '+esc(e.campus):'')+'</div>'+
+    '<div class="sub">'+(e.dateEnd&&e.dateEnd!==e.date?pretty(d)+' – '+pretty(D(e.dateEnd)):pretty(d))+
+      (e.detail?' · '+esc(e.detail):'')+
+      // The detail line often already names the campus — a booking's does —
+      // and "Los Angeles · 8:00 AM · Los Angeles" reads like a mistake.
+      (facts.campus&&(e.detail||'').indexOf(facts.campus)<0?' · '+esc(facts.campus):'')+'</div>'+
     '<div class="ecard"><div>';
 
-  h+='<div class="eyebrow">DESCRIPTION</div>'+
-     '<div class="desc">'+(e.desc?esc(e.desc):'<span style="color:var(--text2)">No description yet. Descriptions come from the planning board.</span>')+'</div>';
+  if(e.desc||e.type==='event')
+    h+='<div class="eyebrow">DESCRIPTION</div>'+
+       '<div class="desc">'+(e.desc?esc(e.desc):'<span style="color:var(--text2)">No description yet. Descriptions come from the planning board.</span>')+'</div>';
 
-  const rows=[['Speaker',e.speaker],['Clip source',e.clip],['Series',e.series],
-              ['Owner',e.owner],['Creative',e.creative],['Phase',e.phase],['Campaign',e.campaign]]
+  const fac=facts.facility;
+  const rows=[['Speaker',facts.speaker||e.speaker],['Clip source',e.clip],['Series',e.series],
+              ['Owner',facts.owner||e.owner],['Creative',e.creative],
+              ['Phase',facts.phase||e.phase],['Campaign',e.campaign],
+              ['Level',facts.level],['Type',e.boardType],
+              ['Time',e.timeOfDay],['Location',e.location],
+              ['Repeats',e.recur==='weekly'?'Every week':null],
+              ['Where',e.type!=='event'?e.detail:null],
+              // The room's detail is only worth repeating when it is not
+              // already the Where line directly above it.
+              ['Facilities',fac?(fac.status==='waiting'?'Waiting on a decision'
+                :fac.status==='done'?'Finished':'Approved')
+                +(fac.detail&&fac.detail!==e.detail?' · '+fac.detail:''):null]]
              .filter(r=>r[1]);
   if(rows.length){
     h+='<div class="eyebrow">DETAILS</div>'+rows.map((r,i)=>
       '<div class="kv"'+(i===rows.length-1?' style="border-bottom:0"':'')+'><span>'+r[0]+'</span><span>'+esc(r[1])+'</span></div>').join('');
   }
 
-  h+='<div class="eyebrow">COMMS FOR THIS EVENT · '+comms.length+'</div>';
-  h+= comms.length
-    ? comms.map(c=>'<button class="row" data-ev="'+c.id+'"><span class="when">'+fmt(D(c.date))+'</span>'+
+  h+=milestonesHTML(e.milestones)+rhythmHTML(e.rhythm);
+  if(card.parts&&card.parts.length>1){
+    h+='<div class="eyebrow">ALSO ON</div>'+card.parts.filter(x=>x.id!==e.id).map(x=>
+      '<div class="kv"><span>'+esc(SOURCES[laneOf(x)]?SOURCES[laneOf(x)].label:'')+'</span>'+
+      '<span>'+esc(x.title)+'</span></div>').join('');
+  }
+  const commsRow=c=>'<button class="row" data-ev="'+c.id+'"><span class="when">'+fmt(D(c.date))+'</span>'+
         '<span class="txt"><span class="name">'+esc(c.title)+'</span><span class="meta">'+esc(c.detail||'')+'</span></span>'+
         '<span class="tag" style="background:'+(c.status==='waiting'?'var(--red-t)':c.status==='done'?'var(--session-t)':'var(--fill)')+
         ';color:'+(c.status==='waiting'?'var(--red-d)':c.status==='done'?'var(--session-d)':'#4a4a4a')+
-        '">'+STATUS_LABEL[c.status]+'</span></button>').join('')
-    : '<div class="empty">Nothing scheduled for this event yet.</div>';
+        '">'+STATUS_LABEL[c.status]+'</span></button>';
+  if(commsForEvent.length)
+    h+='<div class="eyebrow">COMMS FOR THIS EVENT · '+commsForEvent.length+'</div>'+
+       commsForEvent.map(commsRow).join('');
 
   h+='</div><div>';
 
@@ -3069,9 +3282,15 @@ function pageEvent(){
 
   h+='</div></div>'+
     '<div class="foot-links">'+
-    '<button data-go="planning" data-item="'+esc(pmId(e))+'">Edit in Planning</button>'+
-    '<button data-go="comms" data-item="'+esc(ceId(e)||e.date||'')+'">Edit comms</button>'+
+    ((card.parts||[e]).some(x=>x.type==='event')
+      ?'<button data-go="planning" data-item="'+esc(pmId(e))+'">Edit in Planning</button>':'')+
+    (fac?'<button data-go="facilities">Open in Facilities</button>':'')+
+    // Day-scoped, and says so: it opens that date in the comms calendar rather
+    // than claiming these sends belong to this event.
+    '<button data-go="comms" data-item="'+esc(e.date||'')+'">Comms on this day</button>'+
     (isSunday?'<button data-go="numbers" data-item="'+esc(e.date||'')+'">'+(m?'View in Metrics':'Submit attendance')+'</button>':'')+
+    ((card.parts||[e]).find(x=>x.link&&x.type!=='facility')
+      ?'<a class="foot-out" target="_blank" rel="noopener" href="'+esc((card.parts||[e]).find(x=>x.link&&x.type!=='facility').link)+'">Open in Outlook</a>':'')+
     '</div>';
   return h;
 }
@@ -3081,7 +3300,7 @@ function pageEvent(){
    worse than no row at all. A booking knows its own status; a gathering has no
    link to one yet, so it does not claim one. */
 function hoverCardHTML(e){
-  const t=TYPES[e.type]||TYPES.event, d=D(e.date);
+  const t=palOf(e), d=D(e.date);
   const when=e.dateEnd&&e.dateEnd!==e.date
     ? DOW[d.getDay()]+' '+fmt(d)+' – '+DOW[D(e.dateEnd).getDay()]+' '+fmt(D(e.dateEnd))
     : pretty(d);
@@ -3100,7 +3319,7 @@ function hoverCardHTML(e){
   if(f.owner)rows.push(['Owner',esc(f.owner)]);
   return '<div class="hc-t">'+esc(e.title)+'</div>'+
     '<div class="hc-tags"><span class="hc-pill" style="background:'+t.tint+';color:'+t.deep+'">'+
-      esc(t.label)+'</span>'+(f.level?'<span class="hc-lvl">'+esc(f.level)+'</span>':'')+
+      esc(t.label||'')+'</span>'+(f.level?'<span class="hc-lvl">'+esc(f.level)+'</span>':'')+
       partDots(e)+'</div>'+
     rows.map(r=>'<div class="hc-row"><span>'+r[0]+'</span><b>'+r[1]+'</b></div>').join('');
 }
@@ -3114,7 +3333,7 @@ function hoverCardHTML(e){
     // Hover the merged card, not the part underneath it, so the tooltip can
     // say what the booking decided as well as what the board owns.
     const raw=EVENTS.find(x=>x.id===btn.dataset.ev);
-    const e=raw?mergeCards(EVENTS.filter(x=>x.date===raw.date&&shown(x)))
+    const e=raw?mergeCards(EVENTS.filter(x=>x.date===raw.date&&laneOf(x)))
                   .find(x=>x.id===raw.id)||raw:null;
     if(!e||(el&&el.dataset.for===e.id))return;
     hide();
@@ -3139,6 +3358,34 @@ function hoverCardHTML(e){
   ['scroll','click','keydown'].forEach(t=>document.addEventListener(t,hide,true));
 })();
 
+/* Milestones and the Rhythm, drawn the way the board draws them: diamonds for
+   the five key moments because they are not phases, and the three affirmations
+   as what is true rather than as tasks — no owner, no due date. The wording is
+   the Rhythm's own, carried through the mirror rather than restated here. */
+function milestonesHTML(ms){
+  if(!ms)return '';
+  const NAMES=[['kickoff','Kick-Off'],['public','Public'],['ready','Ready'],
+               ['launch','Launch'],['debrief','Debrief']];
+  const rows=NAMES.filter(([k])=>ms[k]);
+  if(!rows.length)return '';
+  return '<div class="eyebrow">MILESTONES</div><div class="mstrip">'+
+    rows.map(([k,name])=>{
+      const past=D(ms[k])<TODAY, pinned=(ms.pinned||[]).includes(k);
+      return '<div class="mspt'+(past?' past':'')+'">'+
+        '<span class="msdia"'+(pinned?' title="Pinned by hand"':'')+'></span>'+
+        '<b>'+esc(name)+'</b>'+fmt(D(ms[k]))+'</div>';
+    }).join('')+'</div>';
+}
+function rhythmHTML(r){
+  if(!r)return '';
+  const done=(r.affirmations||[]).filter(a=>a.done).length;
+  return '<div class="eyebrow">THE RHYTHM · '+esc(r.phase)+' · '+done+' OF '+
+    (r.affirmations||[]).length+'</div>'+
+    (r.question?'<div class="rq">'+esc(r.question)+'</div>':'')+
+    (r.affirmations||[]).map(a=>'<div class="aff'+(a.done?' on':'')+'">'+
+      '<span class="affbox">'+(a.done?ic('check'):'')+'</span>'+esc(a.text)+'</div>').join('');
+}
+
 /* ============================ drawer ============================ */
 function openDrawer(html,title=''){
   document.getElementById('drawerTitle').textContent=title;
@@ -3152,47 +3399,12 @@ function closeDrawer(){
   document.getElementById('drawer').setAttribute('aria-hidden','true');
   document.getElementById('scrim').classList.remove('open');
 }
-function eventDrawer(id){
-  const e=EVENTS.find(x=>x.id===id); if(!e) return;
-  const d=D(e.date), t=TYPES[e.type], m=(e.type==='event'&&d.getDay()===0)?metricFor(d):null;
-  const linked=EVENTS.filter(x=>x.date===e.date&&x.type==='comms'&&x.id!==e.id);
-  const subs=TASKS.filter(x=>e.title.indexOf(x.parent)===0||x.parent===e.title||(e.title==='Charles Metcalf'&&x.parent==='Charles Metcalf'));
-  let h='<div style="font-size:11px;color:var(--text2);letter-spacing:.05em">'+t.label.toUpperCase()+'</div>'+
-    '<h1 style="font-size:22px;margin-top:6px">'+esc(e.title)+'</h1>'+
-    '<div class="sub">'+pretty(d)+(e.detail?' · '+esc(e.detail):'')+'</div>'+
-    '<div style="margin:14px 0 4px"><span class="tag">'+STATUS_LABEL[e.status]+'</span>'+
-    (e.campus?'<span class="tag">'+esc(e.campus)+'</span>':'')+(e.owner?'<span class="tag">'+esc(e.owner)+'</span>':'')+'</div>';
-  if(e.type==='event'&&d.getDay()===0){
-    h+='<div class="eyebrow">ATTENDANCE</div>';
-    if(m){
-      const ks=Object.keys(METRICS),vals=ks.map(k=>METRICS[k].a),mx=Math.max(...vals);
-      const avg=Math.round(vals.reduce((a,b)=>a+b,0)/vals.length);
-      h+='<div class="mini"><div><div class="v">'+m.a+'</div><div class="k">attendance</div></div>'+
-        '<div><div class="v">'+m.k+'</div><div class="k">kids + youth</div></div>'+
-        '<div><div class="v">'+m.n+'</div><div class="k">next steps</div></div></div>'+
-        '<div class="bars-chart" style="height:70px;margin-top:14px">'+ks.map(k=>'<div class="bar-v'+(k===key(d)?' hi':'')+'" style="height:'+Math.round(METRICS[k].a/mx*100)+'%"></div>').join('')+'</div>'+
-        '<div style="font-size:12px;color:var(--text2);margin-top:7px">Six-week average '+avg+'</div>'+
-        '<button class="linkout" data-go="numbers">Open in Metrics</button>';
-    } else {
-      h+='<div class="empty">No attendance recorded. <button data-go="numbers" style="color:var(--gathering)">Submit attendance</button></div>';
-    }
-  }
-  if(linked.length){
-    h+='<div class="eyebrow">COMMS FOR THIS DAY</div>'+linked.map(c=>
-      '<div class="kv"><span>'+esc(c.title)+'</span><span>'+STATUS_LABEL[c.status]+'</span></div>').join('')+
-      '<button class="linkout" data-go="comms" data-item="'+esc(ceId(e))+'">Open in Comms</button>';
-  }
-  if(subs.length){
-    h+='<div class="eyebrow">SUBTASKS</div>'+subs.map(t=>taskRow(t)).join('')+
-      '<button class="linkout" data-go="planning">Open in Planning</button>';
-  }
-  openDrawer(h);
-}
 function dayDrawer(k){
-  const d=D(k), evs=mergeCards(EVENTS.filter(e=>e.date===k&&shown(e)));
+  const d=D(k), evs=mergeCards(EVENTS.filter(e=>e.date===k&&laneOf(e)))
+                    .filter(c=>(c.parts||[c]).some(shown));
   openDrawer('<h1 style="font-size:22px">'+pretty(d)+'</h1><div class="sub">'+evs.length+' items</div>'+
     '<div style="margin-top:16px">'+evs.map(e=>'<button class="row" data-ev="'+e.id+'">'+
-    '<span class="swatch" style="background:'+TYPES[e.type].hue+';margin-top:6px"></span>'+
+    '<span class="swatch" style="background:'+palOf(e).hue+';margin-top:6px"></span>'+
     '<span class="txt"><span class="name">'+esc(e.title)+partDots(e)+'</span><span class="meta">'+esc(e.detail||'')+'</span></span>'+
     '<span class="tag">'+STATUS_LABEL[e.status]+'</span></button>').join('')+'</div>');
 }
@@ -3490,7 +3702,10 @@ document.addEventListener('click',e=>{
      while somebody clicks past it is how a menu ends up covering the thing
      they were reaching for. */
   if(S.newMenu&&!e.target.closest('#newMenu,[data-newmenu]')){S.newMenu=false;render();}
-  const t=e.target.closest('[data-go],[data-view],[data-nav],[data-filter],[data-ev],[data-day],[data-task],[data-new],[data-pick],[data-everyone],[data-tl],[data-back],[data-logout],[data-preview],[data-previewexit],[data-previewgo],[data-pickertoggle],[data-pickerrole],[data-profile],[data-fb],[data-newuser],[data-gp],[data-fp],[data-user],[data-pinv],[data-pinvsend],[data-pinvdel],[data-adtab],[data-theme],[data-newcampus],[data-editcampus],[data-addloc],[data-deactivateloc],[data-addtime],[data-rmtime],[data-toggleinactivecampus],[data-toggleusers],[data-newmenu],[data-newthing]');
+  /* Both sides of the merge added to this list — [data-mp] is the Metrics rail,
+     [data-newmenu]/[data-newthing] the New menu. Every one of them has to be
+     here or its buttons are simply dead. */
+  const t=e.target.closest('[data-go],[data-view],[data-nav],[data-filter],[data-ev],[data-day],[data-task],[data-new],[data-pick],[data-everyone],[data-tl],[data-back],[data-logout],[data-preview],[data-previewexit],[data-previewgo],[data-pickertoggle],[data-pickerrole],[data-profile],[data-fb],[data-newuser],[data-gp],[data-fp],[data-mp],[data-user],[data-pinv],[data-pinvsend],[data-pinvdel],[data-adtab],[data-theme],[data-newcampus],[data-editcampus],[data-addloc],[data-deactivateloc],[data-addtime],[data-rmtime],[data-toggleinactivecampus],[data-toggleusers],[data-newmenu],[data-newthing]');
   if(!t) return;
   /* The New menu on Home. It has to come before data-new below, and be its own
      attribute: data-new is the Calendars drawer, and one of these buttons
@@ -3528,12 +3743,9 @@ document.addEventListener('click',e=>{
     // A source can cover more than one item type, so recolour all of them —
     // Staff would otherwise change on the chip and not on the calendar.
     SOURCES[src].hue='var('+tok+')';
-    SOURCES[src].types.forEach(type=>{
-      TYPES[type].hue='var('+tok+')';
-      TYPES[type].tint='var('+tok+'-t)';
-      TYPES[type].deep='var('+tok+'-d)';
-      TYPES[type].solid='var('+tok+'-s)';
-    });
+    SOURCES[src].tint='var('+tok+'-t)';
+    SOURCES[src].deep='var('+tok+'-d)';
+    SOURCES[src].solid='var('+tok+'-s)';
     render(); return;
   }
   if(t.dataset.everyone){ S.forEveryone=!S.forEveryone; render(); return; }
@@ -3601,10 +3813,11 @@ document.addEventListener('click',e=>{
   }
   if(t.dataset.fb){ feedbackDrawer(t.dataset.fb); return; }
   if(t.dataset.gp!==undefined){ S.goalsPath=t.dataset.gp; S.section='goals'; render(); return; }
-  // Clicking the sub-menu by hand drops any board prefill: it belongs to the one
+  // Clicking a sub-menu by hand drops any board prefill: it belongs to the one
   // arrival from the planning board, and leaving it set would re-open a stale
-  // event's details the next time somebody opens the new-request form.
+  // event's details the next time somebody opens that form.
   if(t.dataset.fp!==undefined){ S.facPath=t.dataset.fp; if(S.navBook)delete S.navBook.facilities; S.section='facilities'; render(); return; }
+  if(t.dataset.mp!==undefined){ S.numPath=t.dataset.mp; if(S.navBook)delete S.navBook.numbers; S.section='numbers'; render(); return; }
   if(t.dataset.user){ S.from='admin'; S.adminUserId=t.dataset.user; S.section='admin-user'; render(); return; }
   if(t.dataset.pinv){ paInviteDrawer(t.dataset.pinv); return; }
   if(t.dataset.pinvsend){
@@ -3643,9 +3856,15 @@ document.addEventListener('click',e=>{
     render(); return;
   }
   if(t.dataset.ev){
-    const ev=EVENTS.find(x=>x.id===t.dataset.ev);
-    if(ev && ev.type==='event'){ S.from=S.section==='event'?(S.from||'calendar'):S.section; S.eventId=ev.id; S.section='event'; closeDrawer(); render(); }
-    else { eventDrawer(t.dataset.ev); }
+    /* ONE CARD, WHATEVER IT IS. This used to branch: a planning item opened a
+       full page, everything else opened a narrow side drawer with a different
+       renderer behind it. So the shape of the card told you which system the
+       entry came from — the one thing the calendar has spent all day learning
+       not to do — and the two renderers drifted apart, because nothing made
+       them agree. eventDrawer is gone rather than kept in step. */
+    if(!EVENTS.some(x=>x.id===t.dataset.ev))return;
+    S.from=S.section==='event'?(S.from||'calendar'):S.section;
+    S.eventId=t.dataset.ev; S.section='event'; closeDrawer(); render();
     return;
   }
   if(t.dataset.back){ S.section=S.from||'calendar'; render(); return; }
