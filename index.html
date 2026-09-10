@@ -814,15 +814,51 @@ const TYPES = {
    only filtered and coloured as Staff. Filter through shown(), never through
    S.filters.has(e.type), or the two rows fold back apart. */
 const SOURCES = {
-  mosaic:{label:'Mosaic Calendar',types:['event'],        hue:'var(--gathering)'},
-  staff: {label:'Staff',          types:['other','away'], hue:'var(--lime)'},
-  fac:   {label:'Facilities',     types:['facility'],     hue:'var(--red)'}
+  mosaic:{label:'Mosaic Calendar',hue:'var(--gathering)',tint:'var(--gathering-t)',deep:'var(--gathering-d)',solid:'var(--gathering-s)'},
+  staff: {label:'Staff',          hue:'var(--lime)',      tint:'var(--lime-t)',     deep:'var(--lime-d)',     solid:'var(--lime-s)'},
+  fac:   {label:'Facilities',     hue:'var(--red)',       tint:'var(--red-t)',      deep:'var(--red-d)',      solid:'var(--red-s)'}
 };
+/* WHICH ROW AN ENTRY BELONGS IN — decided by what it IS, not by which system
+   stores it. The first cut routed on the source, so "Mosaic Calendar" meant
+   "came from the planning board" and "Staff" meant "came from Outlook". Since
+   Outlook holds nearly everything, Staff swallowed the week: Mosaic Future,
+   Welcome to Mosaic and Discipleship all read as staff business.
+
+   Hannita's rule, 10 Sep, and it is the right one:
+     Mosaic Calendar — the church: board items, plus Outlook entries that are
+                       church activity
+     Staff           — the employee: PTO, birthdays, huddles, internal meetings
+     Facilities      — the building: the AC, the doors, rentals, bookings
+
+   An event that is BOTH — Men's Camp, a gathering with a room held — stays one
+   card under Mosaic Calendar and carries its facilities state as an attribute.
+   Drawing it twice is the duplication the merge just removed. Facilities holds
+   what is only about the building.
+
+   THE WEAK PART IS INTERNAL, AND IT IS DELIBERATELY NARROW. Splitting "Team
+   Huddle" from "Mosaic Future" needs a rule, and Outlook gives us only the
+   subject line today: calendar-events asks Graph for subject, times, location
+   and link, not categories. So these are whole phrases, not bare words —
+   "staff meeting" and not "staff", or "Regional Bible Study PM Staff Lead"
+   would file a Bible study under staff business. When categories are added to
+   that function, they should win over this outright. */
+const INTERNAL=/\b(huddle|staff meeting|staff zoom|staff lunch|all[- ]staff|team meeting|team zoom|arena call|1:1|one[- ]on[- ]one|check[- ]in|stand[- ]?up|b'?day|birthday|payroll|onboarding|performance review)\b/i;
+function laneOf(e){
+  if(!e)return null;
+  if(e.type==='facility')return 'fac';
+  if(e.type==='away')return 'staff';     // already detected as time away upstream
+  if(e.type==='event')return 'mosaic';   // the planning board is the church's own
+  if(e.type==='comms')return null;       // not a calendar source at all
+  return INTERNAL.test(e.title||'')?'staff':'mosaic';
+}
+/* Hue follows the row, not the item's type: the three categories are what the
+   calendar is now about, so they are what the colour has to mean. */
+function palOf(e){return SOURCES[laneOf(e)]||TYPES[e.type]||TYPES.event;}
 /* What each row actually holds, said plainly — this is the copy in Settings. */
 const SRC_NOTE={
-  mosaic:'Gatherings, series, campaigns and programs from the planning board',
-  staff: 'The shared Mosaic Calendar — meetings, rehearsals, birthdays, closures and time away',
-  fac:   'Room bookings from facilities.mosaic.org, setup and teardown included'
+  mosaic:'The church — gatherings, series, campaigns and programs, from the board and the shared calendar',
+  staff: 'Time away, birthdays, huddles and internal meetings — you as an employee',
+  fac:   'The building — the AC, the doors, rentals and bookings, setup and teardown included'
 };
 /* CAMPUS IS AN ATTRIBUTE, AND THE THREE SOURCES SPELL IT DIFFERENTLY.
    The planning board stores "LA" and "NYC" (its CAMPUS_BASE); facilities
@@ -843,12 +879,11 @@ function campusOf(e){
   if(!raw)return '';
   return CAMPUS_ALIAS[raw.toLowerCase()]||raw;
 }
-const TYPE_SOURCE={};
-Object.keys(SOURCES).forEach(k=>SOURCES[k].types.forEach(t=>{TYPE_SOURCE[t]=k;}));
+
 /* Does this entry belong to a source the person still has switched on?
    An item whose type maps to no source (comms) is never on the calendar. */
 function shown(e){
-  const src=TYPE_SOURCE[e.type];
+  const src=laneOf(e);
   if(!src||!S.filters.has(src))return false;
   // An entry with no campus — most of the shared staff calendar — belongs to
   // everybody, so a campus filter narrows the board without hiding it. A card
@@ -900,7 +935,22 @@ function mapLive(pis,ces){
       }
       return;
     }
-    if(r.date_end&&r.date_end!==r.date){CAMPAIGNS.push({title,start:r.date,end:r.date_end,type:'event'});return;}
+    /* A RUN IS STILL AN EVENT. This used to push a multi-day item into
+       CAMPAIGNS and return, so Men's Camp existed on the calendar only as the
+       bar across the top — nothing to click, nothing to merge with, and the
+       richest record we hold about it (owner, phase, the sign-up notes, its
+       comms) was unreachable from the calendar. What you could click was the
+       shared calendar's bare copy, whose drawer had a title and a date in it
+       and nothing else.
+       So: keep the bar, which is what shows the shape of a run, AND put the
+       item on its start day like every other entry, carrying dateEnd. It is
+       how a facility booking has always worked. */
+    if(r.date_end&&r.date_end!==r.date){
+      CAMPAIGNS.push({title,start:r.date,end:r.date_end,type:'event',campus:r.campus});
+      EVENTS.push(Object.assign({},base,{id:'pm:'+r.id,date:r.date,dateEnd:r.date_end,
+        status:(r.status==='Complete'||D(r.date_end)<TODAY)?'done':'scheduled'}));
+      return;
+    }
     const id='pm:'+r.id;
     EVENTS.push(Object.assign({},base,{id,date:r.date,status:(r.status==='Complete'||past)?'done':'scheduled'}));
     if(past&&!r.parent_id&&r.status&&r.status!=='Complete')CLOSEOUT++;
@@ -1160,7 +1210,7 @@ function evOn(dt){return mergeCards(EVENTS.filter(e=>e.date===key(dt) && shown(e
 function partDots(e){
   if(!e.parts||e.parts.length<2)return '';
   const seen=[];
-  e.parts.forEach(x=>{const src=TYPE_SOURCE[x.type];if(src&&!seen.includes(src))seen.push(src);});
+  e.parts.forEach(x=>{const src=laneOf(x);if(src&&!seen.includes(src))seen.push(src);});
   if(seen.length<2)return '';
   return '<span class="evdots">'+seen.map(src=>
     '<i style="background:'+SOURCES[src].hue+'" title="'+esc(SOURCES[src].label)+'"></i>').join('')+'</span>';
@@ -1183,7 +1233,7 @@ function partFacts(e){
   return f;
 }
 function statusStyle(e){
-  const t=TYPES[e.type];
+  const t=palOf(e);
   if(e.status==='done')      return 'background:'+(t.solid||t.hue)+';color:#fff';
   if(e.status==='scheduled') return 'background:'+t.tint+';color:'+t.deep;
   if(e.status==='waiting')   return 'background:var(--surface);color:'+t.deep+';border:1px dashed '+t.hue;
@@ -1355,7 +1405,7 @@ function filterBar(){
     ((S.filters.has('staff')||S.filters.has('fac'))
       ? '<div style="font-size:12px;color:var(--text2);margin:-8px 0 14px">'+
         [S.filters.has('staff')
-          ? (CAL_ON?'Staff is the shared Mosaic Calendar — meetings, rehearsals, birthdays, closures, and time away.'
+          ? (CAL_ON?'Staff is you as an employee — time away, birthdays, huddles and internal meetings. Everything else from the shared calendar is church activity, so it sits under Mosaic Calendar.'
                    :'The shared Mosaic Calendar isn\'t connected yet, so Staff is empty.')
           : '',
          S.filters.has('fac')
@@ -1375,9 +1425,9 @@ function campusPicker(){
 }
 function legend(){
   return '<div class="legend">'+
-   '<span><i style="background:'+TYPES.event.solid+'"></i>Sent</span>'+
-   '<span><i style="background:'+TYPES.event.tint+';border:1px solid '+TYPES.event.hue+'"></i>Scheduled</span>'+
-   '<span><i style="background:#fff;border:1px dashed '+TYPES.event.hue+'"></i>Waiting on someone</span>'+
+   '<span><i style="background:'+SOURCES.mosaic.solid+'"></i>Sent</span>'+
+   '<span><i style="background:'+SOURCES.mosaic.tint+';border:1px solid '+SOURCES.mosaic.hue+'"></i>Scheduled</span>'+
+   '<span><i style="background:#fff;border:1px dashed '+SOURCES.mosaic.hue+'"></i>Waiting on someone</span>'+
    '<span><i style="background:#fcfcfb;border:1px solid var(--grid)"></i>Drafting</span>'+
    '<span style="margin-left:auto">Hue = type · fill = status</span></div>';
 }
@@ -3018,7 +3068,7 @@ function pageEvent(){
    worse than no row at all. A booking knows its own status; a gathering has no
    link to one yet, so it does not claim one. */
 function hoverCardHTML(e){
-  const t=TYPES[e.type]||TYPES.event, d=D(e.date);
+  const t=palOf(e), d=D(e.date);
   const when=e.dateEnd&&e.dateEnd!==e.date
     ? DOW[d.getDay()]+' '+fmt(d)+' – '+DOW[D(e.dateEnd).getDay()]+' '+fmt(D(e.dateEnd))
     : pretty(d);
@@ -3037,7 +3087,7 @@ function hoverCardHTML(e){
   if(f.owner)rows.push(['Owner',esc(f.owner)]);
   return '<div class="hc-t">'+esc(e.title)+'</div>'+
     '<div class="hc-tags"><span class="hc-pill" style="background:'+t.tint+';color:'+t.deep+'">'+
-      esc(t.label)+'</span>'+(f.level?'<span class="hc-lvl">'+esc(f.level)+'</span>':'')+
+      esc(t.label||'')+'</span>'+(f.level?'<span class="hc-lvl">'+esc(f.level)+'</span>':'')+
       partDots(e)+'</div>'+
     rows.map(r=>'<div class="hc-row"><span>'+r[0]+'</span><b>'+r[1]+'</b></div>').join('');
 }
@@ -3129,7 +3179,7 @@ function dayDrawer(k){
   const d=D(k), evs=mergeCards(EVENTS.filter(e=>e.date===k&&shown(e)));
   openDrawer('<h1 style="font-size:22px">'+pretty(d)+'</h1><div class="sub">'+evs.length+' items</div>'+
     '<div style="margin-top:16px">'+evs.map(e=>'<button class="row" data-ev="'+e.id+'">'+
-    '<span class="swatch" style="background:'+TYPES[e.type].hue+';margin-top:6px"></span>'+
+    '<span class="swatch" style="background:'+palOf(e).hue+';margin-top:6px"></span>'+
     '<span class="txt"><span class="name">'+esc(e.title)+partDots(e)+'</span><span class="meta">'+esc(e.detail||'')+'</span></span>'+
     '<span class="tag">'+STATUS_LABEL[e.status]+'</span></button>').join('')+'</div>');
 }
@@ -3328,12 +3378,9 @@ document.addEventListener('click',e=>{
     // A source can cover more than one item type, so recolour all of them —
     // Staff would otherwise change on the chip and not on the calendar.
     SOURCES[src].hue='var('+tok+')';
-    SOURCES[src].types.forEach(type=>{
-      TYPES[type].hue='var('+tok+')';
-      TYPES[type].tint='var('+tok+'-t)';
-      TYPES[type].deep='var('+tok+'-d)';
-      TYPES[type].solid='var('+tok+'-s)';
-    });
+    SOURCES[src].tint='var('+tok+'-t)';
+    SOURCES[src].deep='var('+tok+'-d)';
+    SOURCES[src].solid='var('+tok+'-s)';
     render(); return;
   }
   if(t.dataset.everyone){ S.forEveryone=!S.forEveryone; render(); return; }

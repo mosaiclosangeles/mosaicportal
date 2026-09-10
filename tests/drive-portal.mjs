@@ -85,8 +85,61 @@ await step('the calendar offers three sources and no more',async()=>{
     throw new Error('expected '+want.join(' | ')+', got '+chips.join(' | '));
 });
 await step('comms is not a calendar source',async()=>{
-  const leaks=await p.evaluate(()=>TYPE_SOURCE.comms!==undefined||shown({type:'comms'}));
+  const leaks=await p.evaluate(()=>laneOf({type:'comms',title:'x'})!==null||shown({type:'comms',title:'x'}));
   if(leaks)throw new Error('comms is back on the calendar');
+});
+/* The rule, not the mechanism: rows mean what the thing IS, not which system
+   stores it. Routing on the source is what put Mosaic Future under Staff. */
+await step('rows route on what the entry is, not where it came from',async()=>{
+  const r=await p.evaluate(()=>{
+    const lane=(type,title)=>laneOf({type,title});
+    return {
+      board:      lane('event','Men\u2019s Camp'),
+      churchInOutlook: lane('other','Mosaic Future'),
+      welcome:    lane('other','Welcome to Mosaic'),
+      bibleStudy: lane('other','Regional Bible Study PM Staff Lead'),
+      huddle:     lane('other','Team Huddle'),
+      staffZoom:  lane('other','Staff Zoom Meeting'),
+      bday:       lane('other',"Jonathan Suarez' Bday"),
+      pto:        lane('away','Cheryl - PTO'),
+      booking:    lane('facility','Rialto Auditorium')
+    };
+  });
+  console.log('       '+JSON.stringify(r));
+  const want={board:'mosaic',churchInOutlook:'mosaic',welcome:'mosaic',bibleStudy:'mosaic',
+              huddle:'staff',staffZoom:'staff',bday:'staff',pto:'staff',booking:'fac'};
+  for(const k of Object.keys(want))
+    if(r[k]!==want[k])throw new Error(k+' should be '+want[k]+', got '+r[k]);
+});
+// A Bible study whose title happens to contain "Staff Lead" must not be filed
+// as staff business — that is why INTERNAL matches phrases, not bare words.
+// The stub has no planning rows, so feed mapLive one rather than assert
+// nothing. A run used to go to CAMPAIGNS and return: a bar with nothing behind
+// it, which is why clicking Men's Camp opened the shared calendar's bare copy.
+await step('a run on the board is clickable, not only a bar',async()=>{
+  const r=await p.evaluate(()=>{
+    // mapLive rebuilds EVENTS and CAMPAIGNS from scratch, so put the stub's
+    // own data back afterwards or every check below this one loses its
+    // bookings.
+    const keepE=EVENTS.slice(), keepC=CAMPAIGNS.slice();
+    mapLive([{id:'t1',date:'2026-09-11',date_end:'2026-09-13',title:"Men's Camp",
+              campus:'LA',level:'Level 1',owners:['David'],phase_now:'Pre-launch',
+              status:'On track',description:'x'}],[]);
+    const run=EVENTS.find(e=>e.id==='pm:t1');
+    const out={bar:CAMPAIGNS.some(c=>c.title==="Men's Camp"),
+            clickable:!!run, dateEnd:run&&run.dateEnd, owner:run&&run.owner,
+            phase:run&&run.phase, lane:run&&laneOf(run)};
+    EVENTS.length=0; keepE.forEach(x=>EVENTS.push(x));
+    CAMPAIGNS.length=0; keepC.forEach(x=>CAMPAIGNS.push(x));
+    return out;
+  });
+  console.log('       '+JSON.stringify(r));
+  if(!r.bar)throw new Error('the run lost its bar');
+  if(!r.clickable)throw new Error('the run is a bar with nothing to click');
+  if(r.dateEnd!=='2026-09-13')throw new Error('the run lost its end date');
+  if(r.owner!=='David'||r.phase!=='Pre-launch')
+    throw new Error('the clickable run lost the board record: '+JSON.stringify(r));
+  if(r.lane!=='mosaic')throw new Error('a board run should be church, got '+r.lane);
 });
 // One card per event, not one line per calendar. The apostrophe rule has its
 // own check because getting it wrong is silent: "Men's Camp" and "Mens Camp"
