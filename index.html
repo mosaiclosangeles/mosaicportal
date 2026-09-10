@@ -2284,7 +2284,7 @@ async function paUserPage(id){
 /* Send the actual invite email for a person (used by the drawer and by the
    "Send invite" button on a pending row). Deletes their pending row on success. */
 async function paSendInvite(v){
-  const {data,error}=await sb.functions.invoke('invite-user',{body:{email:v.email,name:v.name,role:v.role,campus_id:v.campus_id,redirect_to:location.origin+'/'}});
+  const {data,error}=await sb.functions.invoke('invite-user',{body:{email:v.email,name:v.name,role:v.role,campus_id:v.campus_id,redirect_to:location.origin+'/?t=invite'}});
   if(error){let m=error.message||'please try again.';try{const b=await error.context.json();if(b&&b.error)m=b.error;}catch(_){}return m;}
   if(data&&data.error)return data.error;
   await sb.from('pending_invites').delete().eq('email',v.email);
@@ -3396,7 +3396,7 @@ const GATE_COPY={
   signin: ["Welcome","Sign in with your Mosaic account.",""],
   forgot: ["Reset your password","Enter your email and we'll send you a link.",""],
   recover:["Reset your password","Choose a new password below.",""],
-  invite: ["Welcome to Mosaic","Choose a password to finish setting up your account.",
+  invite: ["Welcome to the Mosaic Portal","Choose a password to finish setting up your account.",
            "Your account is ready — pick a password and you're in."],
   // A PKCE link on its own does not say whether it was an invite or a reset,
   // so this wording has to be true of both. Never guess: telling an invited
@@ -3749,7 +3749,13 @@ async function enterPortal(){
      ?token_hash=…&type=invite so the type is always there.) */
   const hash=new URLSearchParams(location.hash.replace(/^#/,""));
   const qs=new URLSearchParams(location.search);
-  const linkType=hash.get("type")||qs.get("type")||"";
+  /* ?t=invite is ours, set on redirect_to when the invite goes out, because a
+     PKCE link on its own says nothing about which kind it was. It is read
+     last, so a real type= from Supabase always wins.
+     Not done in the email template instead: the Invite user template is shared
+     with Metrics, which sends its own invites with its own redirect_to, and a
+     template that composes the URL itself would send everybody to the portal. */
+  const linkType=hash.get("type")||qs.get("type")||(qs.get("t")==="invite"?"invite":"")||"";
   const hasPkceCode=qs.has("code");
   const inviting=linkType==="invite";
   const recovering=linkType==="recovery";
