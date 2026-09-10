@@ -492,6 +492,11 @@ h2{font-size:16px;font-weight:600;letter-spacing:-.015em;margin:0 0 6px}
   text-overflow:ellipsis;white-space:nowrap;transition:transform .1s ease,filter .15s ease}
 .ev:hover{transform:translateX(2px);filter:brightness(.95)}
 .more{font-size:11px;color:var(--text3);text-align:left;padding:0 8px}
+/* One dot per source a card merged, so the merge is visible rather than
+   silent — you can see at a glance that this one card is the board entry, the
+   staff calendar entry and the room booking. */
+.evdots{display:inline-flex;gap:3px;margin-left:5px;vertical-align:1px}
+.evdots i{width:5px;height:5px;border-radius:50%;display:block}
 
 /* THE HOVER CARD. Loyda, 8 Sep: "I hover over, it gives me time, facilities
    check or pending, and then who's responsible… you let me not do more work,
@@ -1102,7 +1107,81 @@ function goalsNavItems(){
 }
 
 /* ============================ helpers ============================ */
-function evOn(dt){return EVENTS.filter(e=>e.date===key(dt) && shown(e));}
+/* ONE CARD PER EVENT, NOT ONE LINE PER CALENDAR.
+   Hannita, 10 Sep: "have the calendar have event cards instead of actually
+   showing the lines from each calendar. So 1 card has the info from all the
+   places that event is seen." Which is Loyda's architecture applied to the
+   grid — the same event was drawn three times because three systems hold it:
+   Men's Camp arrived as a planning item, as "Mens Camp" on the shared Outlook
+   calendar and as a room booking, and the week looked three times as busy as
+   it was.
+
+   Matching is deliberately strict — same day, and the same title once
+   punctuation, case and a leading "MON 09/07" prefix are taken off. Nothing
+   fuzzy: "Mens Camp" and "Men's Camp" merge, "Choir" and "Choir Rehearsal" do
+   not. Two different events that really do share a name on one day would
+   merge, which is why the card shows a dot per source it drew from — the
+   merge is visible, not silent, and clicking still lists every part.
+
+   The card keeps the LEAD part's id, so every existing path — the drawer, the
+   deep links into Planning and Comms — works untouched. The rest hang off
+   .parts. */
+const SOURCE_RANK=['event','other','away','facility','comms'];
+function normTitle(t){
+  return String(t||'')
+    // "MON 09/07 Mens Camp" — someone's own note to themselves, not the name
+    .replace(/^\s*(mon|tue|tues|wed|weds|thu|thur|thurs|fri|sat|sun)[a-z]*\.?\s*\d{1,2}[\/.-]\d{1,2}([\/.-]\d{2,4})?\s*/i,'')
+    // Apostrophes come out, they do not become spaces: the board writes
+    // "Men's Camp" and the Outlook calendar writes "Mens Camp", and turning
+    // the first into "men s camp" is precisely how the two would fail to meet.
+    .replace(/[\u2019'\u00b4\u02bc]/g,'')
+    .toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+}
+function mergeCards(list){
+  const groups=new Map(), loose=[];
+  list.forEach(e=>{
+    const n=normTitle(e.title);
+    if(!n){loose.push(Object.assign({},e,{parts:[e]}));return;}
+    const k=e.date+'|'+n;
+    if(!groups.has(k))groups.set(k,[]);
+    groups.get(k).push(e);
+  });
+  const out=loose;
+  groups.forEach(parts=>{
+    // The planning board holds the richest record, so it leads when present.
+    const lead=SOURCE_RANK.map(t=>parts.find(x=>x.type===t)).find(Boolean)||parts[0];
+    out.push(Object.assign({},lead,{parts}));
+  });
+  return out;
+}
+function evOn(dt){return mergeCards(EVENTS.filter(e=>e.date===key(dt) && shown(e)));}
+/* The dots under a merged card's name: one per source it drew from, in the
+   order the sources are listed on the filter row. */
+function partDots(e){
+  if(!e.parts||e.parts.length<2)return '';
+  const seen=[];
+  e.parts.forEach(x=>{const src=TYPE_SOURCE[x.type];if(src&&!seen.includes(src))seen.push(src);});
+  if(seen.length<2)return '';
+  return '<span class="evdots">'+seen.map(src=>
+    '<i style="background:'+SOURCES[src].hue+'" title="'+esc(SOURCES[src].label)+'"></i>').join('')+'</span>';
+}
+/* What a merged card knows that no single part does: the room booking's
+   decision, alongside the board's owner and phase. This is the "facilities
+   check or pending" Loyda asked to see on an event, and it is honest now
+   because a booking actually merged into this card. */
+function partFacts(e){
+  const parts=e.parts||[e], f={};
+  const fac=parts.find(x=>x.type==='facility');
+  if(fac)f.facility=fac;
+  parts.forEach(x=>{
+    if(x.owner&&!f.owner)f.owner=x.owner;
+    if(x.phase&&!f.phase)f.phase=x.phase;
+    if(x.speaker&&!f.speaker)f.speaker=x.speaker;
+    if(x.campus&&!f.campus)f.campus=campusOf(x);
+    if(x.level&&!f.level)f.level=x.level;
+  });
+  return f;
+}
 function statusStyle(e){
   const t=TYPES[e.type];
   if(e.status==='done')      return 'background:'+(t.solid||t.hue)+';color:#fff';
@@ -1322,7 +1401,7 @@ function weekGrid(ws){
   for(let i=0;i<7;i++){
     const d=addDays(ws,i), evs=evOn(d);
     h+='<div class="cell">'+
-      evs.map(e=>'<button class="ev" data-ev="'+e.id+'" style="'+statusStyle(e)+'">'+esc(e.title)+'</button>').join('')+
+      evs.map(e=>'<button class="ev" data-ev="'+e.id+'" style="'+statusStyle(e)+'">'+esc(e.title)+partDots(e)+'</button>').join('')+
       '</div>';
   }
   return '<div class="calwrap">'+h+'</div></div>';
@@ -1340,7 +1419,7 @@ function monthGrid(){
       const show=evs.slice(0,2), rest=evs.length-show.length;
       h+='<div class="cell'+(out?' out':'')+'" style="min-height:104px">'+
         '<div class="daynum'+(same(d,TODAY)?' today':'')+'">'+(same(d,TODAY)?'<span>'+d.getDate()+'</span>':d.getDate())+'</div>'+
-        show.map(e=>'<button class="ev" data-ev="'+e.id+'" style="'+statusStyle(e)+'">'+esc(e.title)+'</button>').join('')+
+        show.map(e=>'<button class="ev" data-ev="'+e.id+'" style="'+statusStyle(e)+'">'+esc(e.title)+partDots(e)+'</button>').join('')+
         (rest>0?'<button class="more" data-day="'+key(d)+'">+'+rest+' more</button>':'')+
       '</div>';
     }
@@ -2943,21 +3022,23 @@ function hoverCardHTML(e){
   const when=e.dateEnd&&e.dateEnd!==e.date
     ? DOW[d.getDay()]+' '+fmt(d)+' – '+DOW[D(e.dateEnd).getDay()]+' '+fmt(D(e.dateEnd))
     : pretty(d);
-  const rows=[];
+  const f=partFacts(e), rows=[];
   rows.push(['When',when]);
-  if(e.type==='facility'){
-    const label=e.status==='waiting'?'Waiting on a decision':e.status==='done'?'Finished':'Approved';
-    const col=e.status==='waiting'?'var(--amber-d)':e.status==='done'?'var(--text2)':'var(--session-d)';
+  if(e.type!=='facility')rows.push(['Status',esc(STATUS_LABEL[e.status]||'')]);
+  // The room decision, from whichever part of this card is the booking.
+  if(f.facility){
+    const st=f.facility.status;
+    const label=st==='waiting'?'Waiting on a decision':st==='done'?'Finished':'Approved';
+    const col=st==='waiting'?'var(--amber-d)':st==='done'?'var(--text2)':'var(--session-d)';
     rows.push(['Facilities','<span style="color:'+col+'">'+label+'</span>']);
-  }else{
-    rows.push(['Status',esc(STATUS_LABEL[e.status]||'')]);
   }
-  if(e.phase)rows.push(['Phase',esc(e.phase)]);
-  if(e.campus)rows.push(['Campus',esc(campusOf(e))]);
-  if(e.owner)rows.push(['Owner',esc(e.owner)]);
+  if(f.phase)rows.push(['Phase',esc(f.phase)]);
+  if(f.campus)rows.push(['Campus',esc(f.campus)]);
+  if(f.owner)rows.push(['Owner',esc(f.owner)]);
   return '<div class="hc-t">'+esc(e.title)+'</div>'+
     '<div class="hc-tags"><span class="hc-pill" style="background:'+t.tint+';color:'+t.deep+'">'+
-      esc(t.label)+'</span>'+(e.level?'<span class="hc-lvl">'+esc(e.level)+'</span>':'')+'</div>'+
+      esc(t.label)+'</span>'+(f.level?'<span class="hc-lvl">'+esc(f.level)+'</span>':'')+
+      partDots(e)+'</div>'+
     rows.map(r=>'<div class="hc-row"><span>'+r[0]+'</span><b>'+r[1]+'</b></div>').join('');
 }
 (function hoverCards(){
@@ -2967,7 +3048,11 @@ function hoverCardHTML(e){
   document.addEventListener('mouseover',ev=>{
     const btn=ev.target.closest&&ev.target.closest('.ev[data-ev]');
     if(!btn){if(el&&!ev.target.closest('.hovercard'))hide();return;}
-    const e=EVENTS.find(x=>x.id===btn.dataset.ev);
+    // Hover the merged card, not the part underneath it, so the tooltip can
+    // say what the booking decided as well as what the board owns.
+    const raw=EVENTS.find(x=>x.id===btn.dataset.ev);
+    const e=raw?mergeCards(EVENTS.filter(x=>x.date===raw.date&&shown(x)))
+                  .find(x=>x.id===raw.id)||raw:null;
     if(!e||(el&&el.dataset.for===e.id))return;
     hide();
     timer=setTimeout(()=>{
@@ -3041,11 +3126,11 @@ function eventDrawer(id){
   openDrawer(h);
 }
 function dayDrawer(k){
-  const d=D(k), evs=EVENTS.filter(e=>e.date===k&&shown(e));
+  const d=D(k), evs=mergeCards(EVENTS.filter(e=>e.date===k&&shown(e)));
   openDrawer('<h1 style="font-size:22px">'+pretty(d)+'</h1><div class="sub">'+evs.length+' items</div>'+
     '<div style="margin-top:16px">'+evs.map(e=>'<button class="row" data-ev="'+e.id+'">'+
     '<span class="swatch" style="background:'+TYPES[e.type].hue+';margin-top:6px"></span>'+
-    '<span class="txt"><span class="name">'+esc(e.title)+'</span><span class="meta">'+esc(e.detail||'')+'</span></span>'+
+    '<span class="txt"><span class="name">'+esc(e.title)+partDots(e)+'</span><span class="meta">'+esc(e.detail||'')+'</span></span>'+
     '<span class="tag">'+STATUS_LABEL[e.status]+'</span></button>').join('')+'</div>');
 }
 function newDrawer(){

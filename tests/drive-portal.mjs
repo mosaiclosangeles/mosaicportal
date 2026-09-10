@@ -88,6 +88,39 @@ await step('comms is not a calendar source',async()=>{
   const leaks=await p.evaluate(()=>TYPE_SOURCE.comms!==undefined||shown({type:'comms'}));
   if(leaks)throw new Error('comms is back on the calendar');
 });
+// One card per event, not one line per calendar. The apostrophe rule has its
+// own check because getting it wrong is silent: "Men's Camp" and "Mens Camp"
+// simply stay two cards and the week looks twice as busy as it is.
+await step('the same event from three calendars normalises to one name',async()=>{
+  const r=await p.evaluate(()=>({
+    board:normTitle("Men's Camp"),
+    outlook:normTitle("Mens Camp"),
+    prefixed:normTitle("MON 09/07 Mens Camp"),
+    different:normTitle("Choir")===normTitle("Choir Rehearsal")
+  }));
+  console.log('       '+JSON.stringify(r));
+  if(!(r.board===r.outlook&&r.outlook===r.prefixed))
+    throw new Error('these should all be one event: '+JSON.stringify(r));
+  if(r.different)throw new Error('Choir and Choir Rehearsal must stay separate');
+});
+await step('a booking and a board item on one day become one card',async()=>{
+  const r=await p.evaluate(()=>{
+    const fac=EVENTS.find(e=>e.type==='facility');
+    EVENTS.push({id:'test:board',date:fac.date,type:'event',title:fac.title.toUpperCase(),
+      status:'scheduled',owner:'David',phase:'Pre-launch',campus:'LA',level:'Level 1',detail:''});
+    const card=mergeCards(EVENTS.filter(e=>e.date===fac.date&&shown(e)))
+      .find(m=>m.parts.length>1);
+    EVENTS.splice(EVENTS.findIndex(e=>e.id==='test:board'),1);
+    if(!card)return null;
+    return {lead:card.type,parts:card.parts.length,
+            facility:!!partFacts(card).facility,phase:partFacts(card).phase};
+  });
+  console.log('       '+JSON.stringify(r));
+  if(!r)throw new Error('nothing merged');
+  if(r.lead!=='event')throw new Error('the board should lead, got '+r.lead);
+  if(!r.facility)throw new Error('the card lost the room decision');
+  if(r.phase!=='Pre-launch')throw new Error('the card lost the phase');
+});
 await step('the bookings actually land in the calendar',async()=>{
   const got=await p.evaluate(()=>EVENTS.filter(e=>e.type==='facility').map(e=>e.title+' ['+e.status+'] '+e.detail));
   got.forEach(g=>console.log('       '+g));
