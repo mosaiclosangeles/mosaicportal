@@ -475,6 +475,29 @@ h2{font-size:16px;font-weight:600;letter-spacing:-.015em;margin:0 0 6px}
   text-overflow:ellipsis;white-space:nowrap;transition:transform .1s ease,filter .15s ease}
 .ev:hover{transform:translateX(2px);filter:brightness(.95)}
 .more{font-size:11px;color:var(--text3);text-align:left;padding:0 8px}
+
+/* THE HOVER CARD. Loyda, 8 Sep: "I hover over, it gives me time, facilities
+   check or pending, and then who's responsible… you let me not do more work,
+   but you let me get the information I'm looking for, simply by moving my
+   cursor." So this answers the entry without opening it, and the click still
+   opens the full card underneath.
+   Pointer only — a phone has no hover, and a card that needs one is a card
+   half the staff never see. The tap opens the drawer instead. */
+.hovercard{position:fixed;z-index:60;width:272px;background:var(--surface);
+  border:1px solid var(--hairline);border-radius:var(--r-card);padding:13px 14px;
+  box-shadow:0 6px 22px rgba(0,0,0,.10);pointer-events:none;opacity:0;
+  transition:opacity .12s ease}
+html.dark .hovercard{box-shadow:0 6px 22px rgba(0,0,0,.5)}
+.hovercard.on{opacity:1}
+.hovercard .hc-t{font-size:14.5px;font-weight:600;letter-spacing:-.015em;line-height:1.3}
+.hovercard .hc-tags{display:flex;flex-wrap:wrap;gap:5px;align-items:center;margin-top:8px}
+.hovercard .hc-row{display:flex;justify-content:space-between;gap:12px;font-size:12.5px;
+  color:var(--text2);margin-top:7px}
+.hovercard .hc-row b{font-weight:500;color:var(--text);text-align:right;min-width:0}
+.hc-pill{font-size:10.5px;font-weight:600;padding:2px 7px;border-radius:4px;white-space:nowrap}
+/* Level templatizes the workflow; it is not a badge anyone should have to
+   reason about, so it whispers next to the type rather than sitting as a pill. */
+.hc-lvl{font-size:10.5px;color:var(--text3);font-weight:500}
 .bars{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));padding-top:4px}
 .bar{font-size:10px;padding:2px 7px;border-radius:4px;margin:0 3px 4px;overflow:hidden;
   white-space:nowrap;text-overflow:ellipsis;text-align:left;width:calc(100% - 6px)}
@@ -2784,8 +2807,9 @@ function pageEvent(){
   let h='<button class="back" data-back="1">'+ic('left')+'Back</button>'+
     '<div style="margin-bottom:6px">'+
       '<span class="tag" style="background:'+t.tint+';color:'+t.deep+'">'+t.label+'</span>'+
-      (e.level?'<span class="tag">'+e.level+'</span>':'')+
+      (e.phase?'<span class="tag" style="background:var(--milestone-t);color:var(--milestone-d)">'+esc(e.phase)+'</span>':'')+
       '<span class="tag">'+STATUS_LABEL[e.status]+'</span>'+
+      (e.level?'<span class="tag" style="background:none;color:var(--text3);font-weight:500">'+esc(e.level)+'</span>':'')+
       (days>0?'<span style="font-size:12.5px;color:var(--text2);float:right;padding-top:4px">in '+days+' days</span>'
              :(days===0?'<span style="font-size:12.5px;color:var(--gathering);float:right;padding-top:4px">today</span>':''))+
     '</div>'+
@@ -2862,6 +2886,63 @@ function pageEvent(){
     '</div>';
   return h;
 }
+
+/* What one entry says without being opened. Only what we actually know:
+   an invented "Facilities: approved" on an event that has no booking would be
+   worse than no row at all. A booking knows its own status; a gathering has no
+   link to one yet, so it does not claim one. */
+function hoverCardHTML(e){
+  const t=TYPES[e.type]||TYPES.event, d=D(e.date);
+  const when=e.dateEnd&&e.dateEnd!==e.date
+    ? DOW[d.getDay()]+' '+fmt(d)+' – '+DOW[D(e.dateEnd).getDay()]+' '+fmt(D(e.dateEnd))
+    : pretty(d);
+  const rows=[];
+  rows.push(['When',when]);
+  if(e.type==='facility'){
+    const label=e.status==='waiting'?'Waiting on a decision':e.status==='done'?'Finished':'Approved';
+    const col=e.status==='waiting'?'var(--amber-d)':e.status==='done'?'var(--text2)':'var(--session-d)';
+    rows.push(['Facilities','<span style="color:'+col+'">'+label+'</span>']);
+  }else{
+    rows.push(['Status',esc(STATUS_LABEL[e.status]||'')]);
+  }
+  if(e.phase)rows.push(['Phase',esc(e.phase)]);
+  if(e.campus)rows.push(['Campus',esc(campusOf(e))]);
+  if(e.owner)rows.push(['Owner',esc(e.owner)]);
+  return '<div class="hc-t">'+esc(e.title)+'</div>'+
+    '<div class="hc-tags"><span class="hc-pill" style="background:'+t.tint+';color:'+t.deep+'">'+
+      esc(t.label)+'</span>'+(e.level?'<span class="hc-lvl">'+esc(e.level)+'</span>':'')+'</div>'+
+    rows.map(r=>'<div class="hc-row"><span>'+r[0]+'</span><b>'+r[1]+'</b></div>').join('');
+}
+(function hoverCards(){
+  if(!window.matchMedia||!matchMedia('(hover: hover) and (pointer: fine)').matches)return;
+  let el=null,timer=null;
+  const hide=()=>{clearTimeout(timer);if(el){el.classList.remove('on');el.remove();el=null;}};
+  document.addEventListener('mouseover',ev=>{
+    const btn=ev.target.closest&&ev.target.closest('.ev[data-ev]');
+    if(!btn){if(el&&!ev.target.closest('.hovercard'))hide();return;}
+    const e=EVENTS.find(x=>x.id===btn.dataset.ev);
+    if(!e||(el&&el.dataset.for===e.id))return;
+    hide();
+    timer=setTimeout(()=>{
+      el=document.createElement('div');
+      el.className='hovercard';el.dataset.for=e.id;
+      el.innerHTML=hoverCardHTML(e);
+      document.body.appendChild(el);
+      // Placed off the entry, not the cursor, so it does not jitter; flipped
+      // when there is no room, because a card off the edge says nothing.
+      const r=btn.getBoundingClientRect(), h=el.offsetHeight, w=el.offsetWidth;
+      let left=r.left, top=r.bottom+8;
+      if(left+w>innerWidth-12)left=Math.max(12,innerWidth-w-12);
+      if(top+h>innerHeight-12)top=Math.max(12,r.top-h-8);
+      el.style.left=left+'px';el.style.top=top+'px';
+      requestAnimationFrame(()=>el&&el.classList.add('on'));
+    },130);
+  });
+  document.addEventListener('mouseout',ev=>{
+    if(ev.target.closest&&ev.target.closest('.ev[data-ev]'))hide();
+  });
+  ['scroll','click','keydown'].forEach(t=>document.addEventListener(t,hide,true));
+})();
 
 /* ============================ drawer ============================ */
 function openDrawer(html,title=''){
