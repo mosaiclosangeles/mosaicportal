@@ -290,7 +290,7 @@ await step('they use the blocked window, not the event times',async()=>{
 // split — a full page for board items, a narrow drawer for everything else —
 // meant the shape of the card told you where the data lived, and the two
 // renderers drifted because nothing made them agree.
-await step('every entry opens the same card, not a drawer',async()=>{
+await step('an entry opens a card floating over the calendar it came from',async()=>{
   const seen=[];
   for(const type of ['facility']){
     const id=await p.evaluate(t=>{const e=EVENTS.find(x=>x.type===t);return e&&e.id;},type);
@@ -298,17 +298,68 @@ await step('every entry opens the same card, not a drawer',async()=>{
     await p.click(`.ev[data-ev="${id}"]`);
     await p.waitForTimeout(350);
     const r=await p.evaluate(()=>({
-      section:S.section,
+      section:S.section,                      // the calendar is still the page
+      card:document.getElementById('cardWrap').classList.contains('open'),
+      scrim:document.getElementById('cardScrim').classList.contains('open'),
+      grid:!!document.querySelector('#main .calwrap'),   // still drawn behind it
+      titled:(document.getElementById('cardBody').textContent||'').trim().length>40,
       drawer:document.getElementById('drawer').classList.contains('open')
     }));
     seen.push(type+':'+JSON.stringify(r));
-    if(r.section!=='event')throw new Error(type+' did not open the card: '+r.section);
+    if(!r.card)throw new Error(type+' did not open the card');
+    if(r.section!=='calendar')throw new Error('the card should not replace the page, got '+r.section);
+    if(!r.grid)throw new Error('the calendar was thrown away behind the card');
+    if(!r.titled)throw new Error('the card opened empty');
     if(r.drawer)throw new Error(type+' opened the old drawer');
-    await p.click('[data-back]'); await p.waitForTimeout(250);
+    // Escape closes it, and the calendar is exactly where it was
+    await p.keyboard.press('Escape'); await p.waitForTimeout(250);
+    const shut=await p.evaluate(()=>({card:document.getElementById('cardWrap').classList.contains('open'),
+                                      section:S.section}));
+    if(shut.card)throw new Error('Escape did not close the card');
+    if(shut.section!=='calendar')throw new Error('closing moved the page to '+shut.section);
   }
   console.log('       '+seen.join(' | '));
   const gone=await p.evaluate(()=>typeof eventDrawer==='undefined');
   if(!gone)throw new Error('the second renderer is back');
+});
+/* Month and List, and the month is where it opens. Both read the same evOn(),
+   so a day that shows two entries in the grid shows the same two in the list. */
+await step('the calendar opens on Month and offers only Month and List',async()=>{
+  const r=await p.evaluate(()=>({
+    views:Array.from(document.querySelectorAll('.seg button')).map(b=>b.textContent.trim()),
+    on:(document.querySelector('.seg button.on')||{}).textContent,
+    h1:(document.querySelector('#main h1')||{}).textContent
+  }));
+  console.log('       '+JSON.stringify(r));
+  if(r.views.join('|')!=='Month|List')throw new Error('views are '+r.views.join('|'));
+  if(r.on!=='Month')throw new Error('it did not open on Month, got '+r.on);
+  if(r.h1!=='Calendar')throw new Error('the heading reads '+r.h1);
+});
+await step('List shows the same days the grid does',async()=>{
+  const r=await p.evaluate(()=>{
+    const grid=new Set(Array.from(document.querySelectorAll('#main .cell .ev[data-ev]')).map(b=>b.dataset.ev));
+    document.querySelector('.seg button[data-view="list"]').click();
+    const list=new Set(Array.from(document.querySelectorAll('#main .cl-ev[data-ev]')).map(b=>b.dataset.ev));
+    // the grid caps a day at two and hides the rest behind "+N more", so the
+    // list is a superset, never a different set
+    const missing=[...grid].filter(x=>!list.has(x));
+    return {grid:grid.size,list:list.size,missing};
+  });
+  console.log('       '+JSON.stringify(r));
+  if(!r.list)throw new Error('the list drew nothing');
+  if(r.missing.length)throw new Error('the list is missing entries the grid shows: '+r.missing.join(', '));
+});
+await step('a list row opens the same floating card',async()=>{
+  await p.click('#main .cl-ev[data-ev]');
+  await p.waitForTimeout(300);
+  const open=await p.evaluate(()=>document.getElementById('cardWrap').classList.contains('open'));
+  if(!open)throw new Error('the list row did not open the card');
+  // a corner, not the centre — the scrim spans the viewport but the card sits
+  // on top of the middle of it
+  await p.click('#cardScrim',{position:{x:8,y:8}}); await p.waitForTimeout(250);
+  const shut=await p.evaluate(()=>!document.getElementById('cardWrap').classList.contains('open'));
+  if(!shut)throw new Error('clicking away did not close the card');
+  await p.evaluate(()=>{document.querySelector('.seg button[data-view="month"]').click();});
 });
 await step('a chip click filters them off again',async()=>{
   const before=await p.$$eval('.ev,.evchip,[data-ev]',n=>n.length);

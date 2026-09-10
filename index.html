@@ -403,9 +403,44 @@ h2{font-size:16px;font-weight:600;letter-spacing:-.015em;margin:0 0 6px}
 .btn-ghost{border:1px solid var(--hairline);font-size:13px;padding:8px 14px;border-radius:var(--r-btn)}
 .btn-ghost:hover{background:var(--fill)}
 
+.cardScrim{position:fixed;inset:0;background:rgba(0,0,0,.28);opacity:0;pointer-events:none;
+  transition:opacity .16s;z-index:40}
+.cardScrim.open{opacity:1;pointer-events:auto}
+.cardWrap{position:fixed;z-index:41;left:50%;top:50%;transform:translate(-50%,-48%) scale(.99);
+  width:min(760px,calc(100vw - 40px));max-height:88vh;background:#fff;border-radius:18px;
+  box-shadow:0 24px 70px rgba(0,0,0,.22);display:none;flex-direction:column;opacity:0;
+  transition:opacity .16s ease,transform .16s ease}
+.cardWrap.open{display:flex;opacity:1;transform:translate(-50%,-50%) scale(1)}
+.cardClose{position:absolute;top:14px;right:14px;z-index:1;background:none;border:0;padding:6px;
+  cursor:pointer;color:var(--text2);line-height:0}
+.cardClose:hover{color:var(--text)}
+.cardClose svg{width:18px;height:18px;display:block}
+.cardBody{overflow-y:auto;padding:30px 34px 34px}
+/* On a phone it is a sheet off the bottom, because a centred box that tall
+   leaves nothing of the calendar to see behind it anyway. */
+@media(max-width:640px){
+  .cardWrap{left:0;top:auto;bottom:0;transform:translateY(12px);width:100vw;max-height:92vh;
+    border-radius:18px 18px 0 0}
+  .cardWrap.open{transform:none}
+  .cardBody{padding:26px 18px 30px}
+}
+.callist{border-top:1px solid var(--grid)}
+.cl-day{display:flex;gap:16px;padding:12px 4px;border-bottom:1px solid var(--separator)}
+.cl-day.today .cl-num{background:#111;color:#fff;border-radius:8px}
+.cl-when{flex:none;width:52px;text-align:center;padding-top:4px}
+.cl-dow{display:block;font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--text3)}
+.cl-num{display:inline-block;min-width:26px;padding:1px 4px;font-size:17px;font-weight:600;letter-spacing:-.02em}
+.cl-evs{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.cl-ev{display:flex;align-items:center;gap:9px;width:100%;text-align:left;padding:7px 8px;border-radius:8px;background:none;border:0;cursor:pointer}
+.cl-ev:hover{background:var(--fill)}
+.cl-dot{flex:none;width:8px;height:8px;border-radius:50%}
+.cl-txt{flex:1;min-width:0;display:flex;flex-direction:column}
+.cl-name{font-size:14px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cl-meta{font-size:12px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media(max-width:640px){.cl-ev .tag{display:none}}
 .seg{display:inline-flex;background:var(--fill);border-radius:var(--r-ctrl);padding:2px}
 .seg button{font-size:12px;padding:5px 11px;border-radius:6px;color:#5c5c5c}
-.seg button.on{background:#fff;color:#000;font-weight:500;box-shadow:0 0 0 1px var(--hairline)}
+.seg button.on{background:#111;color:#fff;font-weight:500}
 
 .cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:28px}
 .card{border:1px solid var(--hairline);border-radius:var(--r-card);padding:13px 15px;text-align:left;width:100%}
@@ -762,6 +797,14 @@ select{font:inherit;font-size:13px;padding:7px 10px;border:1px solid var(--hairl
   <main class="main" id="main"></main>
 </div>
 <div class="scrim" id="scrim"></div>
+<!-- The event card. It floats over whatever you were looking at, the way the
+     planning board's own dialog does, so opening one entry does not cost you
+     the month you were reading. -->
+<div class="cardScrim" id="cardScrim"></div>
+<div class="cardWrap" id="cardWrap" role="dialog" aria-label="Event" aria-hidden="true">
+  <button class="cardClose" id="cardClose" aria-label="Close">SVGX</button>
+  <div class="cardBody" id="cardBody"></div>
+</div>
 <aside class="drawer" id="drawer" role="dialog" aria-label="Details" aria-hidden="true">
   <div class="drawer-head"><span class="drawer-title" id="drawerTitle"></span><button class="drawer-close" id="drawerClose" aria-label="Close">SVGX</button></div>
   <div id="drawerBody"></div>
@@ -788,6 +831,7 @@ const P = {
 };
 function ic(n,s){return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"'+(s?' style="'+s+'"':'')+'><path d="'+P[n]+'"/></svg>';}
 document.getElementById('drawerClose').innerHTML = ic('x');
+document.getElementById('cardClose').innerHTML = ic('x');
 
 /* ============================ dates ============================ */
 const TODAY = new Date(); TODAY.setHours(0,0,0,0);
@@ -1089,7 +1133,7 @@ const GOALS = [
 ];
 const SECTIONS = [
   {id:'home',label:'Home',icon:'home',h:'var(--slate)',t:'var(--slate-t)'},
-  {id:'calendar',label:'Calendars',icon:'calendar',h:'var(--gathering)',t:'var(--gathering-t)'},
+  {id:'calendar',label:'Calendar',icon:'calendar',h:'var(--gathering)',t:'var(--gathering-t)'},
   {group:'WORK'},
   {id:'comms',label:'Communication',icon:'mail',h:'var(--amber)',t:'var(--amber-t)',url:'https://comms.mosaic.org'},
   {id:'planning',label:'Planning',icon:'board',h:'var(--milestone)',t:'var(--milestone-t)',url:'https://pm.mosaic.org'},
@@ -1125,7 +1169,7 @@ const GIVING={ytd:1284600,annual:2150000,weeklyAvg:41400,givers:612,recurringPct
 /* ============================ state ============================ */
 const S = {
   section:'home',
-  view:'week',
+  view:'month',
   anchor:new Date(TODAY),
   month:new Date(TODAY.getFullYear(),TODAY.getMonth(),1),
   filters:new Set(Object.keys(SOURCES)),
@@ -1498,17 +1542,21 @@ function taskRow(t){
 
 function pageCalendar(){
   const ws=weekStartOf(S.anchor);
-  const head='<div class="page-head"><div><h1>Calendars</h1><div class="sub">'+
-    (S.view==='week'? fmt(ws)+' – '+fmt(addDays(ws,6))+', '+addDays(ws,6).getFullYear()+' · week '+weekNum(ws)
-                    : MON[S.month.getMonth()]+' '+S.month.getFullYear())+
+  const head='<div class="page-head"><div><h1>Calendar</h1><div class="sub">'+
+    MON[S.month.getMonth()]+' '+S.month.getFullYear()+
     '</div></div><div style="display:flex;gap:8px;align-items:center">'+
-    '<span class="seg"><button data-view="week" class="'+(S.view==='week'?'on':'')+'">Week</button>'+
-    '<button data-view="month" class="'+(S.view==='month'?'on':'')+'">Month</button></span>'+
+    /* Two views, and both scoped to the month. Hannita, 10 Sep: "month view and
+       list view only — those are the two categories I want available", matching
+       the planning board's own pill group. The week grid is gone rather than
+       hidden: it was the view she called "really off and not so intuitive", and
+       a second grid nobody opens is a second grid to keep in step. */
+    '<span class="seg"><button data-view="month" class="'+(S.view==='month'?'on':'')+'">Month</button>'+
+    '<button data-view="list" class="'+(S.view==='list'?'on':'')+'">List</button></span>'+
     '<button class="btn-ghost" data-nav="-1" aria-label="Previous">'+ic('left','width:15px;height:15px')+'</button>'+
     '<button class="btn-ghost" data-nav="0">Today</button>'+
     '<button class="btn-ghost" data-nav="1" aria-label="Next">'+ic('right','width:15px;height:15px')+'</button>'+
     '<button class="btn-primary" data-new="1">New</button></div></div>'+ filterBar();
-  return head + (DATA_ERR?'<div class="banner">'+ic('info')+'<div>'+esc(DATA_ERR)+'</div></div>':'') + (S.view==='week' ? weekGrid(ws) : monthGrid()) + legend();
+  return head + (DATA_ERR?'<div class="banner">'+ic('info')+'<div>'+esc(DATA_ERR)+'</div></div>':'') + (S.view==='list' ? monthList() : monthGrid()) + legend();
 }
 function filterBar(){
   return '<div class="filters">'+Object.keys(SOURCES).map(k=>
@@ -1556,18 +1604,36 @@ function barsFor(ws){
       '<button class="bar" style="background:'+t.tint+';color:'+t.deep+'">'+esc(c.title)+'</button></div></div>';
   }).join('');
 }
-function weekGrid(ws){
-  let h='<div class="wk-head">';
-  for(let i=0;i<7;i++){const d=addDays(ws,i);
-    h+='<div class="'+(same(d,TODAY)?'today':'')+'">'+DOW[i]+' '+d.getDate()+'</div>';}
-  h+='</div>'+barsFor(ws)+'<div class="wk-body">';
-  for(let i=0;i<7;i++){
-    const d=addDays(ws,i), evs=evOn(d);
-    h+='<div class="cell">'+
-      evs.map(e=>'<button class="ev" data-ev="'+e.id+'" style="'+statusStyle(e)+'">'+esc(e.title)+partDots(e)+'</button>').join('')+
-      '</div>';
+/* The same month, read down the page instead of across a grid. It draws from
+   evOn() like the grid does, so it is the same merged cards, the same three
+   sources and the same campus filter — a row here and a pill there can never
+   disagree about what is on a day. Days with nothing on them are left out;
+   an empty month says so once. */
+function monthList(){
+  const first=new Date(S.month.getFullYear(),S.month.getMonth(),1);
+  const last=new Date(S.month.getFullYear(),S.month.getMonth()+1,0);
+  let h='<div class="callist">', any=false;
+  for(let d=new Date(first);d<=last;d=addDays(d,1)){
+    const evs=evOn(d);
+    if(!evs.length)continue;
+    any=true;
+    h+='<div class="cl-day'+(same(d,TODAY)?' today':'')+'">'+
+       '<div class="cl-when"><span class="cl-dow">'+DOW[d.getDay()]+'</span>'+
+       '<span class="cl-num">'+d.getDate()+'</span></div><div class="cl-evs">'+
+       evs.map(e=>{
+         const t=palOf(e);
+         return '<button class="cl-ev" data-ev="'+e.id+'">'+
+           '<span class="cl-dot" style="background:'+t.hue+'"></span>'+
+           '<span class="cl-txt"><span class="cl-name">'+esc(e.title)+'</span>'+
+           (e.detail?'<span class="cl-meta">'+esc(e.detail)+'</span>':'')+'</span>'+
+           partDots(e)+
+           '<span class="tag" style="background:'+t.tint+';color:'+t.deep+'">'+t.label+'</span>'+
+           '</button>';
+       }).join('')+
+       '</div></div>';
   }
-  return '<div class="calwrap">'+h+'</div></div>';
+  if(!any)h+='<div class="empty">Nothing on the calendar this month — check the filters above, or try another month.</div>';
+  return h+'</div>';
 }
 function monthGrid(){
   const first=new Date(S.month.getFullYear(),S.month.getMonth(),1);
@@ -1761,7 +1827,7 @@ const RP_ROLES=[
 const RP_SECTIONS=[
   {title:'Portal sections',rows:[
     ['Home','yes','yes','yes','yes'],
-    ['Calendars','yes','yes','yes','yes'],
+    ['Calendar','yes','yes','yes','yes'],
     ['Communication','yes','yes','no','no'],
     ['Planning','yes','yes','yes','no'],
     ['Metrics','yes','yes','yes','no'],
@@ -3079,6 +3145,32 @@ function pmId(e){
   const cut=rest.lastIndexOf(':');
   return (cut>0&&/^\d{4}-\d{2}-\d{2}$/.test(rest.slice(cut+1)))?rest.slice(0,cut):rest;
 }
+/* ONE CARD, FLOATING OVER WHAT YOU WERE READING.
+   This used to replace the whole page, so opening an entry from the month grid
+   cost you the month — you came back to the calendar by way of a Back button
+   and had to find your place again. Hannita, 10 Sep: "the calendar main view
+   should have this experience where it's a pop up card with the information,
+   just how it works for the planning board."
+   It is the SAME renderer as before (pageEvent), moved into an overlay rather
+   than copied into one. The card is deliberately not a section: there is no
+   URL for it and no history entry, because the thing behind it has not
+   changed. Clicking an entry inside the card — a comm, a related row — swaps
+   the card's contents rather than stacking another. */
+function openCard(id){
+  if(!EVENTS.some(x=>x.id===id))return;
+  S.eventId=id; S.cardOpen=true;
+  document.getElementById('cardBody').innerHTML=pageEvent();
+  document.getElementById('cardBody').scrollTop=0;
+  document.getElementById('cardWrap').classList.add('open');
+  document.getElementById('cardWrap').setAttribute('aria-hidden','false');
+  document.getElementById('cardScrim').classList.add('open');
+}
+function closeCard(){
+  S.cardOpen=false;
+  document.getElementById('cardWrap').classList.remove('open');
+  document.getElementById('cardWrap').setAttribute('aria-hidden','true');
+  document.getElementById('cardScrim').classList.remove('open');
+}
 function pageEvent(){
   const e=EVENTS.find(x=>x.id===S.eventId);
   if(!e) return '<h1>Not found</h1>';
@@ -3111,8 +3203,7 @@ function pageEvent(){
   const avg6=vals.length?Math.round(vals.reduce((a,b)=>a+b,0)/vals.length):0;
   const mx=Math.max.apply(null,vals.concat([1]));
 
-  let h='<button class="back" data-back="1">'+ic('left')+'Back</button>'+
-    '<div style="margin-bottom:6px">'+
+  let h='<div style="margin-bottom:6px">'+
       '<span class="tag" style="background:'+t.tint+';color:'+t.deep+'">'+t.label+'</span>'+
       (e.phase?'<span class="tag" style="background:var(--milestone-t);color:var(--milestone-d)">'+esc(e.phase)+'</span>':'')+
       // The board says "On track"; STATUS_LABEL speaks comms ("Sent"), which
@@ -3120,7 +3211,7 @@ function pageEvent(){
       '<span class="tag">'+esc(e.boardStatus||STATUS_LABEL[e.status])+'</span>'+
       (e.boardType?'<span class="tag">'+esc(e.boardType)+'</span>':'')+
       (e.level?'<span class="tag" style="background:none;color:var(--text3);font-weight:500">'+esc(e.level)+'</span>':'')+
-      (days>0?'<span style="font-size:12.5px;color:var(--text2);float:right;padding-top:4px">in '+days+' days</span>'
+      (days>0?'<span style="font-size:12.5px;color:var(--text2);float:right;padding-top:4px">in '+days+(days===1?' day':' days')+'</span>'
              :(days===0?'<span style="font-size:12.5px;color:var(--gathering);float:right;padding-top:4px">today</span>':''))+
     '</div>'+
     '<h1 style="font-size:26px">'+esc(e.title)+'</h1>'+
@@ -3352,12 +3443,11 @@ function newDrawer(){
 const SECTION_PATH={home:'/',calendar:'/calendar',comms:'/comms',planning:'/pm',facilities:'/facilities',numbers:'/metrics',goals:'/goals',budgets:'/budgets',giving:'/giving',settings:'/settings',admin:'/admin'};
 function render(){
   renderNav();
-  if(S.section!=='event'&&SECTION_PATH[S.section]&&location.pathname!==SECTION_PATH[S.section]){
+  if(SECTION_PATH[S.section]&&location.pathname!==SECTION_PATH[S.section]){
     try{history.replaceState(null,'',SECTION_PATH[S.section]);}catch(e){}
   }
   const m=document.getElementById('main');
-  m.innerHTML = S.section==='event'?pageEvent()
-    : S.section==='home'?pageHome()
+  m.innerHTML = S.section==='home'?pageHome()
     : S.section==='calendar'?pageCalendar()
     : S.section==='comms'?pageEmbed('comms')
     : S.section==='planning'?pageEmbed('planning')
@@ -3629,7 +3719,7 @@ document.addEventListener('click',e=>{
   if(t.dataset.nav!==undefined){
     const n=Number(t.dataset.nav);
     if(n===0){ S.anchor=new Date(TODAY); S.month=new Date(TODAY.getFullYear(),TODAY.getMonth(),1); }
-    else if(S.view==='week'){ S.anchor=addDays(S.anchor,n*7); }
+
     else { S.month=new Date(S.month.getFullYear(),S.month.getMonth()+n,1); }
     render(); return;
   }
@@ -3647,12 +3737,10 @@ document.addEventListener('click',e=>{
        entry came from — the one thing the calendar has spent all day learning
        not to do — and the two renderers drifted apart, because nothing made
        them agree. eventDrawer is gone rather than kept in step. */
-    if(!EVENTS.some(x=>x.id===t.dataset.ev))return;
-    S.from=S.section==='event'?(S.from||'calendar'):S.section;
-    S.eventId=t.dataset.ev; S.section='event'; closeDrawer(); render();
+    closeDrawer(); openCard(t.dataset.ev);
     return;
   }
-  if(t.dataset.back){ S.section=S.from||'calendar'; render(); return; }
+  if(t.dataset.back){ S.section=S.from||'home'; render(); return; }
   if(t.dataset.day){ dayDrawer(t.dataset.day); return; }
   if(t.dataset.new){ newDrawer(); return; }
   if(t.dataset.task){
@@ -3663,7 +3751,13 @@ document.addEventListener('click',e=>{
 });
 document.getElementById('scrim').addEventListener('click',closeDrawer);
 document.getElementById('drawerClose').addEventListener('click',closeDrawer);
-document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeDrawer(); });
+document.getElementById('cardScrim').addEventListener('click',closeCard);
+document.getElementById('cardClose').addEventListener('click',closeCard);
+document.addEventListener('keydown',e=>{
+  if(e.key!=='Escape')return;
+  if(S.cardOpen){ closeCard(); return; }   // the card is the thing on top
+  closeDrawer();
+});
 
 /* ============================ sign-in ============================
    Same Supabase project + accounts as Mosaic Metrics — every existing

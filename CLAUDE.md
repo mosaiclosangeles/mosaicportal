@@ -69,6 +69,17 @@ sends off a staff birthday; exact title was the second and matched almost
 nothing. The lasting fix is upstream — an item reference on `comm_events` —
 after which this becomes an exact match.
 
+**The calendar has two views, and an entry opens a card over them.** Month is
+where it opens; List is the same month read down the page. Both draw from
+`evOn()`, so a day cannot show one thing in the grid and another in the list.
+Clicking an entry calls `openCard()` — a centred dialog over whatever you were
+reading, closed by its ×, the scrim or Escape. It is deliberately **not** a
+section: `pageEvent()` renders into the overlay, there is no URL for it and no
+history entry, because the page behind it has not changed. The old full-page
+`event` section (and its Back button) is gone; so is the week grid, which
+Loyda's review called "really off", and which was a second grid to keep in
+step with the first.
+
 **Facility bookings are one of those sources.** `loadFacilities()` reads
 `v_fac_requests` out of the same Supabase project with the signed-in person's
 own session, so RLS decides what they see. It draws `block_start`/`block_end`
