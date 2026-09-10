@@ -33,11 +33,11 @@ await step('Facilities is in the rail',async()=>{
 });
 await step('clicking it embeds the app, not Settings',async()=>{
   await p.click('#nav button[data-go="facilities"]');
-  await p.waitForSelector('.embed-wrap iframe',{timeout:6000});
+  await p.waitForSelector('#embedHost iframe:not([hidden])',{timeout:6000});
   const txt=await p.textContent('#main');
   if(/Prototype controls|Calendar colours/.test(txt))
     throw new Error('it rendered the Settings page');
-  const src=await p.getAttribute('.embed-wrap iframe','src');
+  const src=await p.getAttribute('#embedHost iframe:not([hidden])','src');
   console.log('       iframe src: '+src);
   if(!src.includes('facilities.mosaic.org'))throw new Error('wrong src');
   if(!src.includes('embed=portal'))throw new Error('missing embed=portal');
@@ -55,9 +55,9 @@ await step('the sub-menu lists its pages',async()=>{
 await step('a sub-menu click changes the page the iframe loads',async()=>{
   await p.click('#nav .subnav button:has-text("Calendar")');
   await p.waitForFunction(()=>{
-    const f=document.querySelector('.embed-wrap iframe');
+    const f=document.querySelector('#embedHost iframe:not([hidden])');
     return f&&f.src.includes('page=calendar');},{timeout:6000});
-  const src=await p.getAttribute('.embed-wrap iframe','src');
+  const src=await p.getAttribute('#embedHost iframe:not([hidden])','src');
   console.log('       '+src);
 });
 await p.screenshot({path:'portal-facilities.png'});
@@ -87,7 +87,8 @@ await step('the rail offers a role only the tabs Metrics will serve it',async()=
     });
     // a view the role cannot see must not reach the frame either
     ME.role='leader'; S.numPath='report';
-    const framed=pageEmbed('numbers').match(/view=([a-z]+)/)[1];
+    pageEmbed('numbers');   // shows the frame and records what it was asked for
+    const framed=(FRAMES.numbers.dataset.src.match(/view=([a-z]+)/)||[])[1];
     Object.assign(ME,{role:keep.role,preview:keep.preview,previewRole:keep.previewRole});
     S.numPath=keep.numPath;
     return {seen,framed};
@@ -105,10 +106,10 @@ await step('the rail offers a role only the tabs Metrics will serve it',async()=
 });
 await step('and a click carries the view into the frame',async()=>{
   await p.click('#nav .subnav button:has-text("Trends")');
-  await p.waitForFunction(()=>{const f=document.querySelector('.embed-wrap iframe');
+  await p.waitForFunction(()=>{const f=document.querySelector('#embedHost iframe:not([hidden])');
     return f&&f.src.includes('view=trends');},{timeout:5000});
   const on=await p.$$eval('#nav .subnav button.on',n=>n.map(x=>x.textContent.trim()));
-  console.log('       '+await p.getAttribute('.embed-wrap iframe','src'));
+  console.log('       '+await p.getAttribute('#embedHost iframe:not([hidden])','src'));
   if(on.join()!=='Trends')throw new Error('the rail did not follow: '+on.join());
 });
 await p.close();
@@ -116,7 +117,7 @@ await p.close();
 console.log('--- deep link ---');
 p=await open('/facilities');
 await step('/facilities boots straight into it',async()=>{
-  await p.waitForSelector('.embed-wrap iframe',{timeout:6000});
+  await p.waitForSelector('#embedHost iframe:not([hidden])',{timeout:6000});
   const on=await p.$$eval('#nav button.on',n=>n.map(x=>x.dataset.go));
   if(!on.includes('facilities'))throw new Error('rail shows '+on.join(','));
 });

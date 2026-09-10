@@ -31,11 +31,19 @@
 .gate-note.warn{background:#fdf3e3;color:#8a5a12}
 
 /* ---- embedded apps (full-bleed: the app starts immediately, no header) ---- */
+/* With a frame showing, #main is only the section's own chrome (today: none),
+   so it must not hold a column open beside it. */
+.main-embedded{flex:0;padding:0;min-width:0}
+.embed-host{flex:1;min-width:0;position:relative;height:100vh}
+.embed-host iframe{width:100%;height:100%;border:0;display:block;background:#fff;position:absolute;inset:0}
+.embed-host iframe[hidden]{display:none}
+.embed-host .embed-open{z-index:1}
 .embed-wrap{margin:-24px -28px -60px;position:relative;height:100vh}
 .embed-wrap iframe{width:100%;height:100%;border:0;display:block;background:#fff}
 .embed-open{position:absolute;right:14px;bottom:14px;display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#8a8a8a;background:rgba(255,255,255,.92);border:1px solid #e6e6e5;border-radius:999px;padding:6px 12px;text-decoration:none;box-shadow:0 2px 8px rgba(0,0,0,.06)}
 .embed-open:hover{color:#000}
-@media(max-width:760px){.embed-wrap{margin:-18px -16px -96px;height:calc(100vh - 58px)}
+@media(max-width:760px){.embed-host{height:calc(100vh - 58px)}
+  .embed-wrap{margin:-18px -16px -96px;height:calc(100vh - 58px)}
   .embed-open{display:none}}
 
 /* ---- account menu (rail foot) ---- */
@@ -811,6 +819,9 @@ select{font:inherit;font-size:13px;padding:7px 10px;border:1px solid var(--hairl
     <div class="rail-foot"><div class="avatar">L</div><div class="who" id="who">Loyda</div></div>
   </nav>
   <main class="main" id="main"></main>
+  <!-- The embedded apps live here, NOT inside #main, because render() replaces
+       #main's innerHTML and a detached iframe reloads when it is put back. -->
+  <div class="embed-host" id="embedHost" hidden><a class="embed-open" id="embedOpen" target="_blank" rel="noopener">open</a></div>
 </div>
 <div class="scrim" id="scrim"></div>
 <!-- The event card. It floats over whatever you were looking at, the way the
@@ -1776,8 +1787,72 @@ function pageEmbed(id){
       :(/^\d{4}-\d{2}-\d{2}$/.test(want)?'on':'item');
     src+='&'+k+'='+encodeURIComponent(want);
   }
-  return '<div class="embed-wrap"><iframe src="'+src+'" title="'+esc(sec.label)+'" allow="clipboard-write"></iframe>'+
-    '<a class="embed-open" href="'+sec.url+'" target="_blank" rel="noopener" title="Open '+esc(sec.label)+' in its own tab">'+ic('ext','width:12px;height:12px')+'open</a></div>';
+  // The sub-page this section is asking for, as the app's own vocabulary.
+  // Used to move an ALREADY-LOADED frame without reloading it.
+  const nav=id==='numbers'?{view:S.numPath||'overview'}
+          :id==='facilities'?{page:S.facPath||'requests'}
+          :id==='goals'?{path:S.goalsPath||'/'}:null;
+  showFrame(id,src,sec,nav);
+  return '';   // the frame is not in #main; see the embed host
+}
+
+/* THE FRAME IS NOT THROWN AWAY BETWEEN RENDERS.
+   render() replaces #main's innerHTML, and an iframe that is detached and put
+   back RELOADS — so the frame used to be rebuilt on every render. Metrics is
+   ~790KB and boots its whole app and its sign-in handshake from scratch, which
+   is why a change of sub-tab cost seconds of "Signing you in…" for what is
+   only a change of tab.
+   So each app keeps one iframe, parked in #embedHost, which render() never
+   touches. Switching sections hides one and shows another; switching sub-tabs
+   inside an app POSTS the new view to the frame instead of reloading it, and
+   only reloads if the frame does not acknowledge — which is what an app
+   deployed before this understands. */
+const FRAMES={};
+const embedBase=u=>String(u).replace(/[?&](view|page|path)=[^&]*/g,'');
+function showFrame(id,src,sec,nav){
+  const host=document.getElementById('embedHost');
+  if(!host)return;
+  host.hidden=false;
+  let f=FRAMES[id];
+  if(!f){
+    f=FRAMES[id]=document.createElement('iframe');
+    f.setAttribute('allow','clipboard-write');
+    f.title=sec.label;
+    f.src=src; f.dataset.src=src;
+    host.appendChild(f);
+  }else if(f.dataset.src!==src){
+    if(embedBase(f.dataset.src)===embedBase(src)&&nav)askFrame(f,src,sec,nav);
+    else { f.src=src; f.dataset.src=src; }
+  }
+  Object.keys(FRAMES).forEach(k=>{FRAMES[k].hidden=(k!==id);});
+  const open=document.getElementById('embedOpen');
+  if(open){
+    open.href=sec.url;
+    open.title='Open '+sec.label+' in its own tab';
+    open.innerHTML=ic('ext','width:12px;height:12px')+'open';
+  }
+}
+function askFrame(f,src,sec,nav){
+  f.dataset.src=src;                 // what it is now being asked to show
+  let acked=false;
+  const onAck=e=>{
+    if(!EMBED_TRUSTED(e.origin))return;
+    if((e.data||{}).type!=='mosaic-nav-ok')return;
+    acked=true; window.removeEventListener('message',onAck);
+  };
+  window.addEventListener('message',onAck);
+  try{ f.contentWindow.postMessage(Object.assign({type:'mosaic-nav'},nav),new URL(src).origin); }
+  catch(_){ }
+  setTimeout(()=>{
+    window.removeEventListener('message',onAck);
+    // Not acknowledged: an app that predates this, so fall back to the reload
+    // it has always done. Only if nothing has asked for something else since.
+    if(!acked&&f.dataset.src===src)f.src=src;
+  },900);
+}
+function hideFrames(){
+  const host=document.getElementById('embedHost');
+  if(host)host.hidden=true;
 }
 
 /* ---- Admin: user management for the whole app (same profiles the four
@@ -3546,6 +3621,12 @@ function render(){
     try{history.replaceState(null,'',SECTION_PATH[S.section]);}catch(e){}
   }
   const m=document.getElementById('main');
+  // pageEmbed() shows its frame and returns nothing, so the host has to be put
+  // away for every section that is not one — otherwise the last app you opened
+  // stays on screen underneath the page you asked for.
+  const EMBEDDED=['comms','planning','numbers','goals','facilities'];
+  if(!EMBEDDED.includes(S.section))hideFrames();
+  m.classList.toggle('main-embedded',EMBEDDED.includes(S.section));
   m.innerHTML = S.section==='home'?pageHome()
     : S.section==='calendar'?pageCalendar()
     : S.section==='comms'?pageEmbed('comms')
@@ -3696,7 +3777,26 @@ window.addEventListener('message',async e=>{
 const NAV_ALLOWED={
   facilities:['board_item','title','date','end_date','start','end','campus','purpose'],
   comms:     ['board_item','title','date','campus','purpose'],
-  numbers:   ['board_item','title','date','campus']};
+  numbers:   ['board_item','title','date','campus'],
+  // Planning is somewhere to LAND, not a form to prefill: an item id, and
+  // nothing else. It goes through the same deep link a card's "Edit in
+  // Planning" uses, so a framed app can only ask for what the portal already
+  // offers from its own cards.
+  planning:  ['item']};
+/* 🐛 THE FRAME ASKS FIRST, AND NOTHING WAS ANSWERING.
+   Facilities decides on load whether to draw "Planning board" as a button that
+   moves the portal or as a link that opens a tab — it asks
+   'mosaic-can-navigate' and only draws the button if something answers
+   'mosaic-navigate-ok'. Nothing here answered, so it always drew the link, and
+   clicking it opened a new tab: exactly the thing that change set out to stop.
+   Two halves of one contract, shipped from two sessions, and only one landed.
+   'mosaic-navigated' closes the card it was clicked from, once we have moved. */
+window.addEventListener('message',e=>{
+  if(!EMBED_TRUSTED(e.origin))return;
+  if((e.data||{}).type!=='mosaic-can-navigate')return;
+  if(!e.source)return;
+  try{e.source.postMessage({type:'mosaic-navigate-ok'},e.origin);}catch(_){}
+});
 window.addEventListener('message',e=>{
   if(!EMBED_TRUSTED(e.origin))return;
   const d=e.data||{};
@@ -3715,10 +3815,18 @@ window.addEventListener('message',e=>{
     const v=d.params&&d.params[k];
     if(typeof v==='string'&&v)S.navBook[sec.id].params[k]=v.slice(0,2000);
   }
+  if(sec.id==='planning'){
+    const it=S.navBook[sec.id].params.item;
+    S.deep=S.deep||{};
+    if(it)S.deep.planning=it; else delete S.deep.planning;
+    delete S.navBook[sec.id];    // nothing to prefill; the id travels as ?item=
+  }
   if(sec.id==='facilities')S.facPath=(d.page==='new')?'new':(S.facPath||'requests');
   S.section=sec.id;
   try{history.pushState({},'',SECTION_PATH[sec.id]||'/');}catch(_){}
   render();
+  // Tell the frame we moved, so it can put away the card this came from.
+  try{if(e.source)e.source.postMessage({type:'mosaic-navigated'},e.origin);}catch(_){}
 });
 
 /* ============================ preview (view as staff/leader/volunteer) ============================ */
