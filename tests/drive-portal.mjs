@@ -392,6 +392,119 @@ await step('a list row opens the same floating card',async()=>{
   if(!shut)throw new Error('clicking away did not close the card');
   await p.evaluate(()=>{document.querySelector('.seg button[data-view="month"]').click();});
 });
+/* A LOCATION THAT IS A LINK IS "ONLINE", AND A LINK IS FOLLOWABLE.
+   Hannita, 10 Sep: "any card with a link should have the hyperlink", and "if
+   an event has a zoom link then location should be ONLINE". Outlook keeps the
+   meeting URL in the location field, so the Arena call printed a 70-character
+   Zoom address three times on one card and offered no way to click it. */
+console.log('--- a link is a link, and a zoom link means Online ---');
+const ZOOM='https://us06web.zoom.us/meeting/register/zBMZF-CySGeLrpoiNaKiig';
+await step('a location that is only a link reads as Online',async()=>{
+  const r=await p.evaluate(z=>({
+    pure:placeOf(z),
+    hybrid:placeOf('Rialto Auditorium; '+z),
+    room:placeOf('Rialto Auditorium'),
+    blank:placeOf(''),
+    missing:placeOf(null),
+    meet:meetLink({detail:z}),
+    notMeet:meetLink({detail:'https://facilities.mosaic.org/requests/12'}),
+    name:meetName(z),
+    teams:meetName('https://teams.microsoft.com/l/meetup-join/x')
+  }),ZOOM);
+  console.log('       '+JSON.stringify(r));
+  if(r.pure!=='Online')throw new Error('a bare zoom link should read Online, got '+JSON.stringify(r.pure));
+  if(r.hybrid!=='Rialto Auditorium · Online')
+    throw new Error('a hybrid location should keep its room: '+JSON.stringify(r.hybrid));
+  if(r.room!=='Rialto Auditorium')throw new Error('a plain room must be left alone');
+  if(r.blank||r.missing)throw new Error('no location should stay no location');
+  if(r.meet!==ZOOM)throw new Error('the meeting link was not found');
+  if(r.notMeet)throw new Error('a facilities link is not a meeting link');
+  if(r.name!=='Zoom'||r.teams!=='Teams')throw new Error('wrong name: '+r.name+'/'+r.teams);
+});
+await step('linkify makes an address clickable and still escapes',async()=>{
+  const r=await p.evaluate(z=>({
+    anchored:linkify('Join here: '+z).includes('<a href="'+z+'"'),
+    escaped:linkify('<img src=x onerror=alert(1)>').indexOf('&lt;img')===0,
+    escapedWithUrl:!/<img/.test(linkify('<img> '+z)),
+    plain:linkify('Rialto Auditorium')
+  }),ZOOM);
+  console.log('       '+JSON.stringify(r));
+  if(!r.anchored)throw new Error('the address did not become a link');
+  if(!r.escaped||!r.escapedWithUrl)throw new Error('linkify let markup through');
+  if(r.plain!=='Rialto Auditorium')throw new Error('plain text should pass through unchanged');
+});
+await step('the card says Online and offers the way in',async()=>{
+  await p.evaluate(z=>{
+    EVENTS.push({id:'zz1',date:key(TODAY),title:'Arena Call Business Focus',
+      type:'other',status:'done',detail:z,owner:'',campus:'',
+      link:'https://outlook.office.com/calendar/item/zz1'});
+    openCard('zz1');
+  },ZOOM);
+  await p.waitForTimeout(300);
+  const r=await p.evaluate(()=>{
+    const b=document.getElementById('cardBody');
+    return {sub:b.querySelector('.sub').textContent.trim(),
+      rows:[...b.querySelectorAll('.kv')].map(x=>x.textContent.trim()),
+      zoomAnchor:!!b.querySelector('.kv a[href*="zoom.us"]'),
+      foot:[...b.querySelectorAll('.foot-links a,.foot-links button')].map(x=>x.textContent.trim())};
+  });
+  console.log('       sub: '+r.sub);
+  console.log('       '+r.rows.join(' | '));
+  console.log('       '+r.foot.join(' | '));
+  if(/zoom\.us/.test(r.sub))throw new Error('the subtitle still prints the URL');
+  if(!/Online/.test(r.sub))throw new Error('the subtitle should say Online');
+  if(!r.rows.some(x=>/^Where\s*Online$/.test(x.replace(/\s+/g,' '))))
+    throw new Error('Where should read Online: '+r.rows.join(' | '));
+  if(!r.zoomAnchor)throw new Error('the address is not clickable');
+  if(!r.foot.some(x=>x==='Join on Zoom'))throw new Error('no way in: '+r.foot.join(' | '));
+  if(!r.foot.some(x=>x==='Open in Outlook'))throw new Error('the Outlook link went missing');
+  await p.evaluate(()=>{closeCard();EVENTS.splice(EVENTS.findIndex(x=>x.id==='zz1'),1);});
+  await p.waitForTimeout(200);
+});
+/* The facilities event card asks the portal to switch section rather than open
+   a tab (Hannita, 10 Sep). Two halves, and both have to answer: the capability
+   ping the frame sends on load — without a reply it renders a plain link and
+   opens a tab, which is the behaviour she asked to be rid of — and the move
+   itself. Planning is the section that card actually asks for, and it was the
+   one section missing from NAV_ALLOWED.
+   The frame is a same-origin srcdoc iframe, which the harness's EMBED_TRUSTED
+   accepts on localhost exactly as it accepts *.mosaic.org in production. */
+await step('a framed app can ask the portal to move, Planning included',async()=>{
+  const nav=await p.evaluate(()=>({planning:!!NAV_ALLOWED.planning,
+                                   sections:Object.keys(NAV_ALLOWED)}));
+  console.log('       navigable: '+nav.sections.join(', '));
+  if(!nav.planning)throw new Error('Planning cannot be arrived at — the card will open a tab');
+  const got=await p.evaluate(()=>new Promise(res=>{
+    const seen=[];
+    const on=ev=>{const t=(ev.data||{}).type||'';if(t.startsWith('harness-'))seen.push(t.slice(8));};
+    window.addEventListener('message',on);
+    const f=document.createElement('iframe');
+    f.style.display='none';
+    // The frame relays back whatever the portal answers it, because the reply
+    // is posted to e.source and never reaches this window.
+    f.srcdoc='<scr'+'ipt>window.addEventListener("message",e=>{'+
+      'if(e.data&&e.data.type)parent.postMessage({type:"harness-"+e.data.type},"*");});'+
+      'parent.postMessage({type:"mosaic-can-navigate"},"*");'+
+      'setTimeout(()=>parent.postMessage({type:"mosaic-navigate",section:"planning"},"*"),80);'+
+      '</scr'+'ipt>';
+    document.body.appendChild(f);
+    setTimeout(()=>{
+      window.removeEventListener('message',on);f.remove();
+      res({seen,section:S.section,book:(S.navBook&&S.navBook.planning)||null});
+    },700);
+  }));
+  console.log('       '+JSON.stringify(got));
+  if(!got.seen.includes('mosaic-navigate-ok'))
+    throw new Error('the portal never said it can navigate, so the card falls back to a tab');
+  if(got.section!=='planning')throw new Error('the portal did not move, it is on '+got.section);
+  if(!got.seen.includes('mosaic-navigated'))
+    throw new Error('the frame was not told it landed, so it may open a tab as well');
+  if(got.book&&got.book.page==='new')
+    throw new Error('a bare move opened the new-item form: '+JSON.stringify(got.book));
+  // back to the calendar for the checks below
+  await p.evaluate(()=>{S.section='calendar';S.navBook=null;render();});
+  await p.waitForSelector('.filters .chip',{timeout:6000});
+});
 await step('a chip click filters them off again',async()=>{
   const before=await p.$$eval('.ev,.evchip,[data-ev]',n=>n.length);
   await p.click('.filters .chip:has-text("Facilities")');
