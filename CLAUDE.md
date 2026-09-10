@@ -18,6 +18,16 @@ the **Goals and Facilities sub-menus**, which are hand-written lists in
 `GOALS_NAV` and `FAC_NAV` — a page added inside either app has to be added
 there too, or it will not appear in the portal.
 
+**The Metrics sub-menu is a hand-written copy of Metrics' own tabs**, in
+`METRICS_NAV`, and `metricsNavItems()` filters it by `METRICS_ROLE_TABS` — a
+deliberate duplicate of `ROLE_TABS` in mosaic-metrics. Two things follow: a tab
+added inside Metrics has to be added here too or it will not appear in the
+portal, and a tab a role cannot see must not be offered here either. Metrics
+bounces a role to Overview rather than erroring, which is worse than an error —
+the tab reads as clicked and quietly is not the page that was asked for. The
+same is true of the view the frame is sent: `pageEmbed('numbers')` falls back
+to Overview rather than asking for a view the rail does not offer.
+
 **Adding a section takes four edits, not one.** Facilities shipped broken
 because only three were made: the rail entry, the sub-menu and the embed URL
 were there, and the router was not, so clicking Facilities fell through the

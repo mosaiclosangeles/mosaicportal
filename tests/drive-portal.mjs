@@ -73,6 +73,36 @@ await step('Metrics puts its six views on the rail',async()=>{
   const want=['Overview','Campuses','Kids + Future','Trends','Report','History'];
   if(subs.join('|')!==want.join('|'))throw new Error('got '+subs.join(' | '));
 });
+/* The rail is a hand-written copy of Metrics' own tabs, so it has to hide the
+   same ones Metrics hides. Offering Report to a leader is not a harmless
+   extra: Metrics bounces them to Overview, so the tab reads as clicked and
+   quietly is not the page they asked for. */
+await step('the rail offers a role only the tabs Metrics will serve it',async()=>{
+  const r=await p.evaluate(()=>{
+    const keep={role:ME.role,preview:ME.preview,previewRole:ME.previewRole,numPath:S.numPath};
+    const seen={};
+    ['admin','staff','leader','volunteer','campus_pastor'].forEach(role=>{
+      ME.role=role; ME.preview=false; ME.previewRole=null;
+      seen[role]=metricsNavItems().map(m=>m.page);
+    });
+    // a view the role cannot see must not reach the frame either
+    ME.role='leader'; S.numPath='report';
+    const framed=pageEmbed('numbers').match(/view=([a-z]+)/)[1];
+    Object.assign(ME,{role:keep.role,preview:keep.preview,previewRole:keep.previewRole});
+    S.numPath=keep.numPath;
+    return {seen,framed};
+  });
+  console.log('       '+JSON.stringify(r.seen));
+  console.log('       a leader asking for Report is framed on: '+r.framed);
+  if(r.seen.admin.length!==6)throw new Error('an admin should see all six');
+  if(r.seen.volunteer.join()!=='overview')throw new Error('a volunteer should see Overview only');
+  if(r.seen.leader.join()!=='overview,trends')throw new Error('a leader sees Overview and Trends, got '+r.seen.leader);
+  if(r.seen.staff.includes('report'))throw new Error('Report is admin-only in Metrics');
+  // campus_pastor is not a role Metrics knows, so it must fall to the most
+  // restrictive, exactly as Metrics does — not to everything
+  if(r.seen.campus_pastor.join()!=='overview,trends')throw new Error('an unknown role should fall to the most restrictive, got '+r.seen.campus_pastor);
+  if(r.framed!=='overview')throw new Error('the frame was sent to a view the rail does not offer: '+r.framed);
+});
 await step('and a click carries the view into the frame',async()=>{
   await p.click('#nav .subnav button:has-text("Trends")');
   await p.waitForFunction(()=>{const f=document.querySelector('.embed-wrap iframe');

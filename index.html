@@ -1250,6 +1250,24 @@ const METRICS_NAV=[
   {page:'report',   label:'Report'},
   {page:'history',  label:'History'}
 ];
+/* Metrics hides tabs by role, and this rail is a hand-written copy of them, so
+   it has to hide the same ones or it offers doors that do not open. Metrics
+   bounces a role to Overview rather than erroring, which is worse than an
+   error: the tab looks clicked and the page silently is not the one asked for.
+   This is ROLE_TABS from mosaic-metrics, kept deliberately identical — the
+   two lists are the thing that has to stay in step, and an unknown role falls
+   to the most restrictive, exactly as Metrics does. */
+const METRICS_ROLE_TABS={
+  admin:     ['overview','campuses','kidsyouth','trends','report','history'],
+  staff:     ['overview','campuses','kidsyouth','trends','history'],
+  leader:    ['overview','trends'],
+  volunteer: ['overview']
+};
+function metricsNavItems(){
+  const role=ME.preview?ME.previewRole:ME.role;
+  const allowed=METRICS_ROLE_TABS[role]||METRICS_ROLE_TABS.leader;
+  return METRICS_NAV.filter(m=>allowed.includes(m.page));
+}
 function facNavItems(){
   const isAdmin=ME.role==='admin'&&!ME.preview;
   return FAC_NAV.filter(it=>!it.admin||isAdmin);
@@ -1466,7 +1484,7 @@ function renderNav(){
       (it.beta?'<span class="badge">BETA</span>':(it.count?'<span class="count">'+it.count+'</span>':''))+
       '</button>');
     if(it.id==='numbers'&&S.section==='numbers'){
-      out.push('<div class="subnav">'+METRICS_NAV.map(m=>
+      out.push('<div class="subnav">'+metricsNavItems().map(m=>
         '<button data-mp="'+esc(m.page)+'" class="'+(S.numPath===m.page?'on':'')+'">'+
         esc(m.label)+'</button>').join('')+'</div>');
     }
@@ -1725,7 +1743,13 @@ function pageEmbed(id){
   let src=sec.url;
   if(id==='goals')src+=(S.goalsPath==='/'?'':S.goalsPath);
   if(id==='facilities')src+=(src.includes('?')?'&':'?')+'page='+(S.facPath||'requests');
-  if(id==='numbers')src+=(src.includes('?')?'&':'?')+'view='+(S.numPath||'overview');
+  if(id==='numbers'){
+    // Metrics would bounce a view this role cannot see to Overview anyway;
+    // asking for Overview in the first place keeps the rail's highlight and
+    // the frame saying the same thing.
+    const ok=metricsNavItems().some(m=>m.page===S.numPath);
+    src+=(src.includes('?')?'&':'?')+'view='+(ok?S.numPath:'overview');
+  }
   /* Starting something for an event on the planning board — a room, a message,
      a set of numbers. None of those apps can be written from the board: it has
      no sign-in, and the tables behind them are RLS'd to auth.uid(). So it asks
