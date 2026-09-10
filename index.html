@@ -394,7 +394,23 @@ html.dark .subnav button:hover,html.dark .subnav button.on{color:var(--text);bac
 
 /* ---------- main ---------- */
 .main{flex:1;min-width:0;padding:24px 28px 60px}
-.page-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:20px}
+.page-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:20px;position:relative}
+/* The New menu. Anchored to the button rather than centred on the screen: it is
+   a short list of places to go, not a dialog to be dismissed. */
+.newmenu{display:none;position:absolute;top:100%;right:0;margin-top:8px;z-index:40;
+  min-width:280px;background:var(--surface);border:1px solid var(--hairline);
+  border-radius:var(--r-card);box-shadow:0 12px 32px rgba(0,0,0,.14);padding:6px}
+.newmenu.on{display:block}
+.nm-row{display:flex;align-items:center;gap:12px;width:100%;text-align:left;
+  padding:10px 12px;border:0;background:none;border-radius:var(--r-btn);cursor:pointer;color:var(--text)}
+.nm-row:hover{background:var(--fill)}
+.nm-ic{flex:none;width:32px;height:32px;border-radius:var(--r-btn);display:grid;place-items:center;
+  background:var(--fill);color:var(--text2)}
+.nm-ic svg{width:16px;height:16px}
+.nm-t{display:flex;flex-direction:column;gap:1px;min-width:0}
+.nm-l{font-size:13.5px;font-weight:600}
+.nm-s{font-size:11.5px;color:var(--text2)}
+@media (max-width:560px){.newmenu{left:0;right:auto;min-width:0;width:100%}}
 h1{font-size:30px;font-weight:600;letter-spacing:-.03em;margin:0;line-height:1.1}
 .sub{font-size:14px;color:var(--text2);margin-top:5px}
 h2{font-size:16px;font-weight:600;letter-spacing:-.015em;margin:0 0 6px}
@@ -827,7 +843,8 @@ const P = {
   wallet:'M3 8a2 2 0 012-2h14a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2zM3 10.5h18M16.5 14.5h2',
   heart:'M12 20l-7.1-7.1a4 4 0 015.7-5.6l1.4 1.4 1.4-1.4a4 4 0 015.7 5.6z',
   lock:'M6 11a2 2 0 012-2h8a2 2 0 012 2v6a2 2 0 01-2 2H8a2 2 0 01-2-2zM9 9V7a3 3 0 016 0v2',
-  door:'M4 21h16M6 21V5a2 2 0 012-2h8a2 2 0 012 2v16M14 12h.01'
+  door:'M4 21h16M6 21V5a2 2 0 012-2h8a2 2 0 012 2v16M14 12h.01',
+  plus:'M12 5v14M5 12h14'
 };
 function ic(n,s){return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"'+(s?' style="'+s+'"':'')+'><path d="'+P[n]+'"/></svg>';}
 document.getElementById('drawerClose').innerHTML = ic('x');
@@ -1180,6 +1197,8 @@ const S = {
   eventId:'g0823',
   from:'calendar',
   goalsPath:'/',
+  newMenu:false,       // the New menu on Home, open or not
+  navBook:null,        // per section: a form to open, and the event to fill it with
   facPath:'requests',   // which Facilities page the sub-menu has selected
   numPath:'overview',   // and which Metrics view
   deep:{}   // section -> the item that section should open on arrival
@@ -1305,6 +1324,15 @@ function commWindow(e){
   const a=D(e.date), b=D(e.dateEnd||e.date);
   return [addDays(a,-21),addDays(b,21)];
 }
+/* Whether a comm belongs to an event.
+
+   When the comm carries board_item_id, that is not a guess — somebody said so,
+   by starting the message from that event's card — and it is the answer, both
+   ways: a comm claimed by one event must not also attach itself to another it
+   happens to share words with. This is the upstream fix the subject matching
+   below was always waiting for; it applies to messages written since
+   comm_events gained the column, and the inference still carries everything
+   written before that. */
 function commRelated(c,e){
   const cw=subjectWords(c.title), ew=new Set(subjectWords(e.title));
   if(!cw.length||!ew.size)return false;
@@ -1464,6 +1492,37 @@ function renderNav(){
 }
 
 /* ============================ pages ============================ */
+/* One place to start anything, and it starts it in the app that owns it.
+   The portal keeps no create forms of its own for other apps' data: each app
+   holds its own fields, its own rules and its own permissions — Facilities'
+   policies key off auth.uid(), Metrics is the project holding every Mosaic
+   login, and the counting rule that decides what an attendance number means
+   lives there too. A second form here would be a second set of rules, drifting
+   from the first from the day it shipped.
+
+   Only what this person can actually reach is offered. Someone without Metrics
+   should not be shown "Submit attendance" and then refused by the app. */
+const NEW_THINGS=[
+  ['planning',  'event',     'board', 'An event or project',   'Goes on the planning board'],
+  ['facilities','new',       'door',  'A room or a space',     'A request for Alicia to confirm'],
+  ['comms',     'new',       'mail',  'An email or a text',    'Goes on the comms calendar'],
+  ['numbers',   'new',       'chart', 'Attendance numbers',    'Submit a service to Metrics']
+];
+function newMenu(){
+  const allowed=allowedSections();
+  const items=NEW_THINGS.filter(([sec])=>allowed.includes(sec));
+  if(!items.length)return '';
+  return '<div class="newmenu'+(S.newMenu?' on':'')+'" id="newMenu">'+
+    items.map(([sec,page,icon,label,sub])=>
+      // data-newthing, not data-new: data-new is already the Calendars "New"
+      // drawer, and the delegated handler would have answered these clicks
+      // with that instead.
+      '<button class="nm-row" data-newthing="'+sec+'" data-newpage="'+page+'">'+
+        '<span class="nm-ic">'+ic(icon)+'</span>'+
+        '<span class="nm-t"><span class="nm-l">'+esc(label)+'</span>'+
+        '<span class="nm-s">'+esc(sub)+'</span></span></button>').join('')+
+    '</div>';
+}
 function pageHome(){
   const ks=Object.keys(METRICS).sort();
   const lastK=ks[ks.length-1], m=lastK?METRICS[lastK]:null;
@@ -1476,7 +1535,8 @@ function pageHome(){
   const upcoming=EVENTS.filter(e=>D(e.date)>=TODAY && e.type==='event').slice(0,5);
   const attn=ATTN.slice(0,6);
   return '<div class="page-head"><div><h1>Home</h1><div class="sub">'+pretty(TODAY)+' · week '+weekNum(TODAY)+'</div></div>'+
-   '<button class="btn-primary" data-go="planning">New event</button></div>'+
+   '<button class="btn-primary" data-newmenu="1">'+ic('plus')+' New</button>'+
+   newMenu()+'</div>'+
    (DATA_ERR?'<div class="banner">'+ic('info')+'<div>'+esc(DATA_ERR)+'</div></div>':'')+
    '<div class="cards">'+
      card('This week',twEvents.length,twComms.length+' comms alongside','calendar','--session')+
@@ -1666,6 +1726,21 @@ function pageEmbed(id){
   if(id==='goals')src+=(S.goalsPath==='/'?'':S.goalsPath);
   if(id==='facilities')src+=(src.includes('?')?'&':'?')+'page='+(S.facPath||'requests');
   if(id==='numbers')src+=(src.includes('?')?'&':'?')+'view='+(S.numPath||'overview');
+  /* Starting something for an event on the planning board — a room, a message,
+     a set of numbers. None of those apps can be written from the board: it has
+     no sign-in, and the tables behind them are RLS'd to auth.uid(). So it asks
+     the portal to open the app's own form with the event already in it.
+     Nothing here bypasses a check; it saves retyping, and it carries
+     board_item so what gets created stays tied to the event.
+
+     After the rail's own page/view, so page=new wins for the one arrival that
+     asked for a form. Metrics reads both and page=new takes precedence there. */
+  const book=S.navBook&&S.navBook[id];
+  if(book){
+    if(book.page&&id!=='facilities')src+=(src.includes('?')?'&':'?')+'page='+encodeURIComponent(book.page);
+    for(const [k,v] of Object.entries(book.params||{}))
+      if(v)src+=(src.includes('?')?'&':'?')+encodeURIComponent(k)+'='+encodeURIComponent(v);
+  }
   if(id==='numbers'||id==='comms'||id==='planning'||id==='goals'||id==='facilities')
     src+=(src.includes('?')?'&':'?')+'embed=portal';
   // Arriving from an event: tell the app which one, so people land on the
@@ -3506,6 +3581,122 @@ window.addEventListener('message',async e=>{
     {type:'mosaic-auth',access_token:s.access_token,refresh_token:s.refresh_token},e.origin);}catch(_){}
 });
 
+/* An embedded app asking the portal to go somewhere else in the portal.
+   Everything is meant to speak to each other in here rather than throwing
+   people into a new tab, and until now only the portal could start a move: the
+   planning board had no way to say "open Facilities on the new-request form
+   with this event in it".
+
+   Only two sections accept this, and only the fields those forms actually read.
+   An allowlist rather than a pass-through, because this arrives from a framed
+   page: anything it can put in the URL, it could put anything in. Origin is
+   already checked above against *.mosaic.org. */
+/* The portal answering for the apps that need a sign-in.
+   ------------------------------------------------------
+   The planning board shows what the other apps hold about an event, on the
+   event. Comms it reads itself — same Supabase project, readable without a
+   sign-in by decision. Rooms and attendance it cannot: both live in the Mosaic
+   Metrics project behind RLS keyed to auth.uid(), and the board runs on a
+   publishable key with no session at all.
+
+   So it asks, and the portal answers with the signed-in person's own session.
+   That is the point rather than a workaround: the panel shows exactly what
+   THIS person is allowed to see, decided by the same policies the Facilities
+   and Metrics apps enforce, instead of a fixed projection somebody has to
+   remember to keep narrow.
+
+   Only the fields the panel draws are sent back. A booking carries internal
+   notes and a requester's phone number, and a card on the planning board is
+   not where either belongs. */
+const FAC_CONN_FIELDS='id,ref,title,status,campus_name,space_name,block_start,block_end,'+
+  'resource_count,resource_pending_count,archived_at,board_item_id';
+async function connectedFor(item){
+  const out={facilities:[],metrics:[]};
+  if(!sb||!item||!item.id)return out;
+  try{
+    const {data}=await sb.from('v_fac_requests').select(FAC_CONN_FIELDS)
+      .eq('board_item_id',item.id).is('archived_at',null).order('block_start');
+    out.facilities=(data||[]).map(r=>({ref:r.ref,title:r.title,status:r.status,
+      campus_name:r.campus_name,space_name:r.space_name,
+      resource_pending_count:r.resource_pending_count||0,
+      when:r.block_start?new Date(r.block_start).toLocaleString([],
+        {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):''}));
+  }catch(_){/* the panel says nothing rather than guessing */}
+  /* Attendance has no board_item_id to match on, so it is matched on the date
+     and the campus and the board labels it as such. For a Sunday that is the
+     definition of the thing; for anything else it is a suggestion, and saying
+     otherwise is how the wrong numbers get attached to an event. */
+  try{
+    if(item.date){
+      const cid=await campusIdFor(item.campus);
+      let q=sb.from('v_service_totals')
+        .select('campus_id,date,service_label,in_person_total,online_views')
+        .eq('date',item.date);
+      if(cid)q=q.eq('campus_id',cid);
+      const {data}=await q;
+      out.metrics=(data||[]).map(r=>({service_label:r.service_label,
+        campus_name:CAMPUS_NAME[r.campus_id]||'',
+        in_person_total:r.in_person_total,online_views:r.online_views}));
+    }
+  }catch(_){}
+  return out;
+}
+/* The board's campus vocabulary is "LA"/"NYC"/"Global"; this project's is
+   "Los Angeles"/"New York City". Matching on the name alone matches nothing —
+   the same trap the Facilities prefill hit. Fetched once and kept. */
+const BOARD_CAMPUS={la:['Los Angeles'],nyc:['New York City','New York']};
+let CAMPUS_NAME={},CAMPUS_BY_NAME=null;
+async function campusIdFor(boardName){
+  if(!boardName||!sb)return null;
+  if(!CAMPUS_BY_NAME){
+    try{
+      const {data}=await sb.from('campuses').select('id,name');
+      CAMPUS_BY_NAME={};(data||[]).forEach(c=>{
+        CAMPUS_BY_NAME[(c.name||'').toLowerCase()]=c.id;CAMPUS_NAME[c.id]=c.name;});
+    }catch(_){CAMPUS_BY_NAME={};}
+  }
+  const want=BOARD_CAMPUS[String(boardName).toLowerCase()]||[boardName];
+  for(const w of want){const id=CAMPUS_BY_NAME[String(w).toLowerCase()];if(id)return id;}
+  return null;
+}
+window.addEventListener('message',async e=>{
+  if(!EMBED_TRUSTED(e.origin))return;
+  const d=e.data||{};
+  if(d.type!=='mosaic-connected-request')return;
+  const item=d.item||{};
+  if(!item.id||typeof item.id!=='string'||!e.source)return;
+  const got=await connectedFor(item);
+  try{e.source.postMessage(Object.assign({type:'mosaic-connected',item_id:item.id},got),e.origin);}catch(_){}
+});
+
+const NAV_ALLOWED={
+  facilities:['board_item','title','date','end_date','start','end','campus','purpose'],
+  comms:     ['board_item','title','date','campus','purpose'],
+  numbers:   ['board_item','title','date','campus']};
+window.addEventListener('message',e=>{
+  if(!EMBED_TRUSTED(e.origin))return;
+  const d=e.data||{};
+  if(d.type!=='mosaic-navigate')return;
+  const sec=SECTIONS.find(x=>x.id===d.section);
+  // Silently ignoring an unknown or locked section is right: a framed app should
+  // not be able to reach a part of the portal this person cannot see anyway.
+  if(!sec||!allowedSections().includes(sec.id))return;
+  const allowed=NAV_ALLOWED[sec.id];
+  if(!allowed)return;   // a section nobody has said may be arrived at this way
+  /* Kept per section, not in one shared bag: arriving at Comms must not leave
+     an event's details sitting on the Facilities frame's URL. */
+  S.navBook=S.navBook||{};
+  S.navBook[sec.id]={page:(typeof d.page==='string'&&/^[a-z]{1,20}$/.test(d.page))?d.page:'new',params:{}};
+  for(const k of allowed){
+    const v=d.params&&d.params[k];
+    if(typeof v==='string'&&v)S.navBook[sec.id].params[k]=v.slice(0,2000);
+  }
+  if(sec.id==='facilities')S.facPath=(d.page==='new')?'new':(S.facPath||'requests');
+  S.section=sec.id;
+  try{history.pushState({},'',SECTION_PATH[sec.id]||'/');}catch(_){}
+  render();
+});
+
 /* ============================ preview (view as staff/leader/volunteer) ============================ */
 const PREVIEW_ROLE_PRESET={staff:'comms',campus_pastor:'comms',leader:'ops',volunteer:'volunteer'};
 
@@ -3602,8 +3793,32 @@ document.addEventListener('toggle',e=>{
   if(d.open)ADMIN.campusOpen.add(d.dataset.campus);else ADMIN.campusOpen.delete(d.dataset.campus);
 },true);
 document.addEventListener('click',e=>{
-  const t=e.target.closest('[data-go],[data-view],[data-nav],[data-filter],[data-ev],[data-day],[data-task],[data-new],[data-pick],[data-everyone],[data-tl],[data-back],[data-logout],[data-preview],[data-previewexit],[data-previewgo],[data-pickertoggle],[data-pickerrole],[data-profile],[data-fb],[data-newuser],[data-gp],[data-fp],[data-mp],[data-user],[data-pinv],[data-pinvsend],[data-pinvdel],[data-adtab],[data-theme],[data-newcampus],[data-editcampus],[data-addloc],[data-deactivateloc],[data-addtime],[data-rmtime],[data-toggleinactivecampus],[data-toggleusers]');
+  /* Anywhere else closes the New menu. It sits over the page, so leaving it up
+     while somebody clicks past it is how a menu ends up covering the thing
+     they were reaching for. */
+  if(S.newMenu&&!e.target.closest('#newMenu,[data-newmenu]')){S.newMenu=false;render();}
+  /* Both sides of the merge added to this list — [data-mp] is the Metrics rail,
+     [data-newmenu]/[data-newthing] the New menu. Every one of them has to be
+     here or its buttons are simply dead. */
+  const t=e.target.closest('[data-go],[data-view],[data-nav],[data-filter],[data-ev],[data-day],[data-task],[data-new],[data-pick],[data-everyone],[data-tl],[data-back],[data-logout],[data-preview],[data-previewexit],[data-previewgo],[data-pickertoggle],[data-pickerrole],[data-profile],[data-fb],[data-newuser],[data-gp],[data-fp],[data-mp],[data-user],[data-pinv],[data-pinvsend],[data-pinvdel],[data-adtab],[data-theme],[data-newcampus],[data-editcampus],[data-addloc],[data-deactivateloc],[data-addtime],[data-rmtime],[data-toggleinactivecampus],[data-toggleusers],[data-newmenu],[data-newthing]');
   if(!t) return;
+  /* The New menu on Home. It has to come before data-new below, and be its own
+     attribute: data-new is the Calendars drawer, and one of these buttons
+     carrying it would open that instead of starting anything. */
+  if(t.dataset.newmenu){ S.newMenu=!S.newMenu; render(); return; }
+  if(t.dataset.newthing){
+    const sec=t.dataset.newthing;
+    if(!allowedSections().includes(sec))return;
+    S.newMenu=false;
+    S.navBook=S.navBook||{};
+    // Nothing prefilled: started from Home, there is no event to carry. Coming
+    // from a planning card is the path that brings one.
+    S.navBook[sec]={page:t.dataset.newpage||'new',params:{}};
+    if(sec==='facilities')S.facPath='new';
+    S.section=sec;
+    try{history.pushState({},'',SECTION_PATH[sec]||'/');}catch(_){}
+    render(); return;
+  }
   if(t.dataset.logout){ (sb?sb.auth.signOut():Promise.resolve()).then(()=>location.reload()); return; }
   if(t.dataset.pickertoggle){
     if(!ADMIN.campuses)loadAdmin().then(()=>{_previewCampusId=_previewPickCampus();umPop.innerHTML=umHtml();});
@@ -3633,6 +3848,8 @@ document.addEventListener('click',e=>{
   if(t.dataset.go){ if(allowedSections().includes(t.dataset.go)){
       S.deep=S.deep||{};
       if(t.dataset.item)S.deep[t.dataset.go]=t.dataset.item; else delete S.deep[t.dataset.go];
+      // Going somewhere by hand drops any prefill that section was carrying.
+      if(S.navBook)delete S.navBook[t.dataset.go];
       S.section=t.dataset.go; closeDrawer(); if(typeof umClose==="function")umClose(); render();} return; }
   if(t.dataset.theme){
     THEME=t.dataset.theme; try{localStorage.setItem(themeKey(),THEME);}catch(e){}
@@ -3691,8 +3908,11 @@ document.addEventListener('click',e=>{
   }
   if(t.dataset.fb){ feedbackDrawer(t.dataset.fb); return; }
   if(t.dataset.gp!==undefined){ S.goalsPath=t.dataset.gp; S.section='goals'; render(); return; }
-  if(t.dataset.fp!==undefined){ S.facPath=t.dataset.fp; S.section='facilities'; render(); return; }
-  if(t.dataset.mp!==undefined){ S.numPath=t.dataset.mp; S.section='numbers'; render(); return; }
+  // Clicking a sub-menu by hand drops any board prefill: it belongs to the one
+  // arrival from the planning board, and leaving it set would re-open a stale
+  // event's details the next time somebody opens that form.
+  if(t.dataset.fp!==undefined){ S.facPath=t.dataset.fp; if(S.navBook)delete S.navBook.facilities; S.section='facilities'; render(); return; }
+  if(t.dataset.mp!==undefined){ S.numPath=t.dataset.mp; if(S.navBook)delete S.navBook.numbers; S.section='numbers'; render(); return; }
   if(t.dataset.user){ S.from='admin'; S.adminUserId=t.dataset.user; S.section='admin-user'; render(); return; }
   if(t.dataset.pinv){ paInviteDrawer(t.dataset.pinv); return; }
   if(t.dataset.pinvsend){
