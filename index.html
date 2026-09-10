@@ -523,6 +523,21 @@ html.dark .hovercard{box-shadow:0 6px 22px rgba(0,0,0,.5)}
 .bars{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));padding-top:4px}
 .bar{font-size:10px;padding:2px 7px;border-radius:4px;margin:0 3px 4px;overflow:hidden;
   white-space:nowrap;text-overflow:ellipsis;text-align:left;width:calc(100% - 6px)}
+/* Five key moments, drawn as diamonds so they never read as phases. */
+.mstrip{display:flex;gap:0;align-items:flex-start;overflow-x:auto;padding:4px 0 2px}
+.mspt{flex:1;min-width:74px;text-align:center;font-size:11px;color:var(--text2)}
+.mspt b{display:block;color:var(--text);font-weight:600;font-size:11.5px}
+.msdia{width:9px;height:9px;background:var(--milestone);transform:rotate(45deg);
+  border-radius:1px;margin:0 auto 7px;display:block}
+.mspt.past .msdia{background:var(--neutral)}
+/* Affirmations are not tasks: ticking one means "this is now true". */
+.rq{font-size:13px;color:var(--text2);margin:0 0 9px}
+.aff{display:flex;gap:9px;align-items:flex-start;font-size:13.5px;color:var(--text2);margin-bottom:7px}
+.aff.on{color:var(--text)}
+.affbox{width:15px;height:15px;border-radius:4px;border:1.5px solid var(--grid);flex:none;
+  margin-top:2px;display:flex;align-items:center;justify-content:center;color:#fff}
+.aff.on .affbox{background:var(--session-d);border-color:var(--session-d)}
+.affbox svg{width:10px;height:10px}
 .legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:14px;font-size:11.5px;color:var(--text2)}
 .legend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px;vertical-align:0}
 
@@ -935,6 +950,7 @@ function mapLive(pis,ces){
        to Planning for those rather than inventing them. */
     const base={type:'event',title,campus:r.campus,level:r.level,phase:r.phase_now,speaker:r.speaker,
       boardType:r.type,boardStatus:r.status,recur:r.recur,location:r.location,timeOfDay:r.time_of_day,
+      milestones:r.milestones||null,rhythm:r.rhythm||null,
       series:r.is_series?title:undefined,owner:(r.owners||[]).join(', '),desc:r.description,
       detail:(r.speaker?r.speaker+(r.is_sunday?' speaking':''):(r.type||''))+(r.campus&&r.campus!=='LA'?' · '+r.campus:'')};
     if(r.recur==='weekly'&&r.date_end){
@@ -3088,6 +3104,7 @@ function pageEvent(){
       '<div class="kv"'+(i===rows.length-1?' style="border-bottom:0"':'')+'><span>'+r[0]+'</span><span>'+esc(r[1])+'</span></div>').join('');
   }
 
+  h+=milestonesHTML(e.milestones)+rhythmHTML(e.rhythm);
   if(card.parts&&card.parts.length>1){
     h+='<div class="eyebrow">ALSO ON</div>'+card.parts.filter(x=>x.id!==e.id).map(x=>
       '<div class="kv"><span>'+esc(SOURCES[laneOf(x)]?SOURCES[laneOf(x)].label:'')+'</span>'+
@@ -3146,7 +3163,7 @@ function pageEvent(){
   h+='</div></div>'+
     '<div class="foot-links">'+
     ((card.parts||[e]).some(x=>x.type==='event')
-      ?'<button data-go="planning" data-item="'+esc(pmId(e))+'">Milestones, the Rhythm and notes in Planning</button>':'')+
+      ?'<button data-go="planning" data-item="'+esc(pmId(e))+'">Edit in Planning</button>':'')+
     (fac?'<button data-go="facilities">Open in Facilities</button>':'')+
     // Day-scoped, and says so: it opens that date in the comms calendar rather
     // than claiming these sends belong to this event.
@@ -3220,6 +3237,34 @@ function hoverCardHTML(e){
   });
   ['scroll','click','keydown'].forEach(t=>document.addEventListener(t,hide,true));
 })();
+
+/* Milestones and the Rhythm, drawn the way the board draws them: diamonds for
+   the five key moments because they are not phases, and the three affirmations
+   as what is true rather than as tasks — no owner, no due date. The wording is
+   the Rhythm's own, carried through the mirror rather than restated here. */
+function milestonesHTML(ms){
+  if(!ms)return '';
+  const NAMES=[['kickoff','Kick-Off'],['public','Public'],['ready','Ready'],
+               ['launch','Launch'],['debrief','Debrief']];
+  const rows=NAMES.filter(([k])=>ms[k]);
+  if(!rows.length)return '';
+  return '<div class="eyebrow">MILESTONES</div><div class="mstrip">'+
+    rows.map(([k,name])=>{
+      const past=D(ms[k])<TODAY, pinned=(ms.pinned||[]).includes(k);
+      return '<div class="mspt'+(past?' past':'')+'">'+
+        '<span class="msdia"'+(pinned?' title="Pinned by hand"':'')+'></span>'+
+        '<b>'+esc(name)+'</b>'+fmt(D(ms[k]))+'</div>';
+    }).join('')+'</div>';
+}
+function rhythmHTML(r){
+  if(!r)return '';
+  const done=(r.affirmations||[]).filter(a=>a.done).length;
+  return '<div class="eyebrow">THE RHYTHM · '+esc(r.phase)+' · '+done+' OF '+
+    (r.affirmations||[]).length+'</div>'+
+    (r.question?'<div class="rq">'+esc(r.question)+'</div>':'')+
+    (r.affirmations||[]).map(a=>'<div class="aff'+(a.done?' on':'')+'">'+
+      '<span class="affbox">'+(a.done?ic('check'):'')+'</span>'+esc(a.text)+'</div>').join('');
+}
 
 /* ============================ drawer ============================ */
 function openDrawer(html,title=''){
