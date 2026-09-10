@@ -90,6 +90,30 @@ history entry, because the page behind it has not changed. The old full-page
 Loyda's review called "really off", and which was a second grid to keep in
 step with the first.
 
+**A location that is a link is "Online", and a link is followable.** Outlook
+keeps the meeting URL in the location field, so an Arena call arrived with a
+70-character Zoom address standing where the room should be — in the card's
+subtitle, in the list, and a third time under Where, none of them clickable.
+`placeOf()` answers where it is (a hybrid location keeps its room and gains
+"· Online"), `meetLink()` answers how to get in, and `linkify()` — escape
+first, then anchor — makes any address left in the text followable. The URL is
+never dropped from the data, only from the place: a card that quietly lost the
+only way into the meeting would be worse than an ugly one. Hannita, 10 Sep.
+
+**An embedded app can ask the portal to move, and the ask has two halves.**
+`mosaic-can-navigate` is answered with `mosaic-navigate-ok` at load time, and
+`mosaic-navigate` moves the section and replies `mosaic-navigated`. Both
+matter: a frame cannot tell whether the portal listens, and finding out by
+trying is worse than it sounds — the answer arrives after the click, and a
+`window.open` from a frame with no user gesture behind it is silently blocked,
+so the facilities card renders a button or a plain link depending on the reply.
+`NAV_ALLOWED` lists the sections that may be arrived at this way and the fields
+each may carry; **Planning belongs in it** — it is the section the facilities
+event card actually asks for, and leaving it out sends that click to a new tab,
+which is the thing Hannita asked to be rid of. A bare move (no page, no params)
+books no form: defaulting it to `page=new` landed people on the board's
+new-item form when all they clicked was the name of the app they were reading.
+
 **Facility bookings are one of those sources.** `loadFacilities()` reads
 `v_fac_requests` out of the same Supabase project with the signed-in person's
 own session, so RLS decides what they see. It draws `block_start`/`block_end`

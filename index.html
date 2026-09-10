@@ -649,6 +649,12 @@ html.dark .hovercard{box-shadow:0 6px 22px rgba(0,0,0,.5)}
 .foot-links .foot-out:hover{text-decoration:underline}
 .foot-links button{font-family:inherit;letter-spacing:inherit;font-size:13px;color:var(--gathering);background:none;border:0;padding:0;cursor:pointer}
 .foot-links button:hover{text-decoration:underline}
+/* An address inside the card, made followable by linkify(). Scoped to the
+   card: a value that wraps needs to break and stay right-aligned, and the
+   label/value rows on the admin screens should not change shape for it. */
+.ecard .kv a,.desc a{color:var(--gathering);text-decoration:none;overflow-wrap:anywhere}
+.ecard .kv a:hover,.desc a:hover{text-decoration:underline}
+.ecard .kv span:last-child{text-align:right;min-width:0}
 .kv button{font-family:inherit;letter-spacing:inherit;font-size:inherit;background:none;border:0;padding:0;cursor:pointer}
 .kv button:hover{text-decoration:underline}
 /* Campus hero cards — one collapsible card per top-level campus, styled after
@@ -1430,6 +1436,67 @@ function partFacts(e){
   });
   return f;
 }
+/* A LOCATION THAT IS A LINK IS "ONLINE".
+   Outlook keeps the meeting URL in the location field, so an Arena call
+   arrived with "https://us06web.zoom.us/meeting/register/zBMZF-CySGeLrpoiNaKiig"
+   standing where the room should be — on the card's own subtitle, in the list,
+   and a third time under Where. Hannita, 10 Sep: "if an event has a zoom link
+   then location should be ONLINE", and "any card with a link should have the
+   hyperlink".
+
+   So the two are separated rather than one printed over the other: placeOf()
+   answers where it is, meetLink() answers how to get in, and linkify() makes
+   any address left in the text followable instead of something to select and
+   copy out of a modal. A hybrid location keeps its room and gains "· Online",
+   because "Rialto Auditorium; https://zoom…" means both.
+
+   The URL is never dropped from the data, only from the place — a card that
+   quietly lost the only way into the meeting would be worse than an ugly one. */
+const URL_RX=()=>/https?:\/\/[^\s<>"')\]]+/g;
+const MEET_HOST=/(^|\.)(zoom\.us|teams\.microsoft\.com|teams\.live\.com|meet\.google\.com|webex\.com|whereby\.com|gotomeeting\.com|bluejeans\.com|chime\.aws)$/i;
+const MEET_NAME={'zoom.us':'Zoom','teams.microsoft.com':'Teams','teams.live.com':'Teams',
+  'meet.google.com':'Google Meet','webex.com':'Webex','whereby.com':'Whereby',
+  'gotomeeting.com':'GoToMeeting','bluejeans.com':'BlueJeans','chime.aws':'Chime'};
+function urlsIn(v){return String(v==null?'':v).match(URL_RX())||[];}
+function hostOf(u){try{return new URL(u).hostname.replace(/^www\./,'');}catch(_){return '';}}
+function meetName(u){
+  const h=hostOf(u);
+  for(const k in MEET_NAME)if(h===k||h.endsWith('.'+k))return MEET_NAME[k];
+  return h||'the link';
+}
+/* The way in, wherever it happens to sit: Outlook's location, the entry's own
+   link, or the description somebody pasted it into. */
+function meetLink(e){
+  if(!e)return '';
+  const all=urlsIn(e.detail).concat(urlsIn(e.location),urlsIn(e.desc));
+  if(e.link&&MEET_HOST.test(hostOf(e.link)))all.unshift(e.link);
+  return all.find(u=>MEET_HOST.test(hostOf(u)))||'';
+}
+/* Where it is, with any address lifted out. Trailing separators go with it,
+   or "Rialto Auditorium; https://…" would read "Rialto Auditorium; · Online". */
+function placeOf(v){
+  const raw=String(v==null?'':v);
+  if(!raw)return '';
+  if(!urlsIn(raw).length)return raw;
+  const rest=raw.replace(URL_RX(),' ').replace(/\s{2,}/g,' ')
+    .replace(/^[\s;,·|>-]+/,'').replace(/[\s;,·|>-]+$/,'');
+  return rest?rest+' · Online':'Online';
+}
+/* Escape first, then make the addresses clickable — the text is user and
+   Outlook content, so nothing here may reach innerHTML unescaped. */
+function linkify(v){
+  const raw=String(v==null?'':v), rx=URL_RX();
+  let out='', last=0, m;
+  while((m=rx.exec(raw))){
+    const u=m[0].replace(/[.,;:)\]]+$/,'');
+    out+=esc(raw.slice(last,m.index))+
+      '<a href="'+esc(u)+'" target="_blank" rel="noopener">'+
+      esc(u.length>56?u.slice(0,53)+'…':u)+'</a>';
+    last=m.index+u.length;
+    rx.lastIndex=last;
+  }
+  return out+esc(raw.slice(last));
+}
 function statusStyle(e){
   const t=palOf(e);
   if(e.status==='done')      return 'background:'+(t.solid||t.hue)+';color:#fff';
@@ -1568,7 +1635,7 @@ function pageHome(){
        :'<div class="empty">Nothing waiting on anyone right now.</div>')+
    '</div><div><h2>Coming up</h2>'+
      (upcoming.length?upcoming.map(e=>'<button class="row" data-ev="'+e.id+'"><span class="when">'+fmt(D(e.date))+'</span>'+
-       '<span class="txt"><span class="name">'+esc(e.title)+'</span><span class="meta">'+esc(e.detail||'')+'</span></span></button>').join('')
+       '<span class="txt"><span class="name">'+esc(e.title)+'</span><span class="meta">'+esc(placeOf(e.detail))+'</span></span></button>').join('')
        :'<div class="empty">No upcoming events loaded.</div>')+
    '</div></div>'+
    '<div class="fb-card">'+
@@ -1703,7 +1770,7 @@ function monthList(){
          return '<button class="cl-ev" data-ev="'+e.id+'">'+
            '<span class="cl-dot" style="background:'+t.hue+'"></span>'+
            '<span class="cl-txt"><span class="cl-name">'+esc(e.title)+'</span>'+
-           (e.detail?'<span class="cl-meta">'+esc(e.detail)+'</span>':'')+'</span>'+
+           (placeOf(e.detail)?'<span class="cl-meta">'+esc(placeOf(e.detail))+'</span>':'')+'</span>'+
            partDots(e)+
            '<span class="tag" style="background:'+t.tint+';color:'+t.deep+'">'+t.label+'</span>'+
            '</button>';
@@ -3315,33 +3382,34 @@ function pageEvent(){
     '</div>'+
     '<h1 style="font-size:26px">'+esc(e.title)+'</h1>'+
     '<div class="sub">'+(e.dateEnd&&e.dateEnd!==e.date?pretty(d)+' – '+pretty(D(e.dateEnd)):pretty(d))+
-      (e.detail?' · '+esc(e.detail):'')+
+      (placeOf(e.detail)?' · '+esc(placeOf(e.detail)):'')+
       // The detail line often already names the campus — a booking's does —
       // and "Los Angeles · 8:00 AM · Los Angeles" reads like a mistake.
-      (facts.campus&&(e.detail||'').indexOf(facts.campus)<0?' · '+esc(facts.campus):'')+'</div>'+
+      (facts.campus&&placeOf(e.detail).indexOf(facts.campus)<0?' · '+esc(facts.campus):'')+'</div>'+
     '<div class="ecard"><div>';
 
   if(e.desc||e.type==='event')
     h+='<div class="eyebrow">DESCRIPTION</div>'+
-       '<div class="desc">'+(e.desc?esc(e.desc):'<span style="color:var(--text2)">No description yet. Descriptions come from the planning board.</span>')+'</div>';
+       '<div class="desc">'+(e.desc?linkify(e.desc):'<span style="color:var(--text2)">No description yet. Descriptions come from the planning board.</span>')+'</div>';
 
   const fac=facts.facility;
   const rows=[['Speaker',facts.speaker||e.speaker],['Clip source',e.clip],['Series',e.series],
               ['Owner',facts.owner||e.owner],['Creative',e.creative],
               ['Phase',facts.phase||e.phase],['Campaign',e.campaign],
               ['Level',facts.level],['Type',e.boardType],
-              ['Time',e.timeOfDay],['Location',e.location],
+              ['Time',e.timeOfDay],['Location',placeOf(e.location)],
               ['Repeats',e.recur==='weekly'?'Every week':null],
-              ['Where',e.type!=='event'?e.detail:null],
+              ['Where',e.type!=='event'?placeOf(e.detail):null],
+              ['Join',meetLink(card)||null],
               // The room's detail is only worth repeating when it is not
               // already the Where line directly above it.
               ['Facilities',fac?(fac.status==='waiting'?'Waiting on a decision'
                 :fac.status==='done'?'Finished':'Approved')
-                +(fac.detail&&fac.detail!==e.detail?' · '+fac.detail:''):null]]
+                +(fac.detail&&fac.detail!==e.detail?' · '+placeOf(fac.detail):''):null]]
              .filter(r=>r[1]);
   if(rows.length){
     h+='<div class="eyebrow">DETAILS</div>'+rows.map((r,i)=>
-      '<div class="kv"'+(i===rows.length-1?' style="border-bottom:0"':'')+'><span>'+r[0]+'</span><span>'+esc(r[1])+'</span></div>').join('');
+      '<div class="kv"'+(i===rows.length-1?' style="border-bottom:0"':'')+'><span>'+r[0]+'</span><span>'+linkify(r[1])+'</span></div>').join('');
   }
 
   h+=milestonesHTML(e.milestones)+rhythmHTML(e.rhythm);
@@ -3409,6 +3477,10 @@ function pageEvent(){
     // than claiming these sends belong to this event.
     '<button data-go="comms" data-item="'+esc(e.date||'')+'">Comms on this day</button>'+
     (isSunday?'<button data-go="numbers" data-item="'+esc(e.date||'')+'">'+(m?'View in Metrics':'Submit attendance')+'</button>':'')+
+    ((card.parts||[e]).map(meetLink).find(Boolean)
+      ?'<a class="foot-out" target="_blank" rel="noopener" href="'+
+        esc((card.parts||[e]).map(meetLink).find(Boolean))+'">Join on '+
+        esc(meetName((card.parts||[e]).map(meetLink).find(Boolean)))+'</a>':'')+
     ((card.parts||[e]).find(x=>x.link&&x.type!=='facility')
       ?'<a class="foot-out" target="_blank" rel="noopener" href="'+esc((card.parts||[e]).find(x=>x.link&&x.type!=='facility').link)+'">Open in Outlook</a>':'')+
     '</div>';
@@ -3525,7 +3597,7 @@ function dayDrawer(k){
   openDrawer('<h1 style="font-size:22px">'+pretty(d)+'</h1><div class="sub">'+evs.length+' items</div>'+
     '<div style="margin-top:16px">'+evs.map(e=>'<button class="row" data-ev="'+e.id+'">'+
     '<span class="swatch" style="background:'+palOf(e).hue+';margin-top:6px"></span>'+
-    '<span class="txt"><span class="name">'+esc(e.title)+partDots(e)+'</span><span class="meta">'+esc(e.detail||'')+'</span></span>'+
+    '<span class="txt"><span class="name">'+esc(e.title)+partDots(e)+'</span><span class="meta">'+esc(placeOf(e.detail))+'</span></span>'+
     '<span class="tag">'+STATUS_LABEL[e.status]+'</span></button>').join('')+'</div>');
 }
 function newDrawer(){
@@ -3696,10 +3768,27 @@ window.addEventListener('message',async e=>{
 const NAV_ALLOWED={
   facilities:['board_item','title','date','end_date','start','end','campus','purpose'],
   comms:     ['board_item','title','date','campus','purpose'],
-  numbers:   ['board_item','title','date','campus']};
+  numbers:   ['board_item','title','date','campus'],
+  /* Planning is the one the facilities event card actually asks for, and it
+     was the only section missing here — "Planning board" on that card fell
+     through the `if(!allowed)` below and opened a new tab, which is exactly
+     what Hannita asked it to stop doing on 10 Sep: "when we're looking at it
+     from the portal, it shouldn't open a new link — it should just open up
+     the section in the app of the portal." */
+  planning:  ['board_item','item','title','date','campus']};
 window.addEventListener('message',e=>{
   if(!EMBED_TRUSTED(e.origin))return;
   const d=e.data||{};
+  /* "CAN YOU?" BEFORE "PLEASE DO."
+     A framed app cannot tell whether the portal around it listens for this,
+     and finding out by trying is worse than it sounds: the answer arrives
+     after the click, and window.open from inside a frame with no user gesture
+     behind it is silently blocked. So the frame asks once on load and renders
+     either a button or a plain link, and this replies. */
+  if(d.type==='mosaic-can-navigate'){
+    try{if(e.source)e.source.postMessage({type:'mosaic-navigate-ok'},e.origin);}catch(_){}
+    return;
+  }
   if(d.type!=='mosaic-navigate')return;
   const sec=SECTIONS.find(x=>x.id===d.section);
   // Silently ignoring an unknown or locked section is right: a framed app should
@@ -3708,17 +3797,28 @@ window.addEventListener('message',e=>{
   const allowed=NAV_ALLOWED[sec.id];
   if(!allowed)return;   // a section nobody has said may be arrived at this way
   /* Kept per section, not in one shared bag: arriving at Comms must not leave
-     an event's details sitting on the Facilities frame's URL. */
-  S.navBook=S.navBook||{};
-  S.navBook[sec.id]={page:(typeof d.page==='string'&&/^[a-z]{1,20}$/.test(d.page))?d.page:'new',params:{}};
+     an event's details sitting on the Facilities frame's URL.
+
+     And only when the frame actually asked for a form. "Open Planning" with
+     no page and no params is just a move between sections, and defaulting it
+     to page=new would land somebody on the board's new-item form when all
+     they clicked was the name of the app they were already looking at. */
+  const page=(typeof d.page==='string'&&/^[a-z]{1,20}$/.test(d.page))?d.page:'';
+  const params={};
   for(const k of allowed){
     const v=d.params&&d.params[k];
-    if(typeof v==='string'&&v)S.navBook[sec.id].params[k]=v.slice(0,2000);
+    if(typeof v==='string'&&v)params[k]=v.slice(0,2000);
   }
-  if(sec.id==='facilities')S.facPath=(d.page==='new')?'new':(S.facPath||'requests');
+  if(page||Object.keys(params).length){
+    S.navBook=S.navBook||{};
+    S.navBook[sec.id]={page:page||'new',params};
+  } else if(S.navBook){ delete S.navBook[sec.id]; }
+  if(sec.id==='facilities')S.facPath=(page==='new')?'new':(S.facPath||'requests');
   S.section=sec.id;
   try{history.pushState({},'',SECTION_PATH[sec.id]||'/');}catch(_){}
   render();
+  // Tell the frame it landed, so it does not open a tab as well.
+  try{if(e.source)e.source.postMessage({type:'mosaic-navigated',section:sec.id},e.origin);}catch(_){}
 });
 
 /* ============================ preview (view as staff/leader/volunteer) ============================ */
