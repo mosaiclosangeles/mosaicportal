@@ -32,12 +32,18 @@
 
 /* ---- embedded apps (full-bleed: the app starts immediately, no header) ---- */
 /* With a frame showing, #main is only the section's own chrome (today: none),
-   so it must not hold a column open beside it. */
-.main-embedded{flex:0;padding:0;min-width:0}
+   so it must not hold a column open beside it.
+   Written as .main.main-embedded on purpose: .main{flex:1} is defined further
+   down this stylesheet, and at equal specificity the later rule wins — which
+   is exactly how this first shipped, with Metrics squeezed into half the
+   window and an empty column beside it. */
+.main.main-embedded{flex:0 0 0;padding:0;min-width:0;overflow:hidden}
 .embed-host{flex:1;min-width:0;position:relative;height:100vh}
 .embed-host iframe{width:100%;height:100%;border:0;display:block;background:#fff;position:absolute;inset:0}
 .embed-host iframe[hidden]{display:none}
 .embed-host .embed-open{z-index:1}
+.card-more{display:flex;align-items:center;gap:4px;margin-top:7px;font-size:12px;opacity:.85}
+.card:hover .card-more{opacity:1;text-decoration:underline}
 .embed-wrap{margin:-24px -28px -60px;position:relative;height:100vh}
 .embed-wrap iframe{width:100%;height:100%;border:0;display:block;background:#fff}
 .embed-open{position:absolute;right:14px;bottom:14px;display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#8a8a8a;background:rgba(255,255,255,.92);border:1px solid #e6e6e5;border-radius:999px;padding:6px 12px;text-decoration:none;box-shadow:0 2px 8px rgba(0,0,0,.06)}
@@ -55,6 +61,8 @@
 .um-name{font-weight:600;font-size:13.5px;color:#000}
 .um-mail{font-size:12px;color:#8a8a8a;margin-top:1px}
 .um-role{display:inline-block;margin-top:8px;font-size:10.5px;padding:3px 8px;border-radius:999px;background:#f2f2f1;color:#4a4a4a;font-weight:500}
+.um-home{display:flex;align-items:center;gap:5px;margin-top:6px;font-size:11px;color:#5c5c5c}
+.um-home svg{width:12px;height:12px;flex:none}
 .um-item{display:flex;align-items:center;gap:9px;width:100%;border:none;background:none;font-family:inherit;letter-spacing:inherit;font-size:13px;color:#000;padding:8px 10px;border-radius:7px;cursor:pointer;text-align:left;text-decoration:none;box-sizing:border-box}
 .um-item:hover{background:#f2f2f1}
 .um-item svg{width:15px;height:15px;color:#5c5c5c;flex:none}
@@ -1619,6 +1627,38 @@ function newMenu(){
         '<span class="nm-s">'+esc(sub)+'</span></span></button>').join('')+
     '</div>';
 }
+/* Ten of them, so somebody signing in three times a day does not read the
+   same line three times. It turns on the half-day rather than the minute: a
+   greeting that changes while you are looking at it reads as a glitch, and one
+   that never changes stops being read at all. Loyda owns wording — these are a
+   starting set, not a final one. */
+const HOME_LINES=[
+  'What do you want to work on today?',
+  "What's the one thing worth moving today?",
+  'Good to see you. Where do you want to start?',
+  "Pick one thing and let's get it moving.",
+  "What's on your mind today?",
+  'Something here is waiting on you. Want to find it?',
+  "Let's make something happen today.",
+  'What would make today a good one?',
+  'Where would you like to begin?',
+  'One good decision today is plenty.'
+];
+function homeLine(){
+  // Stable within a half-day, so a re-render never swaps it mid-read.
+  const half=Math.floor(Date.now()/(12*3600*1000));
+  return HOME_LINES[half%HOME_LINES.length];
+}
+function firstNameOf(n){ return String(n||'').trim().split(/\s+/)[0]||''; }
+/* "on your plate this week" is the planning board's word for it, so it counts
+   what YOU own, not what the week holds. Owners on the board are first names
+   ("David", "Andy"), and a person's portal name may be fuller, so both ends
+   are compared on the first name. */
+function ownedByMe(e){
+  const me=firstNameOf(ME.name).toLowerCase();
+  if(!me)return false;
+  return String(e.owner||'').split(',').map(x=>firstNameOf(x).toLowerCase()).includes(me);
+}
 function pageHome(){
   const ks=Object.keys(METRICS).sort();
   const lastK=ks[ks.length-1], m=lastK?METRICS[lastK]:null;
@@ -1626,19 +1666,32 @@ function pageHome(){
   const avg=prev.length?Math.round(prev.reduce((a,b)=>a+b,0)/prev.length):0;
   const delta=(m&&avg)?Math.round(((m.a-avg)/avg)*1000)/10:0;
   const ws=weekStartOf(TODAY), we=addDays(ws,6);
-  const twEvents=EVENTS.filter(e=>{const d=D(e.date);return d>=ws&&d<=we&&e.type==='event';});
+  const twAll=EVENTS.filter(e=>{const d=D(e.date);return d>=ws&&d<=we&&e.type==='event';});
+  const twMine=twAll.filter(ownedByMe);
+  // Nobody owning anything this week should read as an empty week, not as a
+  // broken card, so it falls back to the whole week and says which it is.
+  const twEvents=twMine.length?twMine:twAll;
+  const twIsMine=twMine.length>0;
   const twComms=EVENTS.filter(e=>{const d=D(e.date);return d>=ws&&d<=we&&e.type==='comms';});
   const upcoming=EVENTS.filter(e=>D(e.date)>=TODAY && e.type==='event').slice(0,5);
   const attn=ATTN.slice(0,6);
-  return '<div class="page-head"><div><h1>Home</h1><div class="sub">'+pretty(TODAY)+' · week '+weekNum(TODAY)+'</div></div>'+
+  const hi=firstNameOf(ME.name);
+  return '<div class="page-head"><div><h1>'+(hi?'Hi, '+esc(hi)+'!':'Hi!')+'</h1>'+
+   '<div class="sub">'+esc(homeLine())+'</div></div>'+
    '<button class="btn-primary" data-newmenu="1">'+ic('plus')+' New</button>'+
    newMenu()+'</div>'+
    (DATA_ERR?'<div class="banner">'+ic('info')+'<div>'+esc(DATA_ERR)+'</div></div>':'')+
    '<div class="cards">'+
-     card('This week',twEvents.length,twComms.length+' comms alongside','calendar','--session')+
-     card('Waiting',attn.length,'speakers + flagged items','calendar','--magenta')+
-     card('To close out',CLOSEOUT,'passed date, still open','planning','--milestone')+
-     card('Attendance',m?m.a:'—',m?((delta>=0?'+':'')+delta+'% vs recent avg'):'no data yet','numbers','--gathering')+
+     card('On your plate this week',twEvents.length,
+          twIsMine?'yours on the board':'across the board — nothing is yours this week','planning','--session')+
+     card('Waiting on you',attn.length,'items waiting on you to look at','calendar','--magenta')+
+     card('To close out',CLOSEOUT,
+          CLOSEOUT===0?'nothing passed its date':'you have '+(CLOSEOUT===1?'a thing':'a couple of things')+' to close out','planning','--milestone')+
+     card(homeCampusName()?"This week's attendance in "+esc(homeCampusName()):"This week's attendance",
+          m?m.a:'—',
+          (m?((delta>=0?'+':'')+delta+'% vs recent avg'):'no data yet')+
+          '<span class="card-more">see full overview'+ic('ext','width:11px;height:11px')+'</span>',
+          'numbers','--gathering')+
    '</div>'+
    '<div class="cols"><div><h2>Worth a look</h2>'+
      (attn.length?attn.map(t=>'<button class="row" data-ev="'+t.evId+'"><span class="when">'+fmt(D(t.date))+'</span>'+
@@ -1683,6 +1736,20 @@ function feedbackDrawer(kind){
     n.textContent='Thank you — this is with the team now.';
     ta.value='';setTimeout(closeDrawer,1200);
   });
+}
+/* A PERSON'S HOME CAMPUS — a preference, not a permission.
+   profiles.campus_id decides what somebody is allowed to SEE, and is an
+   admin's to set. home_campus_id is the campus they work at, theirs to set,
+   and is only ever used to fill a form in for them: submitting attendance,
+   adding to the board, asking for a room. Keeping them apart is the whole
+   point — if this were campus_id, setting your own default would re-scope
+   your own access. Hannita, 10 Sep: "my main campus … whenever I'm reporting
+   something, creating a new event, creating a facility request." */
+let CAMPUSES=[];
+function homeCampusId(){ return ME.home_campus_id||ME.campus_id||null; }
+function homeCampusName(){
+  const c=CAMPUSES.find(x=>x.id===homeCampusId());
+  return c?c.name:'';
 }
 function card(k,v,n,go,c){
   const bg=c?'background:var('+c+'-t);border-color:transparent':'';
@@ -4388,7 +4455,12 @@ function umHtml(){
   const pvLabel=ME.preview?(' · previewing as '+esc(PREVIEW_ROLE_LABEL[ME.previewRole]||ME.previewRole)):"";
   return '<div class="um-head"><span class="um-av">'+avatarHtml(ME.avatar_url,ME.name)+'</span>'+
     '<div><div class="um-name">'+esc(ME.name||"")+'</div><div class="um-mail">'+esc(ME.email||"")+'</div>'+
-    '<span class="um-role">'+(isAdmin?"Admin · all campuses":esc(cap(ME.role||"")))+pvLabel+"</span></div></div>"+
+    '<span class="um-role">'+(isAdmin?"Admin · all campuses":esc(cap(ME.role||"")))+pvLabel+"</span>"+
+    /* The role says what you may reach; the house says where you work. They
+       are different things, which is why an admin can read "all campuses" and
+       still have one home. */
+    (homeCampusName()?'<span class="um-home">'+ic('home')+esc(homeCampusName())+'</span>':'')+
+    "</div></div>"+
     '<button class="um-item" data-profile="1">'+ic("info")+'Profile</button>'+
     (isAdmin?'<button class="um-item" data-go="settings">'+ic("settings")+'App settings</button>'+
       '<button class="um-item" data-go="admin">'+ic("lock")+'Admin</button>'+
@@ -4429,9 +4501,18 @@ async function profilePage(){
         '<div class="kv"><span>Name</span><span><input id="pfName" class="pa-in" style="width:170px;padding:6px 9px;font-size:13px;text-align:right" value="'+esc(ME.name||'')+'"></span></div>'+
         '<div class="kv"><span>Email</span><span>'+esc(ME.email||'')+'</span></div>'+
         '<div class="kv"><span>Role</span><span>'+esc(roleLab)+'</span></div>'+
-        '<div class="kv" style="border-bottom:0"><span>Campus</span><span>'+esc(campusLab)+'</span></div>'+
-        '<button class="btn-primary" id="pfSaveName" style="margin-top:14px">Save name</button>'+
-        '<p style="font-size:12.5px;color:var(--text2);margin:14px 0 0;line-height:1.5">Role and campus are set by an administrator.</p>'+
+        '<div class="kv"><span>Campus</span><span>'+esc(campusLab)+'</span></div>'+
+        /* Yours to set, unlike the two rows above it. It fills a form in for
+           you — attendance, a new event, a room request — and changes nothing
+           about what you are allowed to see. */
+        '<div class="kv" style="border-bottom:0"><span>Home campus</span><span>'+
+          '<select id="pfHome" class="pa-in" style="width:190px;padding:6px 9px;font-size:13px">'+
+          '<option value="">— none —</option>'+
+          CAMPUSES.filter(c=>c.active||c.id===homeCampusId())
+            .map(c=>'<option value="'+esc(c.id)+'"'+(c.id===homeCampusId()?' selected':'')+'>'+esc(c.name)+'</option>').join('')+
+          '</select></span></div>'+
+        '<button class="btn-primary" id="pfSaveName" style="margin-top:14px">Save changes</button>'+
+        '<p style="font-size:12.5px;color:var(--text2);margin:14px 0 0;line-height:1.5">Role and campus are set by an administrator. Your home campus is yours — it fills in the campus when you submit attendance, add something to the board, or ask for a room.</p>'+
       '</div>'+
       '<div class="pf-side">'+
         '<div class="pa-card">'+
@@ -4485,9 +4566,21 @@ async function profilePage(){
     const v=document.getElementById('pfName').value.trim(),n=document.getElementById('pfNote');
     if(!v){n.textContent='Please enter a name.';return;}
     const {data:{user}}=await sb.auth.getUser();
-    const {error}=await sb.from('profiles').update({display_name:v}).eq('id',user.id);
+    const homeSel=document.getElementById('pfHome');
+    const home=homeSel?(homeSel.value||null):undefined;
+    const patch={display_name:v};
+    if(home!==undefined)patch.home_campus_id=home;
+    const {error}=await sb.from('profiles').update(patch).eq('id',user.id);
     if(error){n.textContent="Couldn't save — "+(error.message||'try again.');return;}
-    ME.name=v;ADMIN.profs=null;n.textContent='Name updated.';renderNav();
+    ME.name=v;
+    if(home!==undefined)ME.home_campus_id=home;
+    ADMIN.profs=null;
+    n.textContent='Saved.';
+    // The account menu carries the home campus, and Home's attendance card is
+    // titled with it, so both have to be redrawn rather than left stale.
+    renderNav();
+    try{umPop.innerHTML=umHtml();}catch(_){ }
+    if(S.section==='home')render();
   });
   document.getElementById('pfReset').addEventListener('click',async()=>{
     const n=document.getElementById('pfNote');
@@ -4554,8 +4647,15 @@ async function enterPortal(){
   if(!user)return;
   try{const {data:s}=await sb.auth.getSession();primeSharedSession(s&&s.session);}catch(e){}
   ME.email=user.email;
-  const {data:prof}=await sb.from("profiles").select("role,display_name,full_name,campus_id,avatar_url,app_access,campus_ids").eq("id",user.id).single();
-  if(prof){ME.role=prof.role;ME.name=prof.display_name||prof.full_name;ME.campus_id=prof.campus_id;ME.avatar_url=prof.avatar_url;ME.app_access=prof.app_access;ME.campus_ids=prof.campus_ids;}
+  const {data:prof}=await sb.from("profiles").select("role,display_name,full_name,campus_id,avatar_url,app_access,campus_ids,home_campus_id").eq("id",user.id).single();
+  if(prof){ME.role=prof.role;ME.name=prof.display_name||prof.full_name;ME.campus_id=prof.campus_id;ME.avatar_url=prof.avatar_url;ME.app_access=prof.app_access;ME.campus_ids=prof.campus_ids;ME.home_campus_id=prof.home_campus_id;}
+  /* The campus list, for everyone rather than only admins: the home campus is
+     shown in the account menu and picked on the Profile page, and both of
+     those are for every person, not just the ones who can open Admin. */
+  try{
+    const {data:cs}=await sb.from('campuses').select('id,name,active').order('name');
+    if(cs)CAMPUSES=cs;
+  }catch(_){ }
   if(!ME.name||ME.name.includes("@"))ME.name=prettyNameFromEmail(ME.email);
   if(ROLE_PRESET[ME.role])S.role=ROLE_PRESET[ME.role];
   /* The calendar opens on your own campus, because that is what you came to
