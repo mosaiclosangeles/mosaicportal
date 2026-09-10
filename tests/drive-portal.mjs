@@ -61,6 +61,26 @@ await step('a sub-menu click changes the page the iframe loads',async()=>{
   console.log('       '+src);
 });
 await p.screenshot({path:'portal-facilities.png'});
+
+console.log('--- metrics tabs on the rail ---');
+// Four edits, not one (see CLAUDE.md). The easiest to miss is the closest()
+// list at the top of the click handler: without [data-mp] there, the sub-menu
+// renders and does nothing at all.
+await step('Metrics puts its six views on the rail',async()=>{
+  await p.click('#nav button[data-go="numbers"]'); await p.waitForTimeout(400);
+  const subs=await p.$$eval('#nav .subnav button',n=>n.map(x=>x.textContent.trim()));
+  console.log('       '+subs.join(' | '));
+  const want=['Overview','Campuses','Kids + Future','Trends','Report','History'];
+  if(subs.join('|')!==want.join('|'))throw new Error('got '+subs.join(' | '));
+});
+await step('and a click carries the view into the frame',async()=>{
+  await p.click('#nav .subnav button:has-text("Trends")');
+  await p.waitForFunction(()=>{const f=document.querySelector('.embed-wrap iframe');
+    return f&&f.src.includes('view=trends');},{timeout:5000});
+  const on=await p.$$eval('#nav .subnav button.on',n=>n.map(x=>x.textContent.trim()));
+  console.log('       '+await p.getAttribute('.embed-wrap iframe','src'));
+  if(on.join()!=='Trends')throw new Error('the rail did not follow: '+on.join());
+});
 await p.close();
 
 console.log('--- deep link ---');

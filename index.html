@@ -1114,6 +1114,7 @@ const S = {
   from:'calendar',
   goalsPath:'/',
   facPath:'requests',   // which Facilities page the sub-menu has selected
+  numPath:'overview',   // and which Metrics view
   deep:{}   // section -> the item that section should open on arrival
 };
 
@@ -1147,6 +1148,21 @@ const FAC_NAV=[
   {page:'new',label:'New request'},
   {page:'calendar',label:'Calendar'},
   {page:'spaces',label:'Spaces & resources',admin:true}
+];
+/* Metrics' own tabs, on the rail. Hannita, 10 Sep: "the tabs at the top should
+   be now on the left hand side for the portal view… like here in the
+   facilities." Hand-written here, the same as FAC_NAV and GOALS_NAV — a view
+   added inside Metrics has to be added here too or it will not appear.
+   Not filtered by role: Metrics decides that. switchView() bounces a view the
+   person is not allowed back to Overview, so an entry they cannot use lands
+   somewhere sensible rather than nowhere. */
+const METRICS_NAV=[
+  {page:'overview', label:'Overview'},
+  {page:'campuses', label:'Campuses'},
+  {page:'kidsyouth',label:'Kids + Future'},
+  {page:'trends',   label:'Trends'},
+  {page:'report',   label:'Report'},
+  {page:'history',  label:'History'}
 ];
 function facNavItems(){
   const isAdmin=ME.role==='admin'&&!ME.preview;
@@ -1287,6 +1303,11 @@ function renderNav(){
       (it.restricted?'<span class="lock" title="Restricted">'+ic('lock')+'</span>':'')+
       (it.beta?'<span class="badge">BETA</span>':(it.count?'<span class="count">'+it.count+'</span>':''))+
       '</button>');
+    if(it.id==='numbers'&&S.section==='numbers'){
+      out.push('<div class="subnav">'+METRICS_NAV.map(m=>
+        '<button data-mp="'+esc(m.page)+'" class="'+(S.numPath===m.page?'on':'')+'">'+
+        esc(m.label)+'</button>').join('')+'</div>');
+    }
     if(it.id==='facilities'&&S.section==='facilities'){
       out.push('<div class="subnav">'+facNavItems().map(f=>
         '<button data-fp="'+esc(f.page)+'" class="'+(S.facPath===f.page?'on':'')+'">'+
@@ -1488,6 +1509,7 @@ function pageEmbed(id){
   let src=sec.url;
   if(id==='goals')src+=(S.goalsPath==='/'?'':S.goalsPath);
   if(id==='facilities')src+=(src.includes('?')?'&':'?')+'page='+(S.facPath||'requests');
+  if(id==='numbers')src+=(src.includes('?')?'&':'?')+'view='+(S.numPath||'overview');
   if(id==='numbers'||id==='comms'||id==='planning'||id==='goals'||id==='facilities')
     src+=(src.includes('?')?'&':'?')+'embed=portal';
   // Arriving from an event: tell the app which one, so people land on the
@@ -3348,7 +3370,7 @@ document.addEventListener('toggle',e=>{
   if(d.open)ADMIN.campusOpen.add(d.dataset.campus);else ADMIN.campusOpen.delete(d.dataset.campus);
 },true);
 document.addEventListener('click',e=>{
-  const t=e.target.closest('[data-go],[data-view],[data-nav],[data-filter],[data-ev],[data-day],[data-task],[data-new],[data-pick],[data-everyone],[data-tl],[data-back],[data-logout],[data-preview],[data-previewexit],[data-previewgo],[data-pickertoggle],[data-pickerrole],[data-profile],[data-fb],[data-newuser],[data-gp],[data-fp],[data-user],[data-pinv],[data-pinvsend],[data-pinvdel],[data-adtab],[data-theme],[data-newcampus],[data-editcampus],[data-addloc],[data-deactivateloc],[data-addtime],[data-rmtime],[data-toggleinactivecampus],[data-toggleusers]');
+  const t=e.target.closest('[data-go],[data-view],[data-nav],[data-filter],[data-ev],[data-day],[data-task],[data-new],[data-pick],[data-everyone],[data-tl],[data-back],[data-logout],[data-preview],[data-previewexit],[data-previewgo],[data-pickertoggle],[data-pickerrole],[data-profile],[data-fb],[data-newuser],[data-gp],[data-fp],[data-mp],[data-user],[data-pinv],[data-pinvsend],[data-pinvdel],[data-adtab],[data-theme],[data-newcampus],[data-editcampus],[data-addloc],[data-deactivateloc],[data-addtime],[data-rmtime],[data-toggleinactivecampus],[data-toggleusers]');
   if(!t) return;
   if(t.dataset.logout){ (sb?sb.auth.signOut():Promise.resolve()).then(()=>location.reload()); return; }
   if(t.dataset.pickertoggle){
@@ -3438,6 +3460,7 @@ document.addEventListener('click',e=>{
   if(t.dataset.fb){ feedbackDrawer(t.dataset.fb); return; }
   if(t.dataset.gp!==undefined){ S.goalsPath=t.dataset.gp; S.section='goals'; render(); return; }
   if(t.dataset.fp!==undefined){ S.facPath=t.dataset.fp; S.section='facilities'; render(); return; }
+  if(t.dataset.mp!==undefined){ S.numPath=t.dataset.mp; S.section='numbers'; render(); return; }
   if(t.dataset.user){ S.from='admin'; S.adminUserId=t.dataset.user; S.section='admin-user'; render(); return; }
   if(t.dataset.pinv){ paInviteDrawer(t.dataset.pinv); return; }
   if(t.dataset.pinvsend){
