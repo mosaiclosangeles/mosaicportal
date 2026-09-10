@@ -47,10 +47,13 @@ await step('the URL becomes /facilities',async()=>{
   const u=await p.evaluate(()=>location.pathname);
   if(u!=='/facilities')throw new Error('path is '+u);
 });
-await step('the sub-menu lists its pages',async()=>{
+await step('the sub-menu lists its pages, and not the form',async()=>{
   const subs=await p.$$eval('#nav .subnav button',n=>n.map(x=>x.textContent.trim()));
   console.log('       '+subs.join(' | '));
-  if(subs.length!==4)throw new Error('expected 4, got '+subs.length);
+  if(subs.length!==3)throw new Error('expected 3, got '+subs.length);
+  // "New request" is a card inside the app, not a page on the rail — Hannita,
+  // 10 Sep. A rail entry for it would be a second way to the same card.
+  if(subs.some(x=>/new request/i.test(x)))throw new Error('the form is back on the rail');
 });
 await step('a sub-menu click changes the page the iframe loads',async()=>{
   await p.click('#nav .subnav button:has-text("Calendar")');
