@@ -1254,9 +1254,15 @@ const GOALS_NAV=[
    too — nothing reads the app's nav at runtime. Spaces & resources is admin
    only, and the app itself falls back to Requests if somebody without the
    permission arrives there, so the two cannot disagree. */
+/* Facilities' own pages, on the rail. "New request" is deliberately not among
+   them: Hannita, 10 Sep — "can we have the new request tab not be a tab, but
+   it's just the option available in the requests tab?" The form opens as a
+   card over whichever facilities page you are on, from the "+ New request"
+   button inside the app, so a rail entry for it would be a second way to the
+   same card and a page nobody navigates to. ?page=new still works, which is
+   how the planning board hands a booking over with the event filled in. */
 const FAC_NAV=[
   {page:'requests',label:'Requests'},
-  {page:'new',label:'New request'},
   {page:'calendar',label:'Calendar'},
   {page:'spaces',label:'Spaces & resources',admin:true}
 ];
