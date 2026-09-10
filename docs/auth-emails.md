@@ -92,9 +92,18 @@ You've been given a Mosaic Portal account
     <li style="margin-bottom:6px">The planning board — the program year, and what your team owns in it</li>
   </ul>
 
-  <p style="margin:0 0 24px">
-    Choose a password and you're in. If you already sign in to Metrics, it's
-    the same account — use the password you already have.
+  <div style="margin:0 0 24px;padding:14px 16px;background:#f4f4f2;border-radius:8px">
+    <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+                color:#8a8a8a;font-weight:600">Your account</div>
+    <div style="margin-top:5px;font-size:15px">
+      {{ if .Data.full_name }}{{ .Data.full_name }}<br>{{ end }}
+      <span style="color:#555">{{ .Email }}</span>
+    </div>
+  </div>
+
+  <p style="margin:0 0 28px">
+    Choose a password on the next screen and you're in. If you already sign in
+    to Metrics, it's the same account — use the password you already have.
   </p>
 
   <p style="margin:0 0 28px">
@@ -155,11 +164,18 @@ Reset your Mosaic Portal password
 
 ## Two notes for whoever pastes these
 
-**`{{ .Data.first_name }}` works because the edge function sets it.**
-`invite-user` passes `data: { full_name, first_name }` into
-`inviteUserByEmail`, so the greeting has a name for anyone invited through the
-portal's admin screen. The `{{ if }}` guard means a missing name degrades to a
-plain "Hi," rather than "Hi ,".
+**`{{ .Data.first_name }}` and `{{ .Data.full_name }}` work because the edge
+function sets them.** `invite-user` passes `data: { full_name, first_name }`
+into `inviteUserByEmail`, so the greeting and the account block have a name
+for anyone invited through the portal's admin screen. The `{{ if }}` guards
+mean a missing name degrades to a plain "Hi," and to the email address alone,
+rather than to "Hi ," and a blank line.
+
+**The account block says which address to sign in with, and no more.**
+There is no password in this email and there should not be — the button is a
+one-time link and the person chooses their own password on the portal. An
+email that carries a working password is an email that is still carrying it a
+year later, in an inbox, on a phone, in whatever it was forwarded to.
 
 **The link is `{{ .ConfirmationURL }}` and nothing else.** No second copy of
 the URL as text to paste, which is what Loyda struck out.
