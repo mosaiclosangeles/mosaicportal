@@ -945,10 +945,9 @@ function mapLive(pis,ces){
        type (Event, Program, Campaign, Staff date), its own status wording, the
        time, the location and whether it repeats. Dropping them here is why the
        card showed less than the board's drawer does.
-       Milestones and the Rhythm's ticks are NOT here — they live in
-       planning_board_state, which the mirror does not copy — so the card links
-       to Planning for those rather than inventing them. */
-    const base={type:'event',title,campus:r.campus,level:r.level,phase:r.phase_now,speaker:r.speaker,
+       Milestones and the Rhythm's ticks are here too, since the sync started
+       computing them off the board's own milestoneDates() and PHASE_INFO. */
+    const base={type:'event',title,boardId:r.id,campus:r.campus,level:r.level,phase:r.phase_now,speaker:r.speaker,
       boardType:r.type,boardStatus:r.status,recur:r.recur,location:r.location,timeOfDay:r.time_of_day,
       milestones:r.milestones||null,rhythm:r.rhythm||null,
       series:r.is_series?title:undefined,owner:(r.owners||[]).join(', '),desc:r.description,
@@ -988,7 +987,7 @@ function mapLive(pis,ces){
   ATTN.sort((a,b)=>D(a.date)-D(b.date));
   ces.forEach(r=>{
     if(r.archived||!r.event_date)return;
-    EVENTS.push({id:'ce:'+r.id,date:r.event_date,type:'comms',
+    EVENTS.push({id:'ce:'+r.id,date:r.event_date,type:'comms',boardItemId:r.board_item_id||null,
       status:CE_STATUS[String(r.status||'').toLowerCase()]||'drafting',
       title:r.title||(r.type||'Comm'),
       detail:(r.subtitle||r.type||'')+(r.sender?' · '+r.sender:'')});
@@ -1000,7 +999,7 @@ async function loadLive(){
   try{
     const [pis,ces]=await Promise.all([
       pmGet('planning_items?select=*&deleted=eq.false'),
-      pmGet('comm_events?select=id,event_date,type,title,subtitle,status,sender,archived&archived=eq.false')
+      pmGet('comm_events?select=id,event_date,type,title,subtitle,status,sender,archived,board_item_id&archived=eq.false')
     ]);
     mapLive(pis,ces);
   }catch(e){DATA_ERR="Couldn't load live planning data — "+e.message+". Showing an empty calendar; the planning board itself is unaffected.";}
@@ -1266,6 +1265,19 @@ function commRelated(c,e){
   const cw=subjectWords(c.title), ew=new Set(subjectWords(e.title));
   if(!cw.length||!ew.size)return false;
   return cw.every(w=>ew.has(w));
+}
+/* WHEN SOMEBODY HAS SAID, WE DO NOT GUESS.
+   comm_events.board_item_id is the comms app's "For which event?" picker.
+   Set, it is the whole answer: no window and no word matching, and the comm
+   belongs to that item and to no other — a message named for Men's Camp does
+   not also drift onto Regional Bible Studies because two words happened to
+   line up. Null means nobody has said, so the inference above still runs.
+   That is the one-way door this needs: filling the field can only ever make
+   the answer more right, never less. */
+function commLink(c,e){
+  if(c.boardItemId)return c.boardItemId===e.boardId;
+  const d=D(c.date), [a,b]=commWindow(e);
+  return d>=a&&d<=b&&commRelated(c,e);
 }
 function mergeCards(list){
   const groups=new Map(), loose=[];
@@ -3087,11 +3099,11 @@ function pageEvent(){
      So the link is the subject (commRelated) inside the event's own runway
      (commWindow) — which is what "a men's text or the men's email, even if it
      was a past date or a future date" actually means.
-     The real fix is still upstream: comm_events needs a reference to the item
-     it is for. Then this becomes an exact match and is right every time. */
-  const [winA,winB]=commWindow(e);
-  const commsForEvent=EVENTS.filter(x=>x.type==='comms'
-      &&D(x.date)>=winA&&D(x.date)<=winB&&commRelated(x,e))
+     That inference is now the fallback, not the rule: comm_events carries a
+     board_item_id, set from the comms app's own picker, and commLink() takes
+     it over any guess. Hannita, 10 Sep: keep inferring meanwhile, because the
+     field is not required and most rows do not have one yet. */
+  const commsForEvent=EVENTS.filter(x=>x.type==='comms'&&commLink(x,e))
                     .sort((a,b)=>D(a.date)-D(b.date));
   const subs=TASKS.filter(x=>(camp&&x.campaign===camp)||(!camp&&x.parent===e.title));
   const doneN=subs.filter(x=>x.done).length;

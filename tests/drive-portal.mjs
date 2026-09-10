@@ -202,6 +202,29 @@ await step('comms attach by subject, not by the day they go out',async()=>{
   if(r.runway[0]!=='2026-08-01'||r.runway[1]!=='2026-11-01')
     throw new Error('the window should be Kick-Off to Debrief, got '+r.runway.join(' to '));
 });
+/* A link somebody actually made beats any guess, and stops the guessing.
+   Without this, a comm named for one event could still drift onto another that
+   happened to share its words. */
+await step('an explicit board_item_id wins over the guess',async()=>{
+  const r=await p.evaluate(()=>{
+    const camp={title:"Men's Camp",boardId:'k:men-s-camp',date:'2026-09-11'};
+    const other={title:'Mens Ministry Night',boardId:'k:other',date:'2026-09-11'};
+    const linked={title:'Mens Text',date:'2026-09-05',boardItemId:'k:men-s-camp'};
+    const loose ={title:'Mens Camp',date:'2026-09-05'};
+    return {
+      linkedToIts:   commLink(linked,camp),
+      linkedNotOther:commLink(linked,other),   // named for the Camp, so only the Camp
+      looseInferred: commLink(loose,camp),
+      // an explicit link ignores the window entirely — a debrief email months later
+      farOutside:    commLink({title:'x',date:'2027-04-01',boardItemId:'k:men-s-camp'},camp)
+    };
+  });
+  console.log('       '+JSON.stringify(r));
+  if(!r.linkedToIts)throw new Error('the linked comm should reach its own event');
+  if(r.linkedNotOther)throw new Error('a linked comm must not also drift onto another event');
+  if(!r.looseInferred)throw new Error('an unlinked comm should still be inferred');
+  if(!r.farOutside)throw new Error('an explicit link should not be bounded by the window');
+});
 /* Merge first, then filter. Backwards, a campus picker on another campus threw
    the board's record away before the merge could reach it, and Men's Camp
    opened as the shared calendar's bare copy — a title, two dates, nothing. */
