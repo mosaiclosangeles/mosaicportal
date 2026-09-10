@@ -437,23 +437,44 @@ h2{font-size:16px;font-weight:600;letter-spacing:-.015em;margin:0 0 6px}
 .chip.on{background:var(--fill);border-color:#dedede;color:#000;font-weight:500}
 .chip.off{opacity:.45}
 .swatch{width:7px;height:7px;border-radius:2px;flex:none}
+.campussel{margin-left:auto;font-family:inherit;font-size:12px;color:var(--text);
+  background:var(--surface);border:1px solid var(--hairline);border-radius:var(--r-ctrl);
+  padding:5px 9px;cursor:pointer}
+.campussel:hover{border-color:var(--grid)}
 
-/* ---------- calendar ---------- */
+/* ---------- calendar ----------
+   ONE CALENDAR, EVERYWHERE. Loyda, 8 Sep: "we want all the calendars to look
+   the same… I'm still seeing the same user interface, so I'm not feeling like
+   I'm pivoting." Comms and the Planning Board already agree; the portal was
+   the odd one out and read as messy beside them. These numbers are Comms'
+   (public/index.html) — the panel, the uppercase head on a tinted ground, the
+   124px cell, the 8px padding, the 4px gap, the pill. Change them here and in
+   Comms together, or the three drift apart again.
+
+   What is deliberately NOT copied is how status is drawn. Comms puts a flag
+   on the pill; the portal fills it, because hue = type and fill = status is
+   the rule in docs/mosaic-tokens.css and the legend below the grid says so. */
+.calwrap{background:var(--surface);border:1px solid var(--hairline);
+  border-radius:var(--r-card);overflow:hidden}
 .wk-head,.wk-body{display:grid;grid-template-columns:repeat(7,minmax(0,1fr))}
-.wk-head div{font-size:11.5px;color:var(--text2);padding:0 0 7px 4px}
-.wk-head div.today{color:#000;font-weight:500}
-.wk-body{border-top:1px solid var(--grid)}
-.cell{border-left:1px solid var(--grid);padding:5px 4px 8px;min-height:120px}
-.cell:first-child{border-left:0}
-.cell.sun{background:#fcfcfc}
-.daynum{font-size:11.5px;color:var(--text2);margin-bottom:4px}
-.daynum.today span{background:#000;color:#fff;border-radius:50%;width:19px;height:19px;
-  display:inline-flex;align-items:center;justify-content:center;font-size:10.5px}
-.ev{display:block;width:100%;text-align:left;font-size:10.5px;line-height:1.28;padding:3px 5px;
-  border-radius:4px;margin-bottom:3px;border-left:2.5px solid;overflow:hidden;
-  text-overflow:ellipsis;white-space:nowrap}
-.ev:hover{filter:brightness(.97)}
-.more{font-size:10px;color:var(--text3);padding-left:5px}
+.wk-head{background:var(--fill)}
+.wk-head div{font-size:11px;text-transform:uppercase;letter-spacing:.12em;font-weight:600;
+  color:var(--text2);padding:14px 12px;text-align:left}
+.wk-head div.today{color:var(--text)}
+.cell{border-top:1px solid var(--separator);border-left:1px solid var(--separator);
+  padding:8px;min-height:124px;display:flex;flex-direction:column;gap:4px;min-width:0;
+  overflow:hidden;background:var(--surface)}
+.cell:nth-child(7n+1){border-left:0}
+.cell.out{background:var(--fill)}
+.cell.out .daynum{opacity:.4}
+.daynum{font-size:13px;color:var(--text2);font-weight:500;margin-bottom:2px}
+.daynum.today span{background:var(--text);color:#fff;border-radius:50%;width:24px;height:24px;
+  display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:600}
+.ev{display:block;width:100%;text-align:left;font-size:11px;line-height:1.3;padding:4px 8px;
+  border-radius:4px;font-weight:500;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap;transition:transform .1s ease,filter .15s ease}
+.ev:hover{transform:translateX(2px);filter:brightness(.95)}
+.more{font-size:11px;color:var(--text3);text-align:left;padding:0 8px}
 .bars{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));padding-top:4px}
 .bar{font-size:10px;padding:2px 7px;border-radius:4px;margin:0 3px 4px;overflow:hidden;
   white-space:nowrap;text-overflow:ellipsis;text-align:left;width:calc(100% - 6px)}
@@ -758,11 +779,48 @@ const SRC_NOTE={
   staff: 'The shared Mosaic Calendar — meetings, rehearsals, birthdays, closures and time away',
   fac:   'Room bookings from facilities.mosaic.org, setup and teardown included'
 };
+/* CAMPUS IS AN ATTRIBUTE, AND THE THREE SOURCES SPELL IT DIFFERENTLY.
+   The planning board stores "LA" and "NYC" (its CAMPUS_BASE); facilities
+   stores the campuses table's own name, "Los Angeles". Same campus, two
+   spellings, so a filter that compared the raw strings would show a campus
+   half its own work. Everything is folded onto CAMPUS_ORDER's names here. */
+const CAMPUS_ALIAS={
+  'la':'Los Angeles','los angeles':'Los Angeles',
+  'nyc':'New York City','ny':'New York City','new york':'New York City',
+  'new york city':'New York City',
+  'oc':'Orange County','orange county':'Orange County',
+  'chicago':'Chicago','atlanta':'Atlanta','seattle':'Seattle','london':'London',
+  'mexico':'Mexico','mexico city':'Mexico','cdmx':'Mexico','mx':'Mexico',
+  'ecuador':'Ecuador','online':'Mosaic Online','mosaic online':'Mosaic Online'
+};
+function campusOf(e){
+  const raw=(e&&e.campus||'').trim();
+  if(!raw)return '';
+  return CAMPUS_ALIAS[raw.toLowerCase()]||raw;
+}
 const TYPE_SOURCE={};
 Object.keys(SOURCES).forEach(k=>SOURCES[k].types.forEach(t=>{TYPE_SOURCE[t]=k;}));
 /* Does this entry belong to a source the person still has switched on?
    An item whose type maps to no source (comms) is never on the calendar. */
-function shown(e){const src=TYPE_SOURCE[e.type];return !!src&&S.filters.has(src);}
+function shown(e){
+  const src=TYPE_SOURCE[e.type];
+  if(!src||!S.filters.has(src))return false;
+  // An entry with no campus — most of the shared staff calendar — belongs to
+  // everybody, so a campus filter narrows the board without hiding it. A card
+  // nobody can see is a card nobody works on.
+  const c=campusOf(e);
+  return !S.campus||!c||c===S.campus;
+}
+/* Only the campuses actually on the calendar, so the dropdown never offers a
+   campus with nothing behind it. The person's own campus is always listed,
+   even in a quiet week, or the default would select something invisible. */
+function campusesOnCalendar(){
+  const seen=new Set();
+  EVENTS.forEach(e=>{const c=campusOf(e);if(c)seen.add(c);});
+  CAMPAIGNS.forEach(e=>{const c=campusOf(e);if(c)seen.add(c);});
+  if(S.campus)seen.add(S.campus);
+  return [...seen].sort((a,b)=>campusSortIndex(a)-campusSortIndex(b));
+}
 // status: done | scheduled | waiting | drafting
 /* ---- live data ----------------------------------------------------------
    EVENTS / CAMPAIGNS come from the planning board's queryable mirror
@@ -951,6 +1009,7 @@ const S = {
   anchor:new Date(TODAY),
   month:new Date(TODAY.getFullYear(),TODAY.getMonth(),1),
   filters:new Set(Object.keys(SOURCES)),
+  campus:'',   // '' is every campus; set to the person's own once the profile loads
   role:'comms',
   forEveryone:false,
   tlShift:0,
@@ -1006,9 +1065,9 @@ function goalsNavItems(){
 function evOn(dt){return EVENTS.filter(e=>e.date===key(dt) && shown(e));}
 function statusStyle(e){
   const t=TYPES[e.type];
-  if(e.status==='done')      return 'border-left-color:'+(t.solid||t.hue)+';background:'+(t.solid||t.hue)+';color:#fff';
-  if(e.status==='scheduled') return 'border-left-color:'+t.hue+';background:'+t.tint+';color:'+t.deep;
-  if(e.status==='waiting')   return 'border-left-color:'+t.hue+';background:#fff;color:'+t.deep+';border-top:1px dashed '+t.hue+';border-right:1px dashed '+t.hue+';border-bottom:1px dashed '+t.hue;
+  if(e.status==='done')      return 'background:'+(t.solid||t.hue)+';color:#fff';
+  if(e.status==='scheduled') return 'background:'+t.tint+';color:'+t.deep;
+  if(e.status==='waiting')   return 'background:var(--surface);color:'+t.deep+';border:1px dashed '+t.hue;
   return 'border-left-color:'+t.hue+';background:#fcfcfb;color:'+t.deep+';opacity:.8';
 }
 const STATUS_LABEL={done:'Sent',scheduled:'Scheduled',waiting:'Waiting on someone',drafting:'Drafting'};
@@ -1173,7 +1232,7 @@ function filterBar(){
   return '<div class="filters">'+Object.keys(SOURCES).map(k=>
     '<button class="chip '+(S.filters.has(k)?'on':'off')+'" data-filter="'+k+'">'+
     '<span class="swatch" style="background:'+SOURCES[k].hue+'"></span>'+SOURCES[k].label+'</button>').join('')+
-    '<button class="chip" data-filter="__all">All</button></div>'+
+    '<button class="chip" data-filter="__all">All</button>'+campusPicker()+'</div>'+
     ((S.filters.has('staff')||S.filters.has('fac'))
       ? '<div style="font-size:12px;color:var(--text2);margin:-8px 0 14px">'+
         [S.filters.has('staff')
@@ -1184,6 +1243,16 @@ function filterBar(){
           ? 'Facilities comes from facilities.mosaic.org, and shows the room held — setup and teardown included, not just the event itself. Anything still waiting on a decision is drawn as waiting.'
           : ''].filter(Boolean).join(' ')+'</div>'
       : '');
+}
+/* Sits with the source chips: same row, same height, because it is the same
+   kind of decision — what am I looking at. */
+function campusPicker(){
+  const list=campusesOnCalendar();
+  if(!list.length)return '';
+  return '<select class="campussel" data-campus="1" aria-label="Campus">'+
+    '<option value=""'+(S.campus?'':' selected')+'>All campuses</option>'+
+    list.map(c=>'<option value="'+esc(c)+'"'+(S.campus===c?' selected':'')+'>'+esc(c)+'</option>').join('')+
+    '</select>';
 }
 function legend(){
   return '<div class="legend">'+
@@ -1212,16 +1281,16 @@ function weekGrid(ws){
   h+='</div>'+barsFor(ws)+'<div class="wk-body">';
   for(let i=0;i<7;i++){
     const d=addDays(ws,i), evs=evOn(d);
-    h+='<div class="cell'+(i===0?' sun':'')+'">'+
+    h+='<div class="cell">'+
       evs.map(e=>'<button class="ev" data-ev="'+e.id+'" style="'+statusStyle(e)+'">'+esc(e.title)+'</button>').join('')+
       '</div>';
   }
-  return h+'</div>';
+  return '<div class="calwrap">'+h+'</div></div>';
 }
 function monthGrid(){
   const first=new Date(S.month.getFullYear(),S.month.getMonth(),1);
   const start=weekStartOf(first);
-  let h='<div class="wk-head">'+DOW.map(d=>'<div>'+d+'</div>').join('')+'</div>';
+  let h='<div class="calwrap"><div class="wk-head">'+DOW.map(d=>'<div>'+d+'</div>').join('')+'</div>';
   for(let w=0;w<6;w++){
     const ws=addDays(start,w*7);
     if(w>0 && ws.getMonth()!==S.month.getMonth() && ws>first) break;
@@ -1229,7 +1298,7 @@ function monthGrid(){
     for(let i=0;i<7;i++){
       const d=addDays(ws,i), evs=evOn(d), out=d.getMonth()!==S.month.getMonth();
       const show=evs.slice(0,2), rest=evs.length-show.length;
-      h+='<div class="cell'+(i===0?' sun':'')+'" style="min-height:82px'+(out?';opacity:.4':'')+'">'+
+      h+='<div class="cell'+(out?' out':'')+'" style="min-height:104px">'+
         '<div class="daynum'+(same(d,TODAY)?' today':'')+'">'+(same(d,TODAY)?'<span>'+d.getDate()+'</span>':d.getDate())+'</div>'+
         show.map(e=>'<button class="ev" data-ev="'+e.id+'" style="'+statusStyle(e)+'">'+esc(e.title)+'</button>').join('')+
         (rest>0?'<button class="more" data-day="'+key(d)+'">+'+rest+' more</button>':'')+
@@ -1237,7 +1306,7 @@ function monthGrid(){
     }
     h+='</div></div>';
   }
-  return h;
+  return h+'</div>';
 }
 
 /* Sections that embed one of the existing apps. The app stays the system of
@@ -3148,8 +3217,9 @@ document.addEventListener('click',e=>{
     else { S.month=new Date(S.month.getFullYear(),S.month.getMonth()+n,1); }
     render(); return;
   }
+  if(t.dataset.campus){ return; }   // handled on change, not click
   if(t.dataset.filter){
-    if(t.dataset.filter==='__all'){ S.filters=new Set(Object.keys(SOURCES)); }
+    if(t.dataset.filter==='__all'){ S.filters=new Set(Object.keys(SOURCES)); S.campus=''; }
     else if(S.filters.has(t.dataset.filter)){ S.filters.delete(t.dataset.filter); }
     else { S.filters.add(t.dataset.filter); }
     render(); return;
@@ -3269,6 +3339,12 @@ function gateMode(mode){
   const n=$g("gateNote");if(n)n.className="gate-note";
   if(copy[2])gateNote(copy[2],"ok");
 }
+document.addEventListener('change',e=>{
+  const sel=e.target.closest&&e.target.closest('[data-campus]');
+  if(!sel)return;
+  S.campus=sel.value;
+  render();
+});
 $g("gForgotLink").addEventListener("click",()=>gateMode("forgot"));
 $g("gBackToSignIn").addEventListener("click",()=>gateMode("signin"));
 async function gateSignIn(){
@@ -3537,6 +3613,16 @@ async function enterPortal(){
   if(prof){ME.role=prof.role;ME.name=prof.display_name||prof.full_name;ME.campus_id=prof.campus_id;ME.avatar_url=prof.avatar_url;ME.app_access=prof.app_access;ME.campus_ids=prof.campus_ids;}
   if(!ME.name||ME.name.includes("@"))ME.name=prettyNameFromEmail(ME.email);
   if(ROLE_PRESET[ME.role])S.role=ROLE_PRESET[ME.role];
+  /* The calendar opens on your own campus, because that is what you came to
+     look at — "the default campus would be based off of the campus that
+     you're a part of" (Hannita, 8 Sep). Everything with no campus of its own
+     still shows, and All campuses is one click away. */
+  if(prof&&prof.campus_id){
+    try{
+      const {data:c}=await sb.from('campuses').select('name').eq('id',prof.campus_id).single();
+      if(c&&c.name)S.campus=CAMPUS_ALIAS[c.name.toLowerCase()]||c.name;
+    }catch(_){/* no campus name, no default — All campuses is a fine start */}
+  }
   loadTheme();
   const want=PATH_SECTION[location.pathname.replace(/\/+$/,"")||"/"];
   if(want&&allowedSections().includes(want))S.section=want;
