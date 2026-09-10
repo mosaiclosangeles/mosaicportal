@@ -3053,7 +3053,7 @@ function pageEvent(){
      The real fix is upstream: comm_events needs a reference to the item it is
      for. Then this becomes an exact match and the section is right every
      time. */
-  const comms=EVENTS.filter(x=>x.type==='comms'&&normTitle(x.title)&&normTitle(x.title)===normTitle(e.title))
+  const commsSameName=EVENTS.filter(x=>x.type==='comms'&&normTitle(x.title)&&normTitle(x.title)===normTitle(e.title))
                     .sort((a,b)=>D(a.date)-D(b.date));
   const subs=TASKS.filter(x=>(camp&&x.campaign===camp)||(!camp&&x.parent===e.title));
   const doneN=subs.filter(x=>x.done).length;
@@ -3110,14 +3110,29 @@ function pageEvent(){
       '<div class="kv"><span>'+esc(SOURCES[laneOf(x)]?SOURCES[laneOf(x)].label:'')+'</span>'+
       '<span>'+esc(x.title)+'</span></div>').join('');
   }
-  if(comms.length){
-  h+='<div class="eyebrow">COMMS FOR THIS EVENT · '+comms.length+'</div>';
-  h+= comms.map(c=>'<button class="row" data-ev="'+c.id+'"><span class="when">'+fmt(D(c.date))+'</span>'+
+  /* TWO DIFFERENT CLAIMS, SO TWO DIFFERENT HEADINGS.
+     A shared title is a real link and can say so. A shared date is not — but
+     it is still worth seeing, and hiding it entirely was the wrong answer to
+     the birthday that owned two ERM sends. The birthday was never the problem;
+     calling those sends "COMMS FOR THIS EVENT" was. So the same-day ones are
+     shown as what they are: also going out that day.
+     The lasting fix is upstream — comm_events needs to reference the item it
+     is for. Then the first list is exact and the second is just context. */
+  const sameDay=EVENTS.filter(x=>x.type==='comms'&&x.date===e.date
+    &&!commsSameName.some(c=>c.id===x.id));
+  const commsRow=c=>'<button class="row" data-ev="'+c.id+'"><span class="when">'+fmt(D(c.date))+'</span>'+
         '<span class="txt"><span class="name">'+esc(c.title)+'</span><span class="meta">'+esc(c.detail||'')+'</span></span>'+
         '<span class="tag" style="background:'+(c.status==='waiting'?'var(--red-t)':c.status==='done'?'var(--session-t)':'var(--fill)')+
         ';color:'+(c.status==='waiting'?'var(--red-d)':c.status==='done'?'var(--session-d)':'#4a4a4a')+
-        '">'+STATUS_LABEL[c.status]+'</span></button>').join('');
-  }
+        '">'+STATUS_LABEL[c.status]+'</span></button>';
+  if(commsSameName.length)
+    h+='<div class="eyebrow">COMMS FOR THIS EVENT · '+commsSameName.length+'</div>'+
+       commsSameName.map(commsRow).join('');
+  if(sameDay.length)
+    h+='<div class="eyebrow">ALSO GOING OUT THIS DAY · '+sameDay.length+'</div>'+
+       '<div style="font-size:12.5px;color:var(--text3);margin:-4px 0 8px">'+
+       'On the same date, not necessarily for this — comms are not linked to items yet.</div>'+
+       sameDay.map(commsRow).join('');
 
   h+='</div><div>';
 
