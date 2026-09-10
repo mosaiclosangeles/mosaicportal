@@ -11,9 +11,13 @@ await p.route('**/*',r=>{
 // the portal, with the facilities frame pointed at the OTHER origin
 await p.goto('http://127.0.0.1:8100/facilities',{waitUntil:'domcontentloaded',timeout:25000});
 await p.waitForFunction(()=>document.querySelectorAll('#nav button[data-go]').length>3,{timeout:12000});
+// Point the portal's own Facilities section at this harness origin, so the
+// portal builds the frame's URL the way it does in production. Setting the
+// iframe's src by hand no longer works: the portal keeps the frame alive
+// across renders and would put its own URL back on the next one.
 await p.evaluate(()=>{
-  const f=document.querySelector('.embed-wrap iframe');
-  f.src='http://127.0.0.1:8099/harness-frame.html?embed=portal';
+  SECTIONS.find(s=>s.id==='facilities').url='http://127.0.0.1:8099/harness-frame.html';
+  render();
 });
 console.log('--- the portal hands the session to the frame ---');
 await step('the frame gets in without ever reading a cookie',async()=>{
@@ -73,7 +77,7 @@ console.log('--- a framed app asking the portal to open Facilities ---');
    has to be pointed at the second origin again before each message. */
 const repoint=async()=>{
   await p.evaluate(()=>{
-    const f=document.querySelector('.embed-wrap iframe');
+    const f=document.querySelector('#embedHost iframe:not([hidden])');
     if(f&&!f.src.includes('harness-frame'))f.src='http://127.0.0.1:8099/harness-frame.html?embed=portal';
   });
   for(let i=0;i<25;i++){
@@ -90,7 +94,7 @@ const navigate=async(msg)=>{
   await p.waitForTimeout(500);
   return p.evaluate(()=>({section:S.section,facPath:S.facPath,
     book:(S.navBook&&S.navBook.facilities&&S.navBook.facilities.params)||null,
-    src:(document.querySelector('.embed-wrap iframe')||{}).src||''}));
+    src:(document.querySelector('#embedHost iframe:not([hidden])')||{}).src||''}));
 };
 const BOOK={type:'mosaic-navigate',section:'facilities',page:'new',params:{
   board_item:'n:2026-12-24:LA:christmas-eve',title:'Christmas Eve Service',
@@ -124,7 +128,7 @@ await step('clicking Facilities by hand clears the board prefill',async()=>{
   await p.click('#nav button[data-go="facilities"]');
   await p.waitForTimeout(400);
   const r=await p.evaluate(()=>({book:S.navBook&&S.navBook.facilities,
-    src:(document.querySelector('.embed-wrap iframe')||{}).src||''}));
+    src:(document.querySelector('#embedHost iframe:not([hidden])')||{}).src||''}));
   if(r.book)throw new Error('the prefill survived a click');
   if(r.src.includes('board_item'))throw new Error('a stale event is still in the src');
 });
@@ -177,13 +181,13 @@ await step('New offers only what this person can actually reach',async()=>{
 await step('picking one lands on that app\'s own form',async()=>{
   await p.click('#newMenu [data-newthing="facilities"]'); await p.waitForTimeout(500);
   const r=await p.evaluate(()=>({section:S.section,open:S.newMenu,
-    src:(document.querySelector('.embed-wrap iframe')||{}).src||''}));
+    src:(document.querySelector('#embedHost iframe:not([hidden])')||{}).src||''}));
   if(r.section!=='facilities')throw new Error('landed on '+r.section);
   if(!/page=new/.test(r.src))throw new Error('not the new-request form: '+r.src.slice(0,120));
   if(r.open)throw new Error('the menu stayed open over the page');
 });
 await step('started from Home it carries no event, because there is none',async()=>{
-  const src=await p.evaluate(()=>(document.querySelector('.embed-wrap iframe')||{}).src||'');
+  const src=await p.evaluate(()=>(document.querySelector('#embedHost iframe:not([hidden])')||{}).src||'');
   if(src.includes('board_item'))throw new Error('an event came from nowhere: '+src.slice(0,140));
 });
 await step('clicking away closes it',async()=>{

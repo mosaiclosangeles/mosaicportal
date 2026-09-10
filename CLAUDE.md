@@ -18,6 +18,16 @@ the **Goals and Facilities sub-menus**, which are hand-written lists in
 `GOALS_NAV` and `FAC_NAV` — a page added inside either app has to be added
 there too, or it will not appear in the portal.
 
+**The Metrics sub-menu is a hand-written copy of Metrics' own tabs**, in
+`METRICS_NAV`, and `metricsNavItems()` filters it by `METRICS_ROLE_TABS` — a
+deliberate duplicate of `ROLE_TABS` in mosaic-metrics. Two things follow: a tab
+added inside Metrics has to be added here too or it will not appear in the
+portal, and a tab a role cannot see must not be offered here either. Metrics
+bounces a role to Overview rather than erroring, which is worse than an error —
+the tab reads as clicked and quietly is not the page that was asked for. The
+same is true of the view the frame is sent: `pageEmbed('numbers')` falls back
+to Overview rather than asking for a view the rail does not offer.
+
 **Adding a section takes four edits, not one.** Facilities shipped broken
 because only three were made: the rail entry, the sub-menu and the embed URL
 were there, and the router was not, so clicking Facilities fell through the
@@ -68,6 +78,41 @@ Team Huddle nor Men's Camp. Same-day was the first rule and it hung two ERM
 sends off a staff birthday; exact title was the second and matched almost
 nothing. The lasting fix is upstream — an item reference on `comm_events` —
 after which this becomes an exact match.
+
+**The calendar has two views, and an entry opens a card over them.** Month is
+where it opens; List is the same month read down the page. Both draw from
+`evOn()`, so a day cannot show one thing in the grid and another in the list.
+Clicking an entry calls `openCard()` — a centred dialog over whatever you were
+reading, closed by its ×, the scrim or Escape. It is deliberately **not** a
+section: `pageEvent()` renders into the overlay, there is no URL for it and no
+history entry, because the page behind it has not changed. The old full-page
+`event` section (and its Back button) is gone; so is the week grid, which
+Loyda's review called "really off", and which was a second grid to keep in
+step with the first.
+
+**A location that is a link is "Online", and a link is followable.** Outlook
+keeps the meeting URL in the location field, so an Arena call arrived with a
+70-character Zoom address standing where the room should be — in the card's
+subtitle, in the list, and a third time under Where, none of them clickable.
+`placeOf()` answers where it is (a hybrid location keeps its room and gains
+"· Online"), `meetLink()` answers how to get in, and `linkify()` — escape
+first, then anchor — makes any address left in the text followable. The URL is
+never dropped from the data, only from the place: a card that quietly lost the
+only way into the meeting would be worse than an ugly one. Hannita, 10 Sep.
+
+**An embedded app can ask the portal to move, and the ask has two halves.**
+`mosaic-can-navigate` is answered with `mosaic-navigate-ok` at load time, and
+`mosaic-navigate` moves the section and replies `mosaic-navigated`. Both
+matter: a frame cannot tell whether the portal listens, and finding out by
+trying is worse than it sounds — the answer arrives after the click, and a
+`window.open` from a frame with no user gesture behind it is silently blocked,
+so the facilities card renders a button or a plain link depending on the reply.
+`NAV_ALLOWED` lists the sections that may be arrived at this way and the fields
+each may carry; **Planning belongs in it** — it is the section the facilities
+event card actually asks for, and leaving it out sends that click to a new tab,
+which is the thing Hannita asked to be rid of. A bare move (no page, no params)
+books no form: defaulting it to `page=new` landed people on the board's
+new-item form when all they clicked was the name of the app they were reading.
 
 **Facility bookings are one of those sources.** `loadFacilities()` reads
 `v_fac_requests` out of the same Supabase project with the signed-in person's
