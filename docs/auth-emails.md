@@ -28,6 +28,12 @@ Walking through her own invite on screen:
   to the link."
 - **Don't list Comms.** It is internal, and who sees it is a permissions
   question, not a copy question.
+- **Don't list Goals either** (Hannita, 10 Sep). It is `restricted:true` in
+  `SECTIONS` — admin only — so an invite that lists it advertises a door most
+  of the people receiving it cannot open, which is the exact confusion the
+  rest of this rewrite is trying to remove.
+- **Order: Metrics, Facilities, Calendars, the planning board** (Hannita,
+  10 Sep) — most used first.
 - **Say the credentials are the same** if they already have Metrics.
 - **Every heading says what the email is.** "Maybe just say reset your
   password… otherwise I may feel like I'm still in the same thing before."
@@ -81,9 +87,9 @@ You've been given a Mosaic Portal account
 
   <ul style="margin:0 0 22px;padding-left:20px;color:#111">
     <li style="margin-bottom:6px">Metrics — attendance, decisions and livestream numbers</li>
+    <li style="margin-bottom:6px">Facilities — request a room, and see what's already booked</li>
+    <li style="margin-bottom:6px">Calendars — the church, staff and facility calendars in one view</li>
     <li style="margin-bottom:6px">The planning board — the program year, and what your team owns in it</li>
-    <li style="margin-bottom:6px">Goals</li>
-    <li style="margin-bottom:6px">Calendars — the church, the staff calendar and facility bookings in one place</li>
   </ul>
 
   <p style="margin:0 0 24px">
