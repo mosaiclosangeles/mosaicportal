@@ -146,10 +146,6 @@ Reset your Mosaic Portal password
     </a>
   </p>
 
-  <p style="margin:0 0 20px;color:#555;font-size:14px">
-    Didn't ask for this? Nothing has changed — you can ignore this email.
-  </p>
-
   <p style="margin:0;color:#8a8a8a;font-size:13px">
     portal.mosaic.org
   </p>
