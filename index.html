@@ -42,6 +42,11 @@
 .embed-host iframe{width:100%;height:100%;border:0;display:block;background:#fff;position:absolute;inset:0}
 .embed-host iframe[hidden]{display:none}
 .embed-host .embed-open{z-index:1}
+.prio-sec{margin-bottom:22px}
+.prio-sec .eyebrow{margin-bottom:2px}
+.prio-sec .row .tag{flex:none;align-self:center;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.prio-sec .row[disabled]{opacity:.6;cursor:default}
+@media(max-width:900px){.prio-sec .row .tag{display:none}}
 .card-more{display:flex;align-items:center;gap:4px;margin-top:7px;font-size:12px;opacity:.85}
 .card:hover .card-more{opacity:1;text-decoration:underline}
 .embed-wrap{margin:-24px -28px -60px;position:relative;height:100vh}
@@ -1094,6 +1099,53 @@ function mapLive(pis,ces){
   });
   EVENTS.sort((a,b)=>D(a.date)-D(b.date));
 }
+/* WORTH A LOOK IS THE MONDAY DIGEST'S OWN RANKING, NOT A SECOND OPINION.
+   priorities_for() in the board's database is what the Slack digest is built
+   from: it decides the sections, the order and the reason on every row. So the
+   portal calls the same function rather than working out its own version — the
+   thing that must never happen here is Home and the Monday post disagreeing
+   about what needs attention, which is exactly how the competing digest
+   template happened on 13 Aug.
+   It is keyed on a Slack id because that is who the digest posts to, so the
+   signed-in person is resolved through board_owners.email. Nobody mapped there
+   yet simply gets the old flagged list, which is what everyone had before. */
+let PRIOS=null, PRIOS_FOR=null;
+async function loadPriorities(){
+  if(!ME.email)return;
+  if(PRIOS_FOR===ME.email)return;          // already have this person's
+  PRIOS_FOR=ME.email; PRIOS=null;
+  try{
+    const who=await pmGet('board_owners?select=slack_user_id&email=eq.'+
+      encodeURIComponent(ME.email.toLowerCase())+'&limit=1');
+    const sid=who&&who[0]&&who[0].slack_user_id;
+    if(!sid)return;
+    const r=await fetch(PM_URL+'/rest/v1/rpc/priorities_for',{
+      method:'POST',
+      headers:{apikey:PM_KEY,Authorization:'Bearer '+PM_KEY,'Content-Type':'application/json'},
+      body:JSON.stringify({p_slack_user_id:sid})});
+    if(!r.ok)return;
+    PRIOS=await r.json();
+  }catch(_){ PRIOS=null; }
+}
+/* Her order, and the board's own words for each. "later" and "done" are left
+   out on purpose: Home is what needs you now, and the board is where you go to
+   read ahead. */
+const PRIO_SECTIONS=[
+  ['attention','Where your attention is most needed'],
+  ['this_week','On your plate this week'],
+  ['waiting',  'Waiting on someone'],
+  ['horizon',  'Just over the horizon'],
+  ['closeout', 'Worth closing out']
+];
+function prioGroups(){
+  if(!PRIOS||!PRIOS.length)return null;
+  const out=[];
+  for(const [key,label] of PRIO_SECTIONS){
+    const rows=PRIOS.filter(r=>r.section===key);
+    if(rows.length)out.push({key,label,rows});
+  }
+  return out.length?out:null;
+}
 async function loadLive(){
   DATA_ERR=null;
   try{
@@ -1713,10 +1765,7 @@ function pageHome(){
           '<span class="card-more">see full overview'+ic('ext','width:11px;height:11px')+'</span>',
           'numbers','--gathering')+
    '</div>'+
-   '<div class="cols"><div><h2>Worth a look</h2>'+
-     (attn.length?attn.map(t=>'<button class="row" data-ev="'+t.evId+'"><span class="when">'+fmt(D(t.date))+'</span>'+
-       '<span class="txt"><span class="name">'+esc(t.title)+'</span><span class="meta">'+esc(t.meta||'')+'</span></span></button>').join('')
-       :'<div class="empty">Nothing waiting on anyone right now.</div>')+
+   '<div class="cols"><div><h2>Worth a look</h2>'+ worthALook(attn) +
    '</div><div><h2>Coming up</h2>'+
      (upcoming.length?upcoming.map(e=>'<button class="row" data-ev="'+e.id+'"><span class="when">'+fmt(D(e.date))+'</span>'+
        '<span class="txt"><span class="name">'+esc(e.title)+'</span><span class="meta">'+esc(placeOf(e.detail))+'</span></span></button>').join('')
@@ -1729,6 +1778,38 @@ function pageHome(){
      '<div class="fb-btns"><button class="fb-btn" data-fb="bug">Report a problem</button>'+
        '<button class="fb-btn" data-fb="idea">Suggest an idea</button></div>'+
    '</div>';
+}
+
+/* The digest's sections, drawn as the portal draws things. The prose stays in
+   the Slack digest — two copies of a paragraph is what drifted last time — so
+   what comes across is the ranking, the section each item is in, and the board's
+   own reason for it, which is the part that must not disagree.
+   A row opens the same full card everything else on Home opens. */
+function worthALook(attn){
+  const groups=prioGroups();
+  if(!groups){
+    // Nobody mapped in board_owners, or the board could not be read: the
+    // flagged list is what everyone had before this, so fall back to it
+    // rather than showing an empty column.
+    return attn.length
+      ? attn.map(t=>'<button class="row" data-ev="'+t.evId+'"><span class="when">'+fmt(D(t.date))+'</span>'+
+          '<span class="txt"><span class="name">'+esc(t.title)+'</span>'+
+          '<span class="meta">'+esc(t.meta||'')+'</span></span></button>').join('')
+      : '<div class="empty">Nothing waiting on anyone right now.</div>';
+  }
+  return groups.map(g=>
+    '<div class="prio-sec"><div class="eyebrow">'+esc(g.label)+'</div>'+
+    g.rows.map(r=>{
+      const id='pm:'+r.item_id;
+      const known=EVENTS.some(x=>x.id===id||x.id.indexOf(id+':')===0);
+      const hit=known?EVENTS.find(x=>x.id===id||x.id.indexOf(id+':')===0):null;
+      const bits=[r.level,r.phase,r.status].filter(Boolean).join(' · ');
+      return '<button class="row"'+(hit?' data-ev="'+esc(hit.id)+'"':' disabled')+'>'+
+        '<span class="when">'+(r.due?fmt(D(r.due)):'')+'</span>'+
+        '<span class="txt"><span class="name">'+esc(r.title||'')+'</span>'+
+        '<span class="meta">'+esc(r.why||bits)+'</span></span>'+
+        (bits?'<span class="tag">'+esc(bits)+'</span>':'')+'</button>';
+    }).join('')+'</div>').join('');
 }
 
 /* Feedback — goes to portal_feedback, and admins read it in Admin > Feedback.
@@ -3495,6 +3576,16 @@ function ceId(e){
   const raw=String(e&&e.id||'');
   return raw.startsWith('ce:')?raw.slice(3):'';
 }
+/* THE BOARD'S ID LIVES ON THE BOARD'S PART, NOT ON THE LEAD.
+   A merged card leads with whichever part ranks first, and for Men's Camp that
+   is the shared calendar's copy — so "Edit in Planning" was reading pmId() off
+   an Outlook entry, getting nothing, and sending the board no item at all. It
+   opened Planning on whatever month it starts on, which is exactly what the
+   ?item= deep link was built to stop. */
+function boardPart(card,fallback){
+  const parts=(card&&card.parts)||[fallback];
+  return parts.find(x=>x&&String(x.id||'').startsWith('pm:'))||fallback;
+}
 function pmId(e){
   const raw=String(e&&e.id||'');
   if(!raw.startsWith('pm:'))return '';
@@ -3690,7 +3781,7 @@ function pageEvent(){
   h+='</div></div>'+
     '<div class="foot-links">'+
     ((card.parts||[e]).some(x=>x.type==='event')
-      ?'<button data-go="planning" data-item="'+esc(pmId(e))+'">Edit in Planning</button>':'')+
+      ?'<button data-go="planning" data-item="'+esc(pmId(boardPart(card,e)))+'">Edit in Planning</button>':'')+
     (fac?'<button data-go="facilities">Open in Facilities</button>':'')+
     // Day-scoped, and says so: it opens that date in the comms calendar rather
     // than claiming these sends belong to this event.
@@ -4163,9 +4254,15 @@ document.addEventListener('click',e=>{
     if(!allowedSections().includes(sec))return;
     S.newMenu=false;
     S.navBook=S.navBook||{};
-    // Nothing prefilled: started from Home, there is no event to carry. Coming
-    // from a planning card is the path that brings one.
-    S.navBook[sec]={page:t.dataset.newpage||'new',params:{}};
+    /* No EVENT is carried — started from Home there is none, and coming from a
+       planning card is the path that brings one. The campus is carried though:
+       it is the same answer every time for the person filling the form in, and
+       the one they would otherwise re-pick on every attendance submission,
+       every new item and every room request. Hannita, 10 Sep. */
+    const params={};
+    const hc=homeCampusName();
+    if(hc)params.campus=hc;
+    S.navBook[sec]={page:t.dataset.newpage||'new',params};
     if(sec==='facilities')S.facPath='new';
     S.section=sec;
     try{history.pushState({},'',SECTION_PATH[sec]||'/');}catch(_){}
@@ -4755,6 +4852,7 @@ async function enterPortal(){
   $g("gate").classList.add("hide");
   if(!BOOTED){
     BOOTED=true;await loadLive();render();
+    loadPriorities().then(()=>{if(S.section==='home')render();});
     // The shared calendar is extra context, so it loads after the page is
     // usable and re-renders when it lands. Awaiting it before the first paint
     // meant one slow Microsoft call left staff staring at an empty screen.
@@ -4772,6 +4870,7 @@ async function enterPortal(){
       if(Date.now()-lastLoad<60000)return;
       if(document.getElementById('drawer').classList.contains('open'))return;
       lastLoad=Date.now();await loadLive();render();
+      PRIOS_FOR=null;loadPriorities().then(()=>{if(S.section==='home')render();});
       loadCalendar().then(()=>render());
       loadFacilities().then(()=>render());
     });

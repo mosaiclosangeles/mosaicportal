@@ -100,6 +100,23 @@ and the number printed above it cannot disagree; the test asserts they match.
 That is also why `CLOSEOUT` is the items and not a tally. Click, not hover: a
 hover panel is unreachable on a phone, which is where these get read.
 
+**Worth a look is the Monday digest's own ranking, not a second opinion.**
+`priorities_for()` in the board's database is what the Slack digest is built
+from — it decides the sections, the order and the reason on every row — so the
+portal calls the same function rather than working out its own version. Home
+and the Monday post disagreeing about what needs attention is exactly how the
+competing digest template happened on 13 Aug. The prose stays in the Slack
+digest; what crosses over is the ranking, the section and the board's own
+`why`. It is keyed on a Slack id, so the signed-in person is resolved through
+`board_owners.email`; anybody not mapped there falls back to the flagged list,
+which is what everyone had before.
+
+**A merged card's board id lives on the board's part, not on the lead.** A card
+leads with whichever part ranks first — for Men's Camp that is the shared
+calendar's copy — so reading `pmId()` off the lead sent Planning an empty id
+and opened it on its front page. `boardPart()` finds the `pm:` part; use it
+anywhere the board's own id is needed.
+
 **A home campus is a preference; `campus_id` is a permission.** Metrics scopes
 what a person may SEE by `profiles.campus_id`, which is an admin's to set, so
 the campus somebody picks for themselves had to be its own column

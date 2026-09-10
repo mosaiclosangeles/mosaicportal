@@ -444,6 +444,26 @@ await step('List shows the same days the grid does',async()=>{
   if(!r.list)throw new Error('the list drew nothing');
   if(r.missing.length)throw new Error('the list is missing entries the grid shows: '+r.missing.join(', '));
 });
+/* "Edit in Planning" has to carry the BOARD's id. A merged card leads with
+   whichever part ranks first — often the shared calendar's copy — and reading
+   the id off that sends Planning nothing, so it opens on its front page. */
+await step('Edit in Planning carries the board id, not the lead',async()=>{
+  const r=await p.evaluate(()=>{
+    const fac=EVENTS.find(e=>e.type==='facility');
+    EVENTS.push({id:'pm:k:2026-09:mens-camp',date:fac.date,type:'event',title:fac.title,
+      campus:'LA',owner:'David',phase:'Pre-launch',status:'scheduled'});
+    EVENTS.push({id:'ol:1',date:fac.date,type:'other',title:fac.title,status:'done'});
+    const card=mergeCards(EVENTS.filter(e=>e.date===fac.date&&laneOf(e))).find(c=>(c.parts||[]).length>1);
+    const out={parts:(card.parts||[]).length,
+               lead:card.id,
+               id:pmId(boardPart(card,card))};
+    ['pm:k:2026-09:mens-camp','ol:1'].forEach(id=>EVENTS.splice(EVENTS.findIndex(e=>e.id===id),1));
+    return out;
+  });
+  console.log('       '+JSON.stringify(r));
+  if(r.id!=='k:2026-09:mens-camp')
+    throw new Error('the board id did not come through: "'+r.id+'"');
+});
 await step('a list row opens the same floating card',async()=>{
   await p.click('#main .cl-ev[data-ev]');
   await p.waitForTimeout(300);
