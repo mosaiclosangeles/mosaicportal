@@ -176,6 +176,32 @@ await step('the same event from three calendars normalises to one name',async()=
     throw new Error('these should all be one event: '+JSON.stringify(r));
   if(r.different)throw new Error('Choir and Choir Rehearsal must stay separate');
 });
+/* A comm belongs to an event by SUBJECT, not by date. Hannita, 10 Sep: "a team
+   Huddle has nothing to do with an ERM text… For the men's event it will be a
+   men's text or the men's email, even if it was a past date or a future date."
+   Both earlier rules failed silently in opposite directions — same-day hung two
+   ERM sends off a staff birthday, exact-title matched nothing at all — so the
+   three cases that drove the rule are asserted by name. */
+await step('comms attach by subject, not by the day they go out',async()=>{
+  const r=await p.evaluate(()=>({
+    ermVsHuddle:  commRelated({title:'ERM Text'},{title:'Team Huddle'}),
+    bibleStudies: commRelated({title:'Bible Studies'},{title:'Regional Bible Study PM Staff Lead'}),
+    mensCamp:     commRelated({title:'MON 09/07 Mens Camp'},{title:"Men's Camp"}),
+    ermVsCamp:    commRelated({title:'ERM Text'},{title:"Men's Camp"}),
+    // the window is the item's own runway once the mirror carries milestones
+    runway: (function(){
+      const w=commWindow({date:'2026-10-01',milestones:{kickoff:'2026-08-01',debrief:'2026-11-01'}});
+      return [w[0].toISOString().slice(0,10),w[1].toISOString().slice(0,10)];
+    })()
+  }));
+  console.log('       '+JSON.stringify(r));
+  if(r.ermVsHuddle)throw new Error('an ERM text is not about a Team Huddle');
+  if(r.ermVsCamp)throw new Error('an ERM text is not about Men\'s Camp either');
+  if(!r.bibleStudies)throw new Error('"Bible Studies" should reach the Bible Study');
+  if(!r.mensCamp)throw new Error('the men\'s text should reach Men\'s Camp');
+  if(r.runway[0]!=='2026-08-01'||r.runway[1]!=='2026-11-01')
+    throw new Error('the window should be Kick-Off to Debrief, got '+r.runway.join(' to '));
+});
 /* Merge first, then filter. Backwards, a campus picker on another campus threw
    the board's record away before the merge could reach it, and Men's Camp
    opened as the shared calendar's bare copy — a title, two dates, nothing. */

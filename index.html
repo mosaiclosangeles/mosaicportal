@@ -1229,6 +1229,44 @@ function normTitle(t){
     .replace(/[\u2019'\u00b4\u02bc]/g,'')
     .toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
 }
+/* WHICH COMMS BELONG TO AN EVENT — by subject, not by date.
+   Hannita, 10 Sep: "a Team Huddle has nothing to do with an ERM text. For the
+   men's event it will be a men's text or the men's email. Even if it was a
+   past date or a future date within that week."
+
+   Both earlier rules were wrong in opposite directions. Same-day swept in
+   anything that happened to share a date; exact title matched almost nothing,
+   because a comm is named for its channel as much as its subject — "Bible
+   Studies" against "Regional Bible Study PM Staff Lead".
+
+   So: strip the words that describe the channel or the timing rather than the
+   subject, stem the plurals, and ask whether every distinctive word left in
+   the COMM's name appears in the event's. "Bible Studies" → bible, study, both
+   in "Regional Bible Study PM Staff Lead" — related. "ERM Text" → erm, which
+   is in neither Team Huddle nor Men's Camp — not related. It reads one way on
+   purpose: a comm is usually named more narrowly than the event it serves. */
+const COMM_GENERIC=/^(email|text|script|reminder|promo|invite|announcement|post|social|newsletter|recap|update|opportunitie|opportunity|tomorrow|today|week|weekly|thi|next|last|the|and|for|of|to|in|on|at|mosaic|sunday|monday|tuesday|wednesday|thursday|friday|saturday|mon|tue|wed|thu|fri|sat|sun)$/;
+function subjectWords(t){
+  return normTitle(t).split(' ')
+    .map(w=>w.replace(/s$/,''))              // studies → studie → study is close enough
+    .map(w=>w.replace(/ie$/,'y'))
+    .filter(w=>w.length>2&&!COMM_GENERIC.test(w));
+}
+/* How far either side of an event a comm can still be about it. With the
+   milestones now in the mirror that is the item's own runway — Kick-Off to
+   Debrief, which is exactly the window its promotion runs in. Without them,
+   three weeks either side. */
+function commWindow(e){
+  const ms=e.milestones;
+  if(ms&&ms.kickoff&&ms.debrief)return [D(ms.kickoff),D(ms.debrief)];
+  const a=D(e.date), b=D(e.dateEnd||e.date);
+  return [addDays(a,-21),addDays(b,21)];
+}
+function commRelated(c,e){
+  const cw=subjectWords(c.title), ew=new Set(subjectWords(e.title));
+  if(!cw.length||!ew.size)return false;
+  return cw.every(w=>ew.has(w));
+}
 function mergeCards(list){
   const groups=new Map(), loose=[];
   list.forEach(e=>{
@@ -3039,21 +3077,21 @@ function pageEvent(){
   const m=isSunday?metricFor(d):null;
   const days=Math.round((d-TODAY)/86400000);
   const camp=e.campaign||null;
-  /* COMMS ARE NOT LINKED TO EVENTS, AND THIS USED TO PRETEND THEY WERE.
+  /* COMMS ARE MATCHED BY SUBJECT, NOT BY DATE.
      comm_events carries id, event_date, type, title, subtitle, status and
-     sender — and nothing that points at an event or a campaign. So the
-     campaign half of this match never fired, and the rule that actually ran
-     was "same day": every comm on the 10th attached itself to everything else
-     on the 10th, which is how a staff birthday came to own two ERM sends, and
-     how the identical pair showed up again under Mosaic Future.
-     A shared date is a collision, not a relationship. The only honest link we
-     can make today is the one the merge already uses — the same title, once
-     case and punctuation are off — so that is the only one made. Everything
-     else shows no section at all rather than a confident wrong answer.
-     The real fix is upstream: comm_events needs a reference to the item it is
-     for. Then this becomes an exact match and the section is right every
-     time. */
-  const commsSameName=EVENTS.filter(x=>x.type==='comms'&&normTitle(x.title)&&normTitle(x.title)===normTitle(e.title))
+     sender — and nothing that points at an event or a campaign. Same-day was
+     the first guess and it was a collision, not a relationship: a staff
+     birthday came to own two ERM sends. Exact title was the second, and it
+     matched almost nothing, because a comm is named for its channel as much
+     as its subject.
+     So the link is the subject (commRelated) inside the event's own runway
+     (commWindow) — which is what "a men's text or the men's email, even if it
+     was a past date or a future date" actually means.
+     The real fix is still upstream: comm_events needs a reference to the item
+     it is for. Then this becomes an exact match and is right every time. */
+  const [winA,winB]=commWindow(e);
+  const commsForEvent=EVENTS.filter(x=>x.type==='comms'
+      &&D(x.date)>=winA&&D(x.date)<=winB&&commRelated(x,e))
                     .sort((a,b)=>D(a.date)-D(b.date));
   const subs=TASKS.filter(x=>(camp&&x.campaign===camp)||(!camp&&x.parent===e.title));
   const doneN=subs.filter(x=>x.done).length;
@@ -3110,29 +3148,14 @@ function pageEvent(){
       '<div class="kv"><span>'+esc(SOURCES[laneOf(x)]?SOURCES[laneOf(x)].label:'')+'</span>'+
       '<span>'+esc(x.title)+'</span></div>').join('');
   }
-  /* TWO DIFFERENT CLAIMS, SO TWO DIFFERENT HEADINGS.
-     A shared title is a real link and can say so. A shared date is not — but
-     it is still worth seeing, and hiding it entirely was the wrong answer to
-     the birthday that owned two ERM sends. The birthday was never the problem;
-     calling those sends "COMMS FOR THIS EVENT" was. So the same-day ones are
-     shown as what they are: also going out that day.
-     The lasting fix is upstream — comm_events needs to reference the item it
-     is for. Then the first list is exact and the second is just context. */
-  const sameDay=EVENTS.filter(x=>x.type==='comms'&&x.date===e.date
-    &&!commsSameName.some(c=>c.id===x.id));
   const commsRow=c=>'<button class="row" data-ev="'+c.id+'"><span class="when">'+fmt(D(c.date))+'</span>'+
         '<span class="txt"><span class="name">'+esc(c.title)+'</span><span class="meta">'+esc(c.detail||'')+'</span></span>'+
         '<span class="tag" style="background:'+(c.status==='waiting'?'var(--red-t)':c.status==='done'?'var(--session-t)':'var(--fill)')+
         ';color:'+(c.status==='waiting'?'var(--red-d)':c.status==='done'?'var(--session-d)':'#4a4a4a')+
         '">'+STATUS_LABEL[c.status]+'</span></button>';
-  if(commsSameName.length)
-    h+='<div class="eyebrow">COMMS FOR THIS EVENT · '+commsSameName.length+'</div>'+
-       commsSameName.map(commsRow).join('');
-  if(sameDay.length)
-    h+='<div class="eyebrow">ALSO GOING OUT THIS DAY · '+sameDay.length+'</div>'+
-       '<div style="font-size:12.5px;color:var(--text3);margin:-4px 0 8px">'+
-       'On the same date, not necessarily for this — comms are not linked to items yet.</div>'+
-       sameDay.map(commsRow).join('');
+  if(commsForEvent.length)
+    h+='<div class="eyebrow">COMMS FOR THIS EVENT · '+commsForEvent.length+'</div>'+
+       commsForEvent.map(commsRow).join('');
 
   h+='</div><div>';
 
