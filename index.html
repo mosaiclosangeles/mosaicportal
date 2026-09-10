@@ -3537,7 +3537,10 @@ async function connectedFor(item){
      definition of the thing; for anything else it is a suggestion, and saying
      otherwise is how the wrong numbers get attached to an event. */
   try{
-    if(item.date){
+    // wantAttendance is false where the board knows the match would be wrong —
+    // anything nested under a Sunday inherits that Sunday's date, so matching
+    // on date and campus would hand it the gathering's numbers.
+    if(item.date&&item.wantAttendance){
       const cid=await campusIdFor(item.campus);
       let q=sb.from('v_service_totals')
         .select('campus_id,date,service_label,in_person_total,online_views')
