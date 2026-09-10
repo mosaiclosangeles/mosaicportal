@@ -926,7 +926,15 @@ function mapLive(pis,ces){
     if(r.deleted||!r.date)return;   // undated items live on the board, not a calendar
     const title=r.title||(r.is_sunday?'Sunday Gathering':'(untitled)');
     const past=D(r.date)<TODAY;
+    /* The mirror carries more than the calendar was keeping: the board's own
+       type (Event, Program, Campaign, Staff date), its own status wording, the
+       time, the location and whether it repeats. Dropping them here is why the
+       card showed less than the board's drawer does.
+       Milestones and the Rhythm's ticks are NOT here — they live in
+       planning_board_state, which the mirror does not copy — so the card links
+       to Planning for those rather than inventing them. */
     const base={type:'event',title,campus:r.campus,level:r.level,phase:r.phase_now,speaker:r.speaker,
+      boardType:r.type,boardStatus:r.status,recur:r.recur,location:r.location,timeOfDay:r.time_of_day,
       series:r.is_series?title:undefined,owner:(r.owners||[]).join(', '),desc:r.description,
       detail:(r.speaker?r.speaker+(r.is_sunday?' speaking':''):(r.type||''))+(r.campus&&r.campus!=='LA'?' · '+r.campus:'')};
     if(r.recur==='weekly'&&r.date_end){
@@ -1216,13 +1224,29 @@ function mergeCards(list){
   });
   const out=loose;
   groups.forEach(parts=>{
-    // The planning board holds the richest record, so it leads when present.
-    const lead=SOURCE_RANK.map(t=>parts.find(x=>x.type===t)).find(Boolean)||parts[0];
+    // The planning board holds the richest record, so it leads when present —
+    // but only among the parts still on screen, or turning a row off would
+    // leave a card wearing the colour of a row that is not showing.
+    const pick=f=>SOURCE_RANK.map(t=>parts.find(x=>x.type===t&&f(x))).find(Boolean);
+    const lead=pick(shown)||pick(()=>true)||parts[0];
     out.push(Object.assign({},lead,{parts}));
   });
   return out;
 }
-function evOn(dt){return mergeCards(EVENTS.filter(e=>e.date===key(dt) && shown(e)));}
+/* MERGE FIRST, THEN FILTER — the order matters, and getting it backwards cost
+   Men's Camp its whole record. Filtering first meant each part was judged
+   alone: with the campus picker on Mexico, the board's LA item was dropped and
+   the shared calendar's "Mens Camp", which carries no campus, survived on its
+   own. The card left standing was the thin copy — a title, two dates, nothing
+   else — while the record with David, the phase and the description had been
+   thrown away before the merge could reach it.
+   So: group everything on the day, then keep the cards where SOMETHING is
+   still on screen. A filter decides which cards appear, never what a card is
+   allowed to know about itself. */
+function evOn(dt){
+  return mergeCards(EVENTS.filter(e=>e.date===key(dt)&&laneOf(e)))
+         .filter(c=>(c.parts||[c]).some(shown));
+}
 /* The dots under a merged card's name: one per source it drew from, in the
    order the sources are listed on the filter row. */
 function partDots(e){
@@ -2994,12 +3018,26 @@ function pageEvent(){
   if(!e) return '<h1>Not found</h1>';
   const d=D(e.date), t=palOf(e), isSunday=(e.type==='event'&&d.getDay()===0);
   // The card speaks for every part that merged into it, not just the lead.
-  const card=mergeCards(EVENTS.filter(x=>x.date===e.date&&shown(x))).find(x=>x.id===e.id)||e;
+  const card=mergeCards(EVENTS.filter(x=>x.date===e.date&&laneOf(x))).find(x=>x.id===e.id)||e;
   const facts=partFacts(card);
   const m=isSunday?metricFor(d):null;
   const days=Math.round((d-TODAY)/86400000);
   const camp=e.campaign||null;
-  const comms=EVENTS.filter(x=>x.type==='comms'&&((camp&&x.campaign===camp)||(!camp&&x.date===e.date)))
+  /* COMMS ARE NOT LINKED TO EVENTS, AND THIS USED TO PRETEND THEY WERE.
+     comm_events carries id, event_date, type, title, subtitle, status and
+     sender — and nothing that points at an event or a campaign. So the
+     campaign half of this match never fired, and the rule that actually ran
+     was "same day": every comm on the 10th attached itself to everything else
+     on the 10th, which is how a staff birthday came to own two ERM sends, and
+     how the identical pair showed up again under Mosaic Future.
+     A shared date is a collision, not a relationship. The only honest link we
+     can make today is the one the merge already uses — the same title, once
+     case and punctuation are off — so that is the only one made. Everything
+     else shows no section at all rather than a confident wrong answer.
+     The real fix is upstream: comm_events needs a reference to the item it is
+     for. Then this becomes an exact match and the section is right every
+     time. */
+  const comms=EVENTS.filter(x=>x.type==='comms'&&normTitle(x.title)&&normTitle(x.title)===normTitle(e.title))
                     .sort((a,b)=>D(a.date)-D(b.date));
   const subs=TASKS.filter(x=>(camp&&x.campaign===camp)||(!camp&&x.parent===e.title));
   const doneN=subs.filter(x=>x.done).length;
@@ -3011,7 +3049,10 @@ function pageEvent(){
     '<div style="margin-bottom:6px">'+
       '<span class="tag" style="background:'+t.tint+';color:'+t.deep+'">'+t.label+'</span>'+
       (e.phase?'<span class="tag" style="background:var(--milestone-t);color:var(--milestone-d)">'+esc(e.phase)+'</span>':'')+
-      '<span class="tag">'+STATUS_LABEL[e.status]+'</span>'+
+      // The board says "On track"; STATUS_LABEL speaks comms ("Sent"), which
+      // read as nonsense on a gathering that has simply happened.
+      '<span class="tag">'+esc(e.boardStatus||STATUS_LABEL[e.status])+'</span>'+
+      (e.boardType?'<span class="tag">'+esc(e.boardType)+'</span>':'')+
       (e.level?'<span class="tag" style="background:none;color:var(--text3);font-weight:500">'+esc(e.level)+'</span>':'')+
       (days>0?'<span style="font-size:12.5px;color:var(--text2);float:right;padding-top:4px">in '+days+' days</span>'
              :(days===0?'<span style="font-size:12.5px;color:var(--gathering);float:right;padding-top:4px">today</span>':''))+
@@ -3032,7 +3073,10 @@ function pageEvent(){
   const rows=[['Speaker',facts.speaker||e.speaker],['Clip source',e.clip],['Series',e.series],
               ['Owner',facts.owner||e.owner],['Creative',e.creative],
               ['Phase',facts.phase||e.phase],['Campaign',e.campaign],
-              ['Level',facts.level],['Where',e.type!=='event'?e.detail:null],
+              ['Level',facts.level],['Type',e.boardType],
+              ['Time',e.timeOfDay],['Location',e.location],
+              ['Repeats',e.recur==='weekly'?'Every week':null],
+              ['Where',e.type!=='event'?e.detail:null],
               // The room's detail is only worth repeating when it is not
               // already the Where line directly above it.
               ['Facilities',fac?(fac.status==='waiting'?'Waiting on a decision'
@@ -3049,14 +3093,14 @@ function pageEvent(){
       '<div class="kv"><span>'+esc(SOURCES[laneOf(x)]?SOURCES[laneOf(x)].label:'')+'</span>'+
       '<span>'+esc(x.title)+'</span></div>').join('');
   }
+  if(comms.length){
   h+='<div class="eyebrow">COMMS FOR THIS EVENT · '+comms.length+'</div>';
-  h+= comms.length
-    ? comms.map(c=>'<button class="row" data-ev="'+c.id+'"><span class="when">'+fmt(D(c.date))+'</span>'+
+  h+= comms.map(c=>'<button class="row" data-ev="'+c.id+'"><span class="when">'+fmt(D(c.date))+'</span>'+
         '<span class="txt"><span class="name">'+esc(c.title)+'</span><span class="meta">'+esc(c.detail||'')+'</span></span>'+
         '<span class="tag" style="background:'+(c.status==='waiting'?'var(--red-t)':c.status==='done'?'var(--session-t)':'var(--fill)')+
         ';color:'+(c.status==='waiting'?'var(--red-d)':c.status==='done'?'var(--session-d)':'#4a4a4a')+
-        '">'+STATUS_LABEL[c.status]+'</span></button>').join('')
-    : '<div class="empty">Nothing scheduled for this event yet.</div>';
+        '">'+STATUS_LABEL[c.status]+'</span></button>').join('');
+  }
 
   h+='</div><div>';
 
@@ -3102,9 +3146,11 @@ function pageEvent(){
   h+='</div></div>'+
     '<div class="foot-links">'+
     ((card.parts||[e]).some(x=>x.type==='event')
-      ?'<button data-go="planning" data-item="'+esc(pmId(e))+'">Edit in Planning</button>':'')+
+      ?'<button data-go="planning" data-item="'+esc(pmId(e))+'">Milestones, the Rhythm and notes in Planning</button>':'')+
     (fac?'<button data-go="facilities">Open in Facilities</button>':'')+
-    '<button data-go="comms" data-item="'+esc(ceId(e)||e.date||'')+'">Edit comms</button>'+
+    // Day-scoped, and says so: it opens that date in the comms calendar rather
+    // than claiming these sends belong to this event.
+    '<button data-go="comms" data-item="'+esc(e.date||'')+'">Comms on this day</button>'+
     (isSunday?'<button data-go="numbers" data-item="'+esc(e.date||'')+'">'+(m?'View in Metrics':'Submit attendance')+'</button>':'')+
     ((card.parts||[e]).find(x=>x.link&&x.type!=='facility')
       ?'<a class="foot-out" target="_blank" rel="noopener" href="'+esc((card.parts||[e]).find(x=>x.link&&x.type!=='facility').link)+'">Open in Outlook</a>':'')+
@@ -3150,7 +3196,7 @@ function hoverCardHTML(e){
     // Hover the merged card, not the part underneath it, so the tooltip can
     // say what the booking decided as well as what the board owns.
     const raw=EVENTS.find(x=>x.id===btn.dataset.ev);
-    const e=raw?mergeCards(EVENTS.filter(x=>x.date===raw.date&&shown(x)))
+    const e=raw?mergeCards(EVENTS.filter(x=>x.date===raw.date&&laneOf(x)))
                   .find(x=>x.id===raw.id)||raw:null;
     if(!e||(el&&el.dataset.for===e.id))return;
     hide();
@@ -3189,7 +3235,8 @@ function closeDrawer(){
   document.getElementById('scrim').classList.remove('open');
 }
 function dayDrawer(k){
-  const d=D(k), evs=mergeCards(EVENTS.filter(e=>e.date===k&&shown(e)));
+  const d=D(k), evs=mergeCards(EVENTS.filter(e=>e.date===k&&laneOf(e)))
+                    .filter(c=>(c.parts||[c]).some(shown));
   openDrawer('<h1 style="font-size:22px">'+pretty(d)+'</h1><div class="sub">'+evs.length+' items</div>'+
     '<div style="margin-top:16px">'+evs.map(e=>'<button class="row" data-ev="'+e.id+'">'+
     '<span class="swatch" style="background:'+palOf(e).hue+';margin-top:6px"></span>'+

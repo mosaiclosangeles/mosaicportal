@@ -176,6 +176,32 @@ await step('the same event from three calendars normalises to one name',async()=
     throw new Error('these should all be one event: '+JSON.stringify(r));
   if(r.different)throw new Error('Choir and Choir Rehearsal must stay separate');
 });
+/* Merge first, then filter. Backwards, a campus picker on another campus threw
+   the board's record away before the merge could reach it, and Men's Camp
+   opened as the shared calendar's bare copy — a title, two dates, nothing. */
+await step('a campus filter cannot strip a card of its board record',async()=>{
+  const r=await p.evaluate(()=>{
+    const fac=EVENTS.find(e=>e.type==='facility');
+    EVENTS.push({id:'t:board',date:fac.date,dateEnd:fac.date,type:'event',
+      title:fac.title,campus:'LA',owner:'David',phase:'Pre-launch',
+      boardStatus:'On track',status:'scheduled',desc:'the real record'});
+    EVENTS.push({id:'t:outlook',date:fac.date,type:'other',title:fac.title,
+      status:'done',campus:''});
+    const keep=S.campus;
+    S.campus='Mexico';                     // neither LA nor the campus-less copy
+    const card=evOn(D(fac.date)).find(c=>(c.parts||[]).length>1);
+    const out=card?{parts:card.parts.length,
+                    hasBoard:card.parts.some(x=>x.id==='t:board'),
+                    phase:partFacts(card).phase}:null;
+    S.campus=keep;
+    ['t:board','t:outlook'].forEach(id=>EVENTS.splice(EVENTS.findIndex(e=>e.id===id),1));
+    return out;
+  });
+  console.log('       '+JSON.stringify(r));
+  if(!r)throw new Error('the card vanished entirely');
+  if(!r.hasBoard)throw new Error('the filter threw the board record away');
+  if(r.phase!=='Pre-launch')throw new Error('the card lost the phase it should carry');
+});
 await step('a booking and a board item on one day become one card',async()=>{
   const r=await p.evaluate(()=>{
     const fac=EVENTS.find(e=>e.type==='facility');
