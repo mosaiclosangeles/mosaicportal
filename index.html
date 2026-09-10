@@ -1859,7 +1859,11 @@ function pageEmbed(id){
   const nav=id==='numbers'?{view:S.numPath||'overview'}
           :id==='facilities'?{page:S.facPath||'requests'}
           :id==='goals'?{path:S.goalsPath||'/'}:null;
-  showFrame(id,src,sec,nav);
+  /* A prefill or a deep link must RELOAD: those arrive as query parameters the
+     app only reads on boot, so posting a view change would move the tab and
+     silently drop the event that was being carried. Only a plain change of the
+     app's own view or page is safe to send as a message. */
+  showFrame(id,src,sec,(book||want)?null:nav);
   return '';   // the frame is not in #main; see the embed host
 }
 
@@ -1888,7 +1892,7 @@ function showFrame(id,src,sec,nav){
     f.src=src; f.dataset.src=src;
     host.appendChild(f);
   }else if(f.dataset.src!==src){
-    if(embedBase(f.dataset.src)===embedBase(src)&&nav)askFrame(f,src,sec,nav);
+    if(nav&&embedBase(f.dataset.src)===embedBase(src))askFrame(f,src,sec,nav);
     else { f.src=src; f.dataset.src=src; }
   }
   Object.keys(FRAMES).forEach(k=>{FRAMES[k].hidden=(k!==id);});

@@ -11,9 +11,13 @@ await p.route('**/*',r=>{
 // the portal, with the facilities frame pointed at the OTHER origin
 await p.goto('http://127.0.0.1:8100/facilities',{waitUntil:'domcontentloaded',timeout:25000});
 await p.waitForFunction(()=>document.querySelectorAll('#nav button[data-go]').length>3,{timeout:12000});
+// Point the portal's own Facilities section at this harness origin, so the
+// portal builds the frame's URL the way it does in production. Setting the
+// iframe's src by hand no longer works: the portal keeps the frame alive
+// across renders and would put its own URL back on the next one.
 await p.evaluate(()=>{
-  const f=document.querySelector('#embedHost iframe:not([hidden])');
-  f.src='http://127.0.0.1:8099/harness-frame.html?embed=portal';
+  SECTIONS.find(s=>s.id==='facilities').url='http://127.0.0.1:8099/harness-frame.html';
+  render();
 });
 console.log('--- the portal hands the session to the frame ---');
 await step('the frame gets in without ever reading a cookie',async()=>{
