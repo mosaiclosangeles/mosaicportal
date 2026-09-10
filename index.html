@@ -1435,7 +1435,18 @@ function pageEmbed(id){
   const sec=SECTIONS.find(x=>x.id===id);
   let src=sec.url;
   if(id==='goals')src+=(S.goalsPath==='/'?'':S.goalsPath);
-  if(id==='facilities')src+=(src.includes('?')?'&':'?')+'page='+(S.facPath||'requests');
+  if(id==='facilities'){
+    src+=(src.includes('?')?'&':'?')+'page='+(S.facPath||'requests');
+    // Booking a room for an event on the planning board. The board cannot write
+    // a facility request itself — it has no sign-in, and that table's INSERT
+    // policy is keyed to auth.uid() — so it asks the portal to open the
+    // Facilities form with the event's details already in it. Nothing here
+    // bypasses a check; it saves retyping and it stamps the link between the
+    // two, which is what board_item_id is for.
+    if(S.facBook)for(const [k,v] of Object.entries(S.facBook)){
+      if(v)src+='&'+encodeURIComponent(k)+'='+encodeURIComponent(v);
+    }
+  }
   if(id==='numbers'||id==='comms'||id==='planning'||id==='goals'||id==='facilities')
     src+=(src.includes('?')?'&':'?')+'embed=portal';
   // Arriving from an event: tell the app which one, so people land on the
@@ -3211,6 +3222,39 @@ window.addEventListener('message',async e=>{
     {type:'mosaic-auth',access_token:s.access_token,refresh_token:s.refresh_token},e.origin);}catch(_){}
 });
 
+/* An embedded app asking the portal to go somewhere else in the portal.
+   Everything is meant to speak to each other in here rather than throwing
+   people into a new tab, and until now only the portal could start a move: the
+   planning board had no way to say "open Facilities on the new-request form
+   with this event in it".
+
+   Only two sections accept this, and only the fields those forms actually read.
+   An allowlist rather than a pass-through, because this arrives from a framed
+   page: anything it can put in the URL, it could put anything in. Origin is
+   already checked above against *.mosaic.org. */
+const NAV_ALLOWED={facilities:['board_item','title','date','end_date','start','end','campus','purpose']};
+window.addEventListener('message',e=>{
+  if(!EMBED_TRUSTED(e.origin))return;
+  const d=e.data||{};
+  if(d.type!=='mosaic-navigate')return;
+  const sec=SECTIONS.find(x=>x.id===d.section);
+  // Silently ignoring an unknown or locked section is right: a framed app should
+  // not be able to reach a part of the portal this person cannot see anyway.
+  if(!sec||!allowedSections().includes(sec.id))return;
+  const allowed=NAV_ALLOWED[sec.id];
+  if(sec.id==='facilities'){
+    S.facPath=(d.page==='new')?'new':(S.facPath||'requests');
+    S.facBook={};
+    for(const k of allowed||[]){
+      const v=d.params&&d.params[k];
+      if(typeof v==='string'&&v)S.facBook[k]=v.slice(0,2000);
+    }
+  }
+  S.section=sec.id;
+  try{history.pushState({},'',SECTION_PATH[sec.id]||'/');}catch(_){}
+  render();
+});
+
 /* ============================ preview (view as staff/leader/volunteer) ============================ */
 const PREVIEW_ROLE_PRESET={staff:'comms',campus_pastor:'comms',leader:'ops',volunteer:'volunteer'};
 
@@ -3341,6 +3385,7 @@ document.addEventListener('click',e=>{
   if(t.dataset.go){ if(allowedSections().includes(t.dataset.go)){
       S.deep=S.deep||{};
       if(t.dataset.item)S.deep[t.dataset.go]=t.dataset.item; else delete S.deep[t.dataset.go];
+      if(t.dataset.go==='facilities')S.facBook=null;
       S.section=t.dataset.go; closeDrawer(); if(typeof umClose==="function")umClose(); render();} return; }
   if(t.dataset.theme){
     THEME=t.dataset.theme; try{localStorage.setItem(themeKey(),THEME);}catch(e){}
@@ -3399,7 +3444,10 @@ document.addEventListener('click',e=>{
   }
   if(t.dataset.fb){ feedbackDrawer(t.dataset.fb); return; }
   if(t.dataset.gp!==undefined){ S.goalsPath=t.dataset.gp; S.section='goals'; render(); return; }
-  if(t.dataset.fp!==undefined){ S.facPath=t.dataset.fp; S.section='facilities'; render(); return; }
+  // Clicking the sub-menu by hand drops any board prefill: it belongs to the one
+  // arrival from the planning board, and leaving it set would re-open a stale
+  // event's details the next time somebody opens the new-request form.
+  if(t.dataset.fp!==undefined){ S.facPath=t.dataset.fp; S.facBook=null; S.section='facilities'; render(); return; }
   if(t.dataset.user){ S.from='admin'; S.adminUserId=t.dataset.user; S.section='admin-user'; render(); return; }
   if(t.dataset.pinv){ paInviteDrawer(t.dataset.pinv); return; }
   if(t.dataset.pinvsend){

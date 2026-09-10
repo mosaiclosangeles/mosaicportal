@@ -57,6 +57,76 @@ await step('an untrusted origin asking for the token is ignored',async()=>{
   if(got[0]||got[1]||got[2])throw new Error('an untrusted origin was accepted');
   if(!got[3])throw new Error('the real facilities origin was rejected');
 });
+/* --- "Book the space": a framed app asking the portal to move ---
+   The planning board cannot file a facility request itself, so it asks the
+   portal to open Facilities on the new-request form with the event in it. The
+   portal is the middle of that chain and the only part of it that had nothing
+   driving it. The message is posted from the facilities frame here because it
+   is a genuine second origin; the board sends the same shape, and its own suite
+   (features.mjs, "the hand-off carries the event…") asserts the keys. */
+console.log('--- a framed app asking the portal to open Facilities ---');
+/* Posted from inside the frame, by the frame, on its own origin — the parent
+   cannot reach across into it, and a message the parent posts to itself would
+   not be testing the origin check at all. */
+/* Handling the message re-renders, which puts the frame back on the real
+   facilities.mosaic.org src — right for production, and it means the harness
+   has to be pointed at the second origin again before each message. */
+const repoint=async()=>{
+  await p.evaluate(()=>{
+    const f=document.querySelector('.embed-wrap iframe');
+    if(f&&!f.src.includes('harness-frame'))f.src='http://127.0.0.1:8099/harness-frame.html?embed=portal';
+  });
+  for(let i=0;i<25;i++){
+    if(p.frames().some(x=>x.url().includes('harness-frame')))return;
+    await p.waitForTimeout(300);
+  }
+  throw new Error('the facilities frame never came back');
+};
+const navigate=async(msg)=>{
+  await repoint();
+  const fr=p.frames().find(x=>x.url().includes('harness-frame'));
+  if(!fr)throw new Error('the facilities frame is gone');
+  await fr.evaluate(m=>parent.postMessage(m,'*'),msg);
+  await p.waitForTimeout(500);
+  return p.evaluate(()=>({section:S.section,facPath:S.facPath,book:S.facBook,
+    src:(document.querySelector('.embed-wrap iframe')||{}).src||''}));
+};
+const BOOK={type:'mosaic-navigate',section:'facilities',page:'new',params:{
+  board_item:'n:2026-12-24:LA:christmas-eve',title:'Christmas Eve Service',
+  date:'2026-12-24',start:'17:00',end:'19:00',campus:'LA',purpose:'Two services'}};
+await step('it lands on the Facilities new-request form, in the portal',async()=>{
+  const r=await navigate(BOOK);
+  if(r.section!=='facilities')throw new Error('section is '+r.section);
+  if(r.facPath!=='new')throw new Error('page is '+r.facPath);
+});
+await step('the event\'s details reach the frame\'s URL',async()=>{
+  const r=await navigate(BOOK);
+  for(const [k,v] of Object.entries(BOOK.params))
+    if(!r.src.includes(encodeURIComponent(k)+'='+encodeURIComponent(v)))
+      throw new Error(k+' did not reach the src: '+r.src.slice(0,200));
+});
+await step('a field nobody allowed is dropped, not passed through',async()=>{
+  // An allowlist rather than a pass-through: this arrives from a framed page,
+  // and whatever it can put in the URL it could put anything in.
+  const r=await navigate({...BOOK,params:{...BOOK.params,role:'admin',apikey:'x'}});
+  if(r.src.includes('role=')||r.src.includes('apikey='))
+    throw new Error('an unlisted param was forwarded: '+r.src.slice(0,200));
+  if(!('board_item' in (r.book||{})))throw new Error('the allowed ones were dropped too');
+});
+await step('a section that is not offered is ignored',async()=>{
+  const before=await p.evaluate(()=>S.section);
+  const r=await navigate({...BOOK,section:'nonsense'});
+  if(r.section!==before)throw new Error('moved to '+r.section);
+});
+await step('clicking Facilities by hand clears the board prefill',async()=>{
+  await navigate(BOOK);
+  await p.click('#nav button[data-go="facilities"]');
+  await p.waitForTimeout(400);
+  const r=await p.evaluate(()=>({book:S.facBook,
+    src:(document.querySelector('.embed-wrap iframe')||{}).src||''}));
+  if(r.book)throw new Error('the prefill survived a click');
+  if(r.src.includes('board_item'))throw new Error('a stale event is still in the src');
+});
 if(errs.length)console.log('\nJS errors:\n  '+errs.join('\n  '));
 await p.screenshot({path:'handshake.png'});
 console.log(bad||errs.length?'\nFAILED':'\nall good');
