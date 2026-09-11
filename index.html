@@ -47,6 +47,19 @@
 .prio-sec .row .tag{flex:none;align-self:center;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .prio-sec .row[disabled]{opacity:.6;cursor:default}
 @media(max-width:900px){.prio-sec .row .tag{display:none}}
+.closeout-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:22px;padding-top:18px;
+  border-top:1px solid var(--separator)}
+.btn-closeout{display:inline-flex;align-items:center;gap:7px;background:#111;color:#fff;font-size:13.5px;
+  font-weight:500;padding:9px 16px;border-radius:var(--r-btn);border:0;font-family:inherit;
+  letter-spacing:inherit;cursor:pointer;white-space:nowrap}
+.btn-closeout:hover{background:#000}
+.btn-closeout[disabled]{opacity:.6;cursor:default}
+.closeout-note{font-size:12.5px;color:var(--text2)}
+.lrow{display:flex;align-items:center;gap:10px}
+.lrow .row{flex:1;min-width:0}
+.btn-closeout.sm{font-size:12px;padding:6px 11px;flex:none}
+.closeout-done{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--session-d)}
+html.dark .btn-closeout{background:#fff;color:#111}
 .card-more{display:flex;align-items:center;gap:4px;margin-top:7px;font-size:12px;opacity:.85}
 .card:hover .card-more{opacity:1;text-decoration:underline}
 .embed-wrap{margin:-24px -28px -60px;position:relative;height:100vh}
@@ -1037,6 +1050,36 @@ let EVENTS=[], CAMPAIGNS=[], METRICS={}, TASKS=[], ATTN=[], CLOSEOUT=[], DATA_ER
 let METRICS_BY_CAMPUS={};
 const PM_URL='https://yrviwbqhjcrlxgozrgay.supabase.co';
 const PM_KEY='sb_publishable_3o7Avv4DEhHW7i_k5DrH6Q_tYFLrgwg';
+/* CLOSE IT OUT, FROM THE CARD.
+   The board's own save is a read-modify-write behind a version guard, and a
+   second copy of that protocol in this app is how two writers start erasing
+   each other — so the change is made by board_set_status() in the database
+   instead: one statement, atomic, and one implementation rather than two.
+   It writes what the board's own `edit` op writes (edits[id].status) and
+   merges into that item's existing edits, so a title or date already saved
+   against it survives.
+
+   The mirror this page reads is refreshed by a nightly sync, so the item would
+   otherwise sit in the list until tomorrow. The local copy is updated too —
+   which is a claim about what was saved, so it only happens after the database
+   has said yes. */
+async function pmRpc(fn,body){
+  const r=await fetch(PM_URL+'/rest/v1/rpc/'+fn,{
+    method:'POST',
+    headers:{apikey:PM_KEY,Authorization:'Bearer '+PM_KEY,'Content-Type':'application/json'},
+    body:JSON.stringify(body||{})});
+  if(!r.ok)throw new Error(await r.text()||('rpc failed ('+r.status+')'));
+  return r.json();
+}
+async function closeOut(boardId){
+  const res=await pmRpc('board_set_status',{p_item_id:boardId,p_status:'Complete'});
+  // Only now is it true. Reflect it locally so the count and the list agree
+  // with the board without waiting for the overnight sync.
+  EVENTS.forEach(e=>{if(e.boardId===boardId)e.boardStatus='Complete';});
+  const i=CLOSEOUT.findIndex(x=>String(x.evId||'').replace(/^pm:/,'').replace(/:\d{4}-\d{2}-\d{2}$/,'')===boardId);
+  if(i>=0)CLOSEOUT.splice(i,1);
+  return res;
+}
 async function pmGet(q){
   const r=await fetch(PM_URL+'/rest/v1/'+q,{headers:{apikey:PM_KEY,Authorization:'Bearer '+PM_KEY}});
   if(!r.ok)throw new Error('planning read failed ('+r.status+')');
@@ -3667,10 +3710,17 @@ function openList(kind){
     '<div class="sub" style="margin-bottom:18px">'+
       (rows.length?rows.length+(rows.length===1?' item':' items'):'Nothing here right now')+'</div>'+
     (rows.length
-      ? rows.map(r=>'<button class="row" data-ev="'+esc(r.evId)+'">'+
-          '<span class="when">'+(r.date?fmt(D(r.date)):'')+'</span>'+
-          '<span class="txt"><span class="name">'+esc(r.title||'')+'</span>'+
-          '<span class="meta">'+esc(r.meta||'')+'</span></span></button>').join('')
+      ? rows.map(r=>{
+          // In the close-out list every row is by definition closeable, so the
+          // button is offered inline rather than one card at a time.
+          const bId=kind==='closeout'?String(r.evId||'').replace(/^pm:/,'').replace(/:\d{4}-\d{2}-\d{2}$/,''):'';
+          return '<div class="lrow"><button class="row" data-ev="'+esc(r.evId)+'">'+
+            '<span class="when">'+(r.date?fmt(D(r.date)):'')+'</span>'+
+            '<span class="txt"><span class="name">'+esc(r.title||'')+'</span>'+
+            '<span class="meta">'+esc(r.meta||'')+'</span></span></button>'+
+            (bId?'<button class="btn-closeout sm" data-closeout="'+esc(bId)+'" data-fromlist="'+esc(kind)+'">Close it out</button>':'')+
+            '</div>';
+        }).join('')
       : '<div class="empty">Nothing here right now.</div>');
   body.scrollTop=0;
   document.getElementById('cardWrap').classList.add('open');
@@ -3833,6 +3883,18 @@ function pageEvent(){
           (overdue?(same(D(x.due),TODAY)?'due today':'overdue'):fmt(D(x.due)))+'</span></span></button>';
       }).join('');
   }
+
+  /* Offered only where it is true: something on the board, its date passed,
+     and not already Complete. The board's own words are used for the state,
+     so a card cannot claim a status the board would not. */
+  const bId=pmId(boardPart(card,e));
+  const canClose=bId&&e.type==='event'&&D(e.date)<TODAY&&(e.boardStatus||'')!=='Complete';
+  if(canClose)
+    h+='<div class="closeout-row"><button class="btn-closeout" data-closeout="'+esc(bId)+'">'+
+       ic('check','width:15px;height:15px')+'Close it out</button>'+
+       '<span class="closeout-note" id="closeoutNote">Marks it Complete on the planning board.</span></div>';
+  else if(bId&&(e.boardStatus||'')==='Complete')
+    h+='<div class="closeout-row"><span class="closeout-done">'+ic('check','width:14px;height:14px')+'Closed out</span></div>';
 
   h+='</div></div>'+
     '<div class="foot-links">'+
@@ -4299,7 +4361,7 @@ document.addEventListener('click',e=>{
   /* Both sides of the merge added to this list — [data-mp] is the Metrics rail,
      [data-newmenu]/[data-newthing] the New menu. Every one of them has to be
      here or its buttons are simply dead. */
-  const t=e.target.closest('[data-go],[data-view],[data-nav],[data-filter],[data-ev],[data-day],[data-task],[data-new],[data-pick],[data-everyone],[data-tl],[data-back],[data-logout],[data-preview],[data-previewexit],[data-previewgo],[data-pickertoggle],[data-pickerrole],[data-profile],[data-fb],[data-newuser],[data-gp],[data-fp],[data-mp],[data-user],[data-pinv],[data-pinvsend],[data-pinvdel],[data-adtab],[data-theme],[data-newcampus],[data-editcampus],[data-addloc],[data-deactivateloc],[data-addtime],[data-rmtime],[data-toggleinactivecampus],[data-toggleusers],[data-newmenu],[data-newthing],[data-cardlist],[data-cardback]');
+  const t=e.target.closest('[data-go],[data-view],[data-nav],[data-filter],[data-ev],[data-day],[data-task],[data-new],[data-pick],[data-everyone],[data-tl],[data-back],[data-logout],[data-preview],[data-previewexit],[data-previewgo],[data-pickertoggle],[data-pickerrole],[data-profile],[data-fb],[data-newuser],[data-gp],[data-fp],[data-mp],[data-user],[data-pinv],[data-pinvsend],[data-pinvdel],[data-adtab],[data-theme],[data-newcampus],[data-editcampus],[data-addloc],[data-deactivateloc],[data-addtime],[data-rmtime],[data-toggleinactivecampus],[data-toggleusers],[data-newmenu],[data-newthing],[data-cardlist],[data-cardback],[data-closeout]');
   if(!t) return;
   /* The New menu on Home. It has to come before data-new below, and be its own
      attribute: data-new is the Calendars drawer, and one of these buttons
@@ -4468,6 +4530,29 @@ document.addEventListener('click',e=>{
        not to do — and the two renderers drifted apart, because nothing made
        them agree. eventDrawer is gone rather than kept in step. */
     closeDrawer(); openCard(t.dataset.ev);
+    return;
+  }
+  if(t.dataset.closeout){
+    /* Never say it is done before the board says so. The button reports what
+       actually happened — "Saved" only after the database returns, the error
+       itself if it does not — because a green tick over a failed write is how
+       somebody loses an afternoon and only finds out on Monday. */
+    const btn=t, id=btn.dataset.closeout, from=btn.dataset.fromlist;
+    const note=document.getElementById('closeoutNote');
+    btn.disabled=true; const was=btn.textContent; btn.textContent='Closing…';
+    closeOut(id).then(()=>{
+      if(from){ openList(from); }               // the row is gone; redraw the list
+      else {
+        btn.textContent='Closed out';
+        if(note)note.textContent='Marked Complete on the planning board.';
+      }
+      if(S.section==='home')render();
+    }).catch(err=>{
+      btn.disabled=false; btn.textContent=was;
+      const msg=String((err&&err.message)||err).slice(0,200);
+      if(note){note.textContent="Couldn't close it out — "+msg;note.style.color='var(--red-d)';}
+      else alert("Couldn't close it out — "+msg);
+    });
     return;
   }
   if(t.dataset.cardlist){ openList(t.dataset.cardlist); return; }

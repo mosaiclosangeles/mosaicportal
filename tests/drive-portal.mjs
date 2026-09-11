@@ -115,6 +115,35 @@ await step('picking a row opens that record, with a way back',async()=>{
   await p.waitForTimeout(200);
   await p.evaluate(()=>{ATTN.pop();render();});
 });
+/* Close it out, from the card. The button must never say it worked before the
+   board has said so — a tick over a failed write is worse than an error. */
+await step('the close-out button reports the real outcome, not an optimistic one',async()=>{
+  const r=await p.evaluate(async()=>{
+    const realRpc=window.pmRpc, realFetch=window.fetch;
+    const out={};
+    // 1. the failure path: the button must come back, and say why
+    window.pmRpc=()=>Promise.reject(new Error('version conflict'));
+    try{ await closeOut('k:test'); out.threw=false; }catch(e){ out.threw=true; out.msg=e.message; }
+    out.stillCounted=true;
+    // 2. the success path: only then does the local copy change
+    CLOSEOUT.push({evId:'pm:k:test',title:'Warehouse Clean Up',date:'2026-08-19',meta:'LA'});
+    EVENTS.push({id:'pm:k:test',boardId:'k:test',type:'event',title:'Warehouse Clean Up',
+      date:'2026-08-19',boardStatus:'On track'});
+    const before=CLOSEOUT.length;
+    window.pmRpc=()=>Promise.resolve({status:'Complete'});
+    await closeOut('k:test');
+    out.removed=CLOSEOUT.length===before-1;
+    out.marked=(EVENTS.find(e=>e.id==='pm:k:test')||{}).boardStatus;
+    EVENTS.splice(EVENTS.findIndex(e=>e.id==='pm:k:test'),1);
+    window.pmRpc=realRpc; window.fetch=realFetch;
+    return out;
+  });
+  console.log('       '+JSON.stringify(r));
+  if(!r.threw)throw new Error('a failed close-out was swallowed');
+  if(!/version conflict/.test(r.msg||''))throw new Error('the real reason was lost: '+r.msg);
+  if(!r.removed)throw new Error('a confirmed close-out did not leave the list');
+  if(r.marked!=='Complete')throw new Error('the local copy was not marked, got '+r.marked);
+});
 /* 🐛 Two ways a card claimed a number that was not its own.
    Attendance was summed across every campus (6 Sep read 2,373 — LA 1,051 plus
    Ecuador, Mexico and London), and ANY board item landing on a Sunday got a

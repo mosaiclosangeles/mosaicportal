@@ -175,6 +175,19 @@ Facilities and Metrics already enforce. Only the fields the panel draws go back;
 a booking carries internal notes and a requester's phone number, and a planning
 card is not where either belongs.
 
+**Closing out writes through the database, not through a second copy of the
+board's save.** The board saves by reading the row, replaying a small op and
+PATCHing behind a `version=eq.N` guard. Reimplementing that protocol in the
+portal would be two writers with two copies of a concurrency rule to keep in
+step — so the "Close it out" button calls `board_set_status()`, a Postgres
+function that does the same change in ONE statement: atomic by definition,
+nothing to race against. It writes exactly what the board's `edit` op writes
+(`edits[id].status`) and MERGES into that item's existing edits, so a title,
+owner or date already saved against it survives. The button never says it
+worked before the database returns — a tick over a failed write is how somebody
+loses an afternoon and finds out on Monday — and only then is the local copy
+marked, because the mirror this page reads is a nightly sync behind.
+
 **Attendance is one campus, and only a Sunday gathering may claim it.** Two
 separate ways a card claimed a number nobody had counted for it. `METRICS` used
 to sum `in_person_total` across every campus on a date, so 6 Sep read 2,373 —
