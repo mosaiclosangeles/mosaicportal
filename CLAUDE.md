@@ -66,8 +66,20 @@ source at all, so it never draws. Filter through `shown(e)`, never through
 `S.filters.has(e.type)`, or the rows Loyda asked to be folded together come
 apart again. `tests/drive-portal.mjs` asserts the three by name.
 
-**A comm belongs to an event by subject, not by date.** `comm_events` carries
-no reference to the item it serves, so the link is inferred: `commRelated()`
+**A comm belongs to an event by its own reference, and only otherwise by
+subject.** `comm_events.board_item_id` now exists — the comms app sets it when
+a message is started from a planning card — and `commLink()` prefers it: set,
+it is the whole answer, with no window and no word matching, and the comm
+belongs to that item and no other. That is the upstream fix the paragraph below
+was waiting for; it arrived on 10 Sep and this note was stale for a day, which
+is its own lesson about keeping the record with the code.
+
+The inference still runs, and still matters, because nothing was backfilled:
+every message written before the column existed carries null, and guessing
+which of those 242 rows belonged to which event would have attached the wrong
+email to an event and read as fact.
+
+**How that inference works, for the rows with no reference.** `commRelated()`
 asks whether every distinctive word in the *comm's* name appears in the event's
 (`subjectWords()` strips the channel and timing words — email, text, promo,
 weekday names — and stems plurals), and `commWindow()` limits it to the item's
@@ -76,8 +88,9 @@ one way on purpose: a comm is named more narrowly than the event it serves, so
 "Bible Studies" reaches "Regional Bible Studies" but "ERM Text" reaches neither
 Team Huddle nor Men's Camp. Same-day was the first rule and it hung two ERM
 sends off a staff birthday; exact title was the second and matched almost
-nothing. The lasting fix is upstream — an item reference on `comm_events` —
-after which this becomes an exact match.
+nothing. As `board_item_id` gets filled in, this matters less and less — but it
+must keep working, because it is the only thing that speaks for every message
+already written.
 
 **The calendar has two views, and an entry opens a card over them.** Month is
 where it opens; List is the same month read down the page. Both draw from
@@ -150,6 +163,26 @@ event card actually asks for, and leaving it out sends that click to a new tab,
 which is the thing Hannita asked to be rid of. A bare move (no page, no params)
 books no form: defaulting it to `page=new` landed people on the board's
 new-item form when all they clicked was the name of the app they were reading.
+
+**The portal answers for the apps a frame cannot read.** A planning card shows
+what is booked and what was counted for its event, in its Connected panel. The
+board cannot read either: both live in the Mosaic Metrics project behind RLS
+keyed to `auth.uid()`, and the board runs on a publishable key with no session.
+So it asks — `mosaic-connected-request` — and `connectedFor()` answers with the
+signed-in person's own session. That is the point rather than a workaround: the
+card shows exactly what THIS person may see, decided by the same policies
+Facilities and Metrics already enforce. Only the fields the panel draws go back;
+a booking carries internal notes and a requester's phone number, and a planning
+card is not where either belongs.
+
+**`wantAttendance` is the board's word, and it is honoured, not re-decided.**
+Attendance has no reference to match on, so it matches on date and campus — and
+an item nested under a Sunday *inherits* that Sunday's date, so Choir, Baptisms
+and Child Dedications all carry the gathering's day and campus. Matching those
+would hand each of them the Sunday's attendance as its own: three cards claiming
+one number, none of which counted them. The board knows about its own nesting,
+so `canOwnAttendance()` there decides and this does not go looking when the
+answer would be wrong. Hannita caught it on the real board, 10 Sep.
 
 **Facility bookings are one of those sources.** `loadFacilities()` reads
 `v_fac_requests` out of the same Supabase project with the signed-in person's
