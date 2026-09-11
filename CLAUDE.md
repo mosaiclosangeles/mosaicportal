@@ -113,6 +113,39 @@ and the number printed above it cannot disagree; the test asserts they match.
 That is also why `CLOSEOUT` is the items and not a tally. Click, not hover: a
 hover panel is unreachable on a phone, which is where these get read.
 
+**"Waiting on you" is yours; a campus's missing numbers are the campus's.**
+It once counted every flagged item on the board for everyone, so the number read
+the same for all of us. `waitingOnMe()` counts what the signed-in person OWNS and
+what is still outstanding on it: a Sunday inside six weeks with no speaker, an
+item flagged for review, and a Sunday whose attendance was never entered.
+`closeOutList()` is the other half — a campus pastor sees their campus's pending
+numbers even where somebody else owns the item, because Alisah does not own the
+Bible studies and Andres does, so it is waiting on *him* while the numbers are
+still missing at *her* campus. The same Sunday therefore reads one way to its
+owner and the other to the campus, and never both to one person. Those rows carry
+`noClose`: closing one out would mark the board Complete with the attendance it
+is waiting for still missing.
+
+**Who you are on the board comes from `board_owners.email`**, the mapping the
+Monday digest is keyed on, so Home and the digest cannot disagree about whose
+work this is. First-name matching is not merely loose, it is wrong — "Aaron" and
+"Aaron Weits" are one person and "ACM" is another — and survives only as the
+fallback for somebody not mapped yet. Anyone it gets wrong is fixed by mapping
+them, not by guessing harder.
+
+**An absence may only be claimed from a read that succeeded.** `METRICS_LOADED`
+gates every attendance check; an empty `METRICS_DATES` from a failed fetch would
+accuse every owner on the board of missing a week they filed on time. The same
+reason the test stub now answers the `campuses` table: it returned `[]`, so
+`campusIdOf()` answered null for everything and every campus-keyed assertion
+passed by not running.
+
+**Location and time are not checked, and that is deliberate.** The board's drawer
+holds title, dates, time, speaker and description — there is no location field at
+all, and the mirror's `location` column is filled for 3 items of 261. Time exists
+but the board labels it optional and 87 of 87 upcoming items leave it blank.
+Either check would flag the whole board and teach everyone to ignore the card.
+
 **Worth a look is the Monday digest's own ranking, not a second opinion.**
 `priorities_for()` in the board's database is what the Slack digest is built
 from — it decides the sections, the order and the reason on every row — so the
