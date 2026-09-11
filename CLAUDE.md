@@ -175,6 +175,21 @@ Facilities and Metrics already enforce. Only the fields the panel draws go back;
 a booking carries internal notes and a requester's phone number, and a planning
 card is not where either belongs.
 
+**Attendance is one campus, and only a Sunday gathering may claim it.** Two
+separate ways a card claimed a number nobody had counted for it. `METRICS` used
+to sum `in_person_total` across every campus on a date, so 6 Sep read 2,373 —
+Los Angeles 1,051 plus Ecuador 811, Mexico 439 and London 72 — and once Home
+started saying "This week's attendance in Mexico" that vagueness became a
+confident wrong answer. `METRICS_BY_CAMPUS` keeps them apart;
+`metricsForCampus()` maps the board's short names onto Metrics' campus ids and
+answers with NOTHING for one it does not know, because a blank panel is honest
+and a stranger's attendance is not. Separately, the card decided "this is a
+Sunday" from the weekday alone — so Kids Training, Choir, Baptisms and Child
+Dedications, which are nested under the gathering and inherit its date, each
+got handed the whole day. The mirror carries `is_sunday` and `parent_id`, so
+`isGathering` reads the board's own answer rather than re-deriving a worse one.
+Hannita caught both on the real card, 11 Sep.
+
 **`wantAttendance` is the board's word, and it is honoured, not re-decided.**
 Attendance has no reference to match on, so it matches on date and campus — and
 an item nested under a Sunday *inherits* that Sunday's date, so Choir, Baptisms

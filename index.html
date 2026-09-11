@@ -1031,6 +1031,10 @@ function campusesOnCalendar(){
 // CLOSEOUT is the items themselves, not a count: a number on a card you can
 // open has to be able to say WHICH things it is counting.
 let EVENTS=[], CAMPAIGNS=[], METRICS={}, TASKS=[], ATTN=[], CLOSEOUT=[], DATA_ERR=null, CAL_ON=false;
+/* Attendance per campus per date. METRICS above is whichever campus the page
+   is currently speaking for; this is all of them, so a card can ask for its
+   own rather than being handed a total nobody counted. */
+let METRICS_BY_CAMPUS={};
 const PM_URL='https://yrviwbqhjcrlxgozrgay.supabase.co';
 const PM_KEY='sb_publishable_3o7Avv4DEhHW7i_k5DrH6Q_tYFLrgwg';
 async function pmGet(q){
@@ -1052,6 +1056,14 @@ function mapLive(pis,ces){
        Milestones and the Rhythm's ticks are here too, since the sync started
        computing them off the board's own milestoneDates() and PHASE_INFO. */
     const base={type:'event',title,boardId:r.id,campus:r.campus,level:r.level,phase:r.phase_now,speaker:r.speaker,
+      /* Only a Sunday GATHERING may own a Sunday's attendance. Items nested
+         under one inherit its date, so a weekday test hands Kids Training,
+         Choir, Baptisms and Child Dedications the whole day's number as if
+         each had counted it. The board already decides this for itself; the
+         mirror carries is_sunday and parent_id, so read them rather than
+         re-deriving a worse answer here. Hannita, 11 Sep: "this event is not
+         in metrics". */
+      isGathering:!!r.is_sunday&&!r.parent_id,
       boardType:r.type,boardStatus:r.status,recur:r.recur,location:r.location,timeOfDay:r.time_of_day,
       milestones:r.milestones||null,rhythm:r.rhythm||null,
       series:r.is_series?title:undefined,owner:(r.owners||[]).join(', '),desc:r.description,
@@ -1157,13 +1169,36 @@ async function loadLive(){
   }catch(e){DATA_ERR="Couldn't load live planning data — "+e.message+". Showing an empty calendar; the planning board itself is unaffected.";}
   try{
     if(sb){
-      let {data,error}=await sb.from('v_service_totals').select('date,gathering_type,in_person_total,online_views,baptisms').order('date',{ascending:false}).limit(80);
+      /* 🐛 PER CAMPUS, NOT ONE WORLD TOTAL.
+         This used to sum in_person_total across every campus on a date, so
+         6 Sep read 2,373 — Los Angeles 1,051 plus Ecuador 811, Mexico 439 and
+         London 72 added together. Unlabelled that was merely vague; once
+         Home started saying "This week's attendance in Mexico" it became a
+         confident wrong answer, because Mexico was 439.
+         So the rows are kept per campus and a card asks for the one it means:
+         Home for the person's home campus, an event for its own. */
+      let {data,error}=await sb.from('v_service_totals')
+        .select('date,campus_id,gathering_type,in_person_total,online_views,baptisms')
+        .order('date',{ascending:false}).limit(400);
       if(!error&&data&&data.length){
         const sun=data.filter(r=>String(r.gathering_type||'sunday').toLowerCase().includes('sun'));
         const rows=sun.length?sun:data;
-        const byDate={};
-        rows.forEach(r=>{const k=r.date;byDate[k]=byDate[k]||{a:0,k:0,n:0};byDate[k].a+=(r.in_person_total||0);byDate[k].k+=(r.online_views||0);byDate[k].n+=(r.baptisms||0);});
-        METRICS={};Object.keys(byDate).sort().slice(-6).forEach(k=>METRICS[k]=byDate[k]);
+        const by={};
+        rows.forEach(r=>{
+          const c=r.campus_id||'?', k=r.date;
+          by[c]=by[c]||{};
+          by[c][k]=by[c][k]||{a:0,k:0,n:0};
+          by[c][k].a+=(r.in_person_total||0);
+          by[c][k].k+=(r.online_views||0);
+          by[c][k].n+=(r.baptisms||0);
+        });
+        METRICS_BY_CAMPUS={};
+        Object.keys(by).forEach(c=>{
+          const out={};
+          Object.keys(by[c]).sort().slice(-6).forEach(k=>out[k]=by[c][k]);
+          METRICS_BY_CAMPUS[c]=out;
+        });
+        METRICS=METRICS_BY_CAMPUS[homeCampusId()]||{};
       }
     }
   }catch(e){/* metrics card stays empty */}
@@ -1599,6 +1634,22 @@ const STATUS_LABEL={done:'Sent',scheduled:'Scheduled',waiting:'Waiting on someon
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function lastSunday(){let d=addDays(TODAY,0);while(d.getDay()!==0)d=addDays(d,-1);return d;}
 function metricFor(dt){return METRICS[key(dt)]||null;}
+/* The board writes campuses short ("LA", "NYC"); Metrics stores them by id
+   with a full name. An unknown one answers with nothing rather than falling
+   back to another campus's numbers — a blank panel is honest, a stranger's
+   attendance is not. */
+const CAMPUS_LONG={la:'los angeles',nyc:'new york city',ny:'new york city'};
+function campusIdOf(name){
+  if(!name)return null;
+  const want=String(name).trim().toLowerCase();
+  const full=CAMPUS_LONG[want]||want;
+  const c=CAMPUSES.find(x=>String(x.name||'').toLowerCase()===full);
+  return c?c.id:null;
+}
+function metricsForCampus(name){
+  const id=campusIdOf(name);
+  return (id&&METRICS_BY_CAMPUS[id])||{};
+}
 function dueThisWeek(){
   const ws=weekStartOf(S.anchor), we=addDays(ws,6);
   return TASKS.filter(t=>{const d=D(t.due);return d>=ws&&d<=we&&!t.done;});
@@ -3652,11 +3703,14 @@ function closeCard(){
 function pageEvent(){
   const e=EVENTS.find(x=>x.id===S.eventId);
   if(!e) return '<h1>Not found</h1>';
-  const d=D(e.date), t=palOf(e), isSunday=(e.type==='event'&&d.getDay()===0);
+  const d=D(e.date), t=palOf(e);
+  const isSunday=(e.type==='event'&&!!e.isGathering);
+  // The event's own campus, not whichever one Home happens to be showing.
+  const EM=metricsForCampus(e.campus);
   // The card speaks for every part that merged into it, not just the lead.
   const card=mergeCards(EVENTS.filter(x=>x.date===e.date&&laneOf(x))).find(x=>x.id===e.id)||e;
   const facts=partFacts(card);
-  const m=isSunday?metricFor(d):null;
+  const m=isSunday?(EM[key(d)]||null):null;
   const days=Math.round((d-TODAY)/86400000);
   const camp=e.campaign||null;
   /* COMMS ARE MATCHED BY SUBJECT, NOT BY DATE.
@@ -3677,7 +3731,7 @@ function pageEvent(){
                     .sort((a,b)=>D(a.date)-D(b.date));
   const subs=TASKS.filter(x=>(camp&&x.campaign===camp)||(!camp&&x.parent===e.title));
   const doneN=subs.filter(x=>x.done).length;
-  const ks=Object.keys(METRICS).sort(), vals=ks.map(k=>METRICS[k].a);
+  const ks=Object.keys(EM).sort(), vals=ks.map(k=>EM[k].a);
   const avg6=vals.length?Math.round(vals.reduce((a,b)=>a+b,0)/vals.length):0;
   const mx=Math.max.apply(null,vals.concat([1]));
 
@@ -3744,7 +3798,7 @@ function pageEvent(){
   if(isSunday&&!ks.length){
     h+='<div class="eyebrow">NUMBERS</div><div class="empty">No attendance data available yet.</div>';
   } else if(isSunday){
-    h+='<div class="eyebrow">NUMBERS</div>';
+    h+='<div class="eyebrow">NUMBERS'+(e.campus?' · '+esc(e.campus):'')+'</div>';
     if(m){
       const dl=Math.round(((m.a-avg6)/avg6)*1000)/10;
       h+='<div style="display:flex;gap:8px">'+
@@ -3759,7 +3813,7 @@ function pageEvent(){
     }
     h+='<div style="font-size:12px;color:var(--text2);margin:16px 0 7px">Attendance · last 5 Sundays'+(m?'':' and this one')+'</div>'+
       '<div class="bars-chart" style="height:76px">'+
-      ks.map(k=>'<div class="bar-v'+(k===key(d)?' hi':'')+'" style="height:'+Math.round(METRICS[k].a/mx*100)+'%"></div>').join('')+
+      ks.map(k=>'<div class="bar-v'+(k===key(d)?' hi':'')+'" style="height:'+Math.round(EM[k].a/mx*100)+'%"></div>').join('')+
       (m?'':'<div class="bar-v q" style="height:100%"></div>')+'</div>'+
       '<div class="bar-labels">'+ks.map(k=>{const x=D(k);return '<div>'+(x.getMonth()+1)+'/'+x.getDate()+'</div>';}).join('')+
       (m?'':'<div style="color:var(--gathering)">'+(d.getMonth()+1)+'/'+d.getDate()+'</div>')+'</div>'+

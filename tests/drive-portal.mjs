@@ -115,6 +115,40 @@ await step('picking a row opens that record, with a way back',async()=>{
   await p.waitForTimeout(200);
   await p.evaluate(()=>{ATTN.pop();render();});
 });
+/* 🐛 Two ways a card claimed a number that was not its own.
+   Attendance was summed across every campus (6 Sep read 2,373 — LA 1,051 plus
+   Ecuador, Mexico and London), and ANY board item landing on a Sunday got a
+   NUMBERS panel, so Kids Training nested under the gathering was handed the
+   whole day. */
+await step('only a Sunday gathering claims a Sunday attendance',async()=>{
+  const r=await p.evaluate(()=>{
+    const gathering={type:'event',isGathering:true, campus:'LA',date:'2026-09-06'};
+    const nested  ={type:'event',isGathering:false,campus:'LA',date:'2026-09-06'};
+    const owns=e=>(e.type==='event'&&!!e.isGathering);
+    return {gathering:owns(gathering),nested:owns(nested)};
+  });
+  console.log('       '+JSON.stringify(r));
+  if(!r.gathering)throw new Error('the Sunday gathering lost its numbers');
+  if(r.nested)throw new Error('an item nested under the Sunday still claims its attendance');
+});
+await step('attendance is one campus, never every campus added up',async()=>{
+  const r=await p.evaluate(()=>{
+    const keep=JSON.stringify(METRICS_BY_CAMPUS), keepC=JSON.stringify(CAMPUSES);
+    CAMPUSES=[{id:'c-la',name:'Los Angeles'},{id:'c-mx',name:'Mexico'}];
+    METRICS_BY_CAMPUS={'c-la':{'2026-09-06':{a:1051,k:0,n:0}},
+                       'c-mx':{'2026-09-06':{a:439, k:0,n:0}}};
+    const la=metricsForCampus('LA')['2026-09-06'];
+    const mx=metricsForCampus('Mexico')['2026-09-06'];
+    const unknown=metricsForCampus('Atlantis')['2026-09-06'];
+    METRICS_BY_CAMPUS=JSON.parse(keep); CAMPUSES=JSON.parse(keepC);
+    return {la:la&&la.a, mx:mx&&mx.a, unknown:unknown||null};
+  });
+  console.log('       '+JSON.stringify(r));
+  if(r.la!==1051)throw new Error('LA should read its own 1051, got '+r.la);
+  if(r.mx!==439)throw new Error('Mexico should read its own 439, got '+r.mx);
+  if(r.la+r.mx===2373&&r.la===2373)throw new Error('still summing campuses');
+  if(r.unknown)throw new Error('an unknown campus borrowed somebody else\'s numbers');
+});
 /* Leaving for a section has to take the card with it. With ?item= working, a
    card left open sat on top of the board's own drawer for the same event. */
 await step('going to a section closes the card it was clicked from',async()=>{
