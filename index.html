@@ -1048,6 +1048,18 @@ let EVENTS=[], CAMPAIGNS=[], METRICS={}, TASKS=[], ATTN=[], CLOSEOUT=[], DATA_ER
    is currently speaking for; this is all of them, so a card can ask for its
    own rather than being handed a total nobody counted. */
 let METRICS_BY_CAMPUS={};
+/* Which campus/date pairs attendance has actually been entered for, and
+   whether we managed to read them at all. "Nobody submitted this" is a claim
+   about an ABSENCE, so it may only be made from a load that succeeded — an
+   empty set because the fetch failed would accuse every owner on the board of
+   missing a week they filed on time. */
+let METRICS_DATES=new Set(), METRICS_LOADED=false;
+/* The board owner names that are this person, from board_owners.email.
+   First names alone are not an identity here: "Aaron" and "Aaron Weits" are
+   both Aaron Weits while "ACM" is Aaron McManus, so matching on the first name
+   hands one Aaron the other's work. Empty means nobody mapped that address,
+   and ownedByMe() falls back to the first name rather than to nothing. */
+let MY_OWNERS=[];
 const PM_URL='https://yrviwbqhjcrlxgozrgay.supabase.co';
 const PM_KEY='sb_publishable_3o7Avv4DEhHW7i_k5DrH6Q_tYFLrgwg';
 /* CLOSE IT OUT, FROM THE CARD.
@@ -1108,6 +1120,7 @@ function mapLive(pis,ces){
          in metrics". */
       isGathering:!!r.is_sunday&&!r.parent_id,
       boardType:r.type,boardStatus:r.status,recur:r.recur,location:r.location,timeOfDay:r.time_of_day,
+      needsReview:!!r.needs_review,
       milestones:r.milestones||null,rhythm:r.rhythm||null,
       series:r.is_series?title:undefined,owner:(r.owners||[]).join(', '),desc:r.description,
       detail:(r.speaker?r.speaker+(r.is_sunday?' speaking':''):(r.type||''))+(r.campus&&r.campus!=='LA'?' · '+r.campus:'')};
@@ -1170,8 +1183,11 @@ async function loadPriorities(){
   if(PRIOS_FOR===ME.email)return;          // already have this person's
   PRIOS_FOR=ME.email; PRIOS=null;
   try{
-    const who=await pmGet('board_owners?select=slack_user_id&email=eq.'+
-      encodeURIComponent(ME.email.toLowerCase())+'&limit=1');
+    const who=await pmGet('board_owners?select=slack_user_id,owner_name&email=eq.'+
+      encodeURIComponent(ME.email.toLowerCase()));
+    // Every name this address answers to on the board, not just the first:
+    // Aaron Weits owns items under "Aaron", "Aaron Weits" and "Weits".
+    MY_OWNERS=(who||[]).map(r=>String(r.owner_name||'').trim().toLowerCase()).filter(Boolean);
     const sid=who&&who[0]&&who[0].slack_user_id;
     if(!sid)return;
     const r=await fetch(PM_URL+'/rest/v1/rpc/priorities_for',{
@@ -1224,6 +1240,11 @@ async function loadLive(){
         .select('date,campus_id,gathering_type,in_person_total,online_views,baptisms')
         .order('date',{ascending:false}).limit(400);
       if(!error&&data&&data.length){
+        // Every row, not only the Sundays and not only the six dates the cards
+        // draw: this is the record of what HAS been entered, and it is read to
+        // answer whether a gathering's numbers are still outstanding.
+        METRICS_DATES=new Set(data.map(r=>(r.campus_id||'?')+'|'+r.date));
+        METRICS_LOADED=true;
         const sun=data.filter(r=>String(r.gathering_type||'sunday').toLowerCase().includes('sun'));
         const rows=sun.length?sun:data;
         const by={};
@@ -1817,13 +1838,117 @@ function homeLine(){
 }
 function firstNameOf(n){ return String(n||'').trim().split(/\s+/)[0]||''; }
 /* "on your plate this week" is the planning board's word for it, so it counts
-   what YOU own, not what the week holds. Owners on the board are first names
-   ("David", "Andy"), and a person's portal name may be fuller, so both ends
-   are compared on the first name. */
-function ownedByMe(e){
+   what YOU own, not what the week holds.
+   WHO YOU ARE ON THE BOARD COMES FROM board_owners.email, the same mapping the
+   Monday digest is keyed on, so Home and the digest cannot disagree about
+   whose work this is. Matching on the first name instead is not merely loose,
+   it is wrong: "Aaron" and "Aaron Weits" are one person and "ACM" is another,
+   so a first-name match hands one Aaron the other's events. The first name is
+   kept only for somebody not mapped yet — a rough answer beats none — and
+   anyone it gets wrong is fixed by mapping them, not by guessing harder. */
+function myOwnerNames(){
+  if(MY_OWNERS.length)return MY_OWNERS;
   const me=firstNameOf(ME.name).toLowerCase();
-  if(!me)return false;
-  return String(e.owner||'').split(',').map(x=>firstNameOf(x).toLowerCase()).includes(me);
+  return me?[me]:[];
+}
+function ownedByMe(e){
+  const mine=myOwnerNames();
+  if(!mine.length)return false;
+  const on=String(e.owner||'').split(',').map(x=>x.trim().toLowerCase()).filter(Boolean);
+  // Full name first; the first name only where nobody is mapped, in which case
+  // myOwnerNames() is itself a first name.
+  return on.some(o=>mine.includes(o)) ||
+         (!MY_OWNERS.length && on.some(o=>mine.includes(firstNameOf(o).toLowerCase())));
+}
+/* WAITING ON YOU IS WHAT YOU OWN AND WHAT IS STILL MISSING FROM IT.
+   Hannita, 11 Sep: "if I am the owner of something in the planning board and
+   the metrics data has not been submitted for that thing, that would be
+   waiting on you". So it is scoped to the owner and it asks the board and
+   Metrics what is outstanding, rather than listing everything flagged for
+   everybody — which is what it did before, and which meant the number was the
+   same for all of us.
+   Computed here rather than stored at load time, like cardListOf(), so the
+   number on the card and the list it opens are read from the same call and
+   cannot drift apart.
+   THE BOARD HAS NO LOCATION FIELD, so "we are still waiting to know where it
+   is" cannot be asked here — its drawer holds title, dates, time, speaker and
+   description, and the mirror's location column is filled for 3 items of 261.
+   Time is there but the board labels it optional and 87 of 87 upcoming items
+   leave it blank, so treating it as missing would flag the whole board and
+   teach everyone to ignore the card. Both are left out on purpose, not
+   overlooked. */
+/* Sundays at a campus whose numbers have not been entered yet. One function,
+   asked two different questions: "which of these are mine?" (Waiting on you)
+   and "which are at my campus?" (To close out).
+   Only a Sunday GATHERING may be asked — items nested under one inherit its
+   date and never counted anybody — and only from a metrics read that actually
+   succeeded, because an absence nobody could check is not an absence. */
+function attendanceOutstanding(){
+  if(!METRICS_LOADED)return [];
+  const back=addDays(TODAY,-60), out=[], seen=new Set();
+  EVENTS.forEach(e=>{
+    if(e.type!=='event'||!e.isGathering)return;
+    const d=D(e.date);
+    if(d>=TODAY||d<back)return;
+    const cid=campusIdOf(e.campus);
+    if(!cid||METRICS_DATES.has(cid+'|'+e.date))return;
+    const k=e.boardId||e.id;
+    if(seen.has(k))return;
+    seen.add(k);
+    out.push({ev:e,campusId:cid});
+  });
+  return out;
+}
+function waitingOnMe(){
+  const out=[], mine=myOwnerNames(), seen=new Set();
+  if(!mine.length)return out;
+  const soon=addDays(TODAY,42);
+  /* A weekly item is one board row drawn as many entries, so a flag on it
+     would otherwise be listed once per occurrence — four rows saying the same
+     thing about the same item. One line per board item per kind. */
+  const add=(e,kind,title)=>{
+    const k=(e.boardId||e.id)+'|'+kind;
+    if(seen.has(k))return;
+    seen.add(k);
+    out.push({evId:e.id,title,date:e.date,meta:[e.campus,e.owner].filter(Boolean).join(' · ')});
+  };
+  EVENTS.forEach(e=>{
+    if(e.type!=='event'||!ownedByMe(e))return;
+    const d=D(e.date), past=d<TODAY;
+    if(e.isGathering&&!e.speaker&&!past&&d<=soon)add(e,'speaker','No speaker yet — '+e.title);
+    if(e.needsReview&&!past)add(e,'review','Flagged to review — '+e.title);
+  });
+  // Attendance the owner still owes. The same Sunday reaches the campus's
+  // pastor through closeOutList() instead, so nobody gets it twice.
+  attendanceOutstanding().forEach(({ev})=>{
+    if(ownedByMe(ev))add(ev,'attendance','Attendance not submitted — '+ev.title);
+  });
+  out.sort((a,b)=>D(a.date)-D(b.date));
+  return out;
+}
+/* TO CLOSE OUT IS THE CAMPUS'S, NOT ONLY THE OWNER'S.
+   Hannita, 11 Sep: a campus pastor "would see all the pending metrics data
+   that could have been inputted for events for their campus" — Alisah is not
+   the owner of the Bible studies, Andres is, so it is waiting on HIM; but the
+   numbers are still missing at her campus and somebody there has to enter
+   them. So the same Sunday reads "waiting on you" to its owner and "to close
+   out" to the campus, and never both to one person.
+   The board items keep the behaviour they had: a past item nobody marked
+   Complete, for everyone. Narrowing that is a separate decision and not one
+   anybody asked for. */
+function closeOutList(){
+  const rows=CLOSEOUT.slice();
+  const mine=homeCampusId();
+  if(mine)attendanceOutstanding().forEach(({ev,campusId})=>{
+    if(campusId!==mine||ownedByMe(ev))return;
+    // Not closeable from here: this one is finished by entering the numbers in
+    // Metrics, and a "Close it out" button would mark the board done with the
+    // attendance still missing.
+    rows.push({evId:ev.id,title:'Attendance not submitted — '+ev.title,date:ev.date,
+      meta:[ev.campus,ev.owner].filter(Boolean).join(' · '),noClose:true});
+  });
+  rows.sort((a,b)=>D(a.date)-D(b.date));
+  return rows;
 }
 function pageHome(){
   const ks=Object.keys(METRICS).sort();
@@ -1841,6 +1966,14 @@ function pageHome(){
   const twComms=EVENTS.filter(e=>{const d=D(e.date);return d>=ws&&d<=we&&e.type==='comms';});
   const upcoming=EVENTS.filter(e=>D(e.date)>=TODAY && e.type==='event').slice(0,5);
   const attn=ATTN.slice(0,6);
+  /* Zero has two meanings and they are not the same news: nothing of yours is
+     missing anything, or the board does not know you own anything. Saying
+     "you're all clear" to somebody who owns nothing is a lie by omission. */
+  const wait=waitingOnMe(), close=closeOutList();
+  const iOwn=EVENTS.some(e=>e.type==='event'&&ownedByMe(e));
+  const waitNote=wait.length?'items waiting on you to look at'
+    :(iOwn?"nothing of yours is missing anything"
+          :"nothing on the board is under your name yet");
   const hi=firstNameOf(ME.name);
   return '<div class="page-head"><div><h1>'+(hi?'Hi, '+esc(hi)+'!':'Hi!')+'</h1>'+
    '<div class="sub">'+esc(homeLine())+'</div></div>'+
@@ -1850,9 +1983,10 @@ function pageHome(){
    '<div class="cards">'+
      card('On your plate this week',twEvents.length,
           twIsMine?'yours on the board':'across the board — nothing is yours this week','planning','--session','plate')+
-     card('Waiting on you',ATTN.length,'items waiting on you to look at','calendar','--magenta','waiting')+
-     card('To close out',CLOSEOUT.length,
-          CLOSEOUT.length===0?'nothing passed its date':'you have '+(CLOSEOUT.length===1?'a thing':'a couple of things')+' to close out','planning','--milestone','closeout')+
+     card('Waiting on you',wait.length,
+          waitNote,'calendar','--magenta','waiting')+
+     card('To close out',close.length,
+          close.length===0?'nothing passed its date':'you have '+(close.length===1?'a thing':'a couple of things')+' to close out','planning','--milestone','closeout')+
      card(homeCampusName()?"This week's attendance in "+esc(homeCampusName()):"This week's attendance",
           m?m.a:'—',
           (m?((delta>=0?'+':'')+delta+'% vs recent avg'):'no data yet')+
@@ -1973,8 +2107,8 @@ function cardListOf(kind){
             rows:(mine.length?mine:all).map(e=>({evId:e.id,title:e.title,date:e.date,
               meta:[e.owner,e.campus,e.phase].filter(Boolean).join(' · ')}))};
   }
-  if(kind==='waiting')return {title:'Waiting on you',rows:ATTN.slice()};
-  if(kind==='closeout')return {title:'To close out',rows:CLOSEOUT.slice()};
+  if(kind==='waiting')return {title:'Waiting on you',rows:waitingOnMe()};
+  if(kind==='closeout')return {title:'To close out',rows:closeOutList()};
   return {title:'',rows:[]};
 }
 function taskRow(t){
@@ -3711,9 +3845,11 @@ function openList(kind){
       (rows.length?rows.length+(rows.length===1?' item':' items'):'Nothing here right now')+'</div>'+
     (rows.length
       ? rows.map(r=>{
-          // In the close-out list every row is by definition closeable, so the
-          // button is offered inline rather than one card at a time.
-          const bId=kind==='closeout'?String(r.evId||'').replace(/^pm:/,'').replace(/:\d{4}-\d{2}-\d{2}$/,''):'';
+          /* Closeable rows get the button inline. A row marked noClose is not
+             finished by marking the board Complete — outstanding attendance is
+             finished by entering the numbers — and a button there would close
+             the item with the thing it is waiting for still missing. */
+          const bId=(kind==='closeout'&&!r.noClose)?String(r.evId||'').replace(/^pm:/,'').replace(/:\d{4}-\d{2}-\d{2}$/,''):'';
           return '<div class="lrow"><button class="row" data-ev="'+esc(r.evId)+'">'+
             '<span class="when">'+(r.date?fmt(D(r.date)):'')+'</span>'+
             '<span class="txt"><span class="name">'+esc(r.title||'')+'</span>'+

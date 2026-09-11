@@ -23,9 +23,19 @@ window.__BOOKINGS=BOOKINGS;
 const PROFILE={id:'me',email:'hannita@mosaic.org',role:'admin',display_name:'Hannita',
   full_name:'Hannita',campus_id:'c1',avatar_url:null,theme:null};
 
+/* The campuses the board's short names map onto. Without these campusIdOf()
+   answers null for everything, which is the honest reading of "we don't know
+   this campus" — but it also silently skips every check keyed on a campus, so
+   an empty table here made the attendance assertions pass by not running. */
+const CAMPUS_ROWS=[
+  {id:'c1',name:'Los Angeles',active:true},
+  {id:'c2',name:'New York City',active:true},
+  {id:'c3',name:'Mexico',active:true}
+];
 function builder(table){
   let rows = table==='v_fac_requests' ? BOOKINGS.slice()
            : table==='profiles' ? [PROFILE]
+           : table==='campuses' ? CAMPUS_ROWS.slice()
            : [];
   const api={
     select(){return api;}, order(){return api;}, limit(){return api;},

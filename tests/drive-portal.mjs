@@ -73,11 +73,22 @@ console.log('--- the Home cards open what they count ---');
 await step('a card opens the list of what it is counting',async()=>{
   await p.click('#nav button[data-go="home"]');
   await p.waitForTimeout(400);
-  // The stub's board has nothing flagged, so seed one thing to wait on —
-  // an empty list would assert nothing about a list.
+  /* The stub's board is empty, so seed a week: two items Carlos owns with
+     something outstanding, and one of Andy's with the same thing wrong. The
+     card counts what is YOURS, so Andy's must not be in it. */
   await p.evaluate(()=>{
-    const e=EVENTS.find(x=>x.type==='event')||EVENTS[0];
-    ATTN.push({evId:e.id,title:'No speaker yet — '+e.title,date:e.date,meta:'LA · Carlos'});
+    const iso=d=>d.toISOString().slice(0,10);
+    const day=n=>iso(new Date(Date.now()+n*864e5));
+    window.__EV=EVENTS.slice(); window.__OWN=MY_OWNERS.slice();
+    MY_OWNERS=['carlos'];
+    METRICS_LOADED=true; METRICS_DATES=new Set();
+    EVENTS.push(
+      {id:'pm:t1',boardId:'t1',type:'event',title:'Sunday Gathering',date:day(14),
+       campus:'LA',owner:'Carlos',isGathering:true,speaker:'',status:'scheduled'},
+      {id:'pm:t2',boardId:'t2',type:'event',title:'Last Sunday',date:day(-7),
+       campus:'LA',owner:'Carlos',isGathering:true,speaker:'Erwin',status:'done'},
+      {id:'pm:t3',boardId:'t3',type:'event',title:'Not mine',date:day(10),
+       campus:'LA',owner:'Andy',isGathering:true,speaker:'',status:'scheduled'});
     render();
   });
   const counted=await p.$eval('.card[data-cardlist="waiting"] .v',n=>n.textContent.trim());
@@ -92,6 +103,58 @@ await step('a card opens the list of what it is counting',async()=>{
   if(!r.open)throw new Error('the card did not open a list');
   if(String(r.rows)!==counted)
     throw new Error('the list and the number disagree: '+counted+' vs '+r.rows);
+});
+/* WAITING ON YOU IS YOURS. It counted every flagged item on the board for
+   everybody, so the number was the same for all of us — Hannita, 11 Sep:
+   "if I am the owner of something in the planning board and the metrics data
+   has not been submitted, that would be waiting on you". */
+await step('it counts what you own, and says what is outstanding',async()=>{
+  const t=await p.evaluate(()=>Array.from(document.querySelectorAll('#cardBody .row[data-ev] .name'))
+    .map(n=>n.textContent.trim()));
+  console.log('       '+t.join(' | '));
+  if(t.some(x=>/Not mine/.test(x)))throw new Error("it listed somebody else's item");
+  if(!t.some(x=>/No speaker yet/.test(x)))throw new Error('a Sunday with no speaker is not listed');
+  if(!t.some(x=>/Attendance not submitted/.test(x)))
+    throw new Error('a past gathering with no attendance is not listed');
+});
+await step('it never claims attendance is missing from a read that failed',async()=>{
+  const n=await p.evaluate(()=>{
+    METRICS_LOADED=false;
+    const c=waitingOnMe().filter(r=>/Attendance/.test(r.title)).length
+          + closeOutList().filter(r=>/Attendance/.test(r.title)).length;
+    METRICS_LOADED=true;
+    return c;
+  });
+  console.log('       outstanding-attendance rows with no metrics read: '+n);
+  if(n)throw new Error('it accused somebody off a load that never happened');
+});
+/* TO CLOSE OUT IS THE CAMPUS'S. Alisah does not own the Bible studies — Andres
+   does — so it is waiting on him; but the numbers are still missing at her
+   campus, and she is the one who would enter them. Hannita, 11 Sep. */
+await step("a campus's pending numbers reach that campus, not only the owner",async()=>{
+  const r=await p.evaluate(()=>{
+    const was=MY_OWNERS.slice();
+    MY_OWNERS=['alisah'];                       // not an owner of anything seeded
+    const close=closeOutList(), wait=waitingOnMe();
+    MY_OWNERS=was;
+    return {close:close.map(x=>x.title),wait:wait.map(x=>x.title),
+            noClose:close.filter(x=>x.noClose).length};
+  });
+  console.log('       close: '+r.close.join(' | '));
+  console.log('       wait:  '+(r.wait.join(' | ')||'(nothing)'));
+  if(!r.close.some(x=>/Attendance not submitted/.test(x)))
+    throw new Error("her campus's missing numbers are not in her close-out list");
+  if(r.wait.length)throw new Error('it put somebody else\'s work on her plate');
+  if(!r.noClose)throw new Error('an attendance row must not offer Close it out');
+});
+await step('the owner sees it once, on their own card and not on both',async()=>{
+  const r=await p.evaluate(()=>({
+    wait:waitingOnMe().filter(x=>/Attendance/.test(x.title)).length,
+    close:closeOutList().filter(x=>/Attendance/.test(x.title)).length
+  }));
+  console.log('       owner: waiting '+r.wait+', close-out '+r.close);
+  if(!r.wait)throw new Error("the owner is not told their own numbers are missing");
+  if(r.close)throw new Error('the owner is told twice, on two cards');
 });
 await step('picking a row opens that record, with a way back',async()=>{
   await p.click('#cardBody .row[data-ev]');
@@ -113,7 +176,7 @@ await step('picking a row opens that record, with a way back',async()=>{
   if(!back)throw new Error('back did not return to the list');
   await p.keyboard.press('Escape');
   await p.waitForTimeout(200);
-  await p.evaluate(()=>{ATTN.pop();render();});
+  await p.evaluate(()=>{EVENTS=window.__EV;MY_OWNERS=window.__OWN;METRICS_DATES=new Set();METRICS_LOADED=false;render();});
 });
 /* Close it out, from the card. The button must never say it worked before the
    board has said so — a tick over a failed write is worse than an error. */
