@@ -11,6 +11,11 @@ Nothing in a commit changes them. This file is the source of record for what
 they should say, so the wording is reviewable and the next person doesn't have
 to guess what was agreed.
 
+**Pasted in by Hannita on 14 Sep 2026.** So what is live should now match what
+is below — but nothing here can check that, and nothing will notice if the two
+drift apart. If you change the wording in this file, somebody has to paste it
+again or this file becomes a description of an email nobody is receiving.
+
 ## What Loyda asked for, 8 Sep 2026
 
 Walking through her own invite on screen:
