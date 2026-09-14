@@ -126,6 +126,22 @@ owner and the other to the campus, and never both to one person. Those rows carr
 `noClose`: closing one out would mark the board Complete with the attendance it
 is waiting for still missing.
 
+**An admin is looking at Mosaic, not at their own plate.** `seesAll()` —
+`role==='admin'` and not previewing another role — makes Home count the whole
+board, because the person who builds these apps owns nothing on one and owner
+scoping answered her Home with three empty cards. The titles change with the
+scope: "On Mosaic's plate this week" and "Waiting on someone", never "Waiting on
+you" over thirty items that are Andres's. Previewing a role turns it off, which
+is the whole point of previewing.
+
+**Who may close something out: an admin, or the item's owner.** `canCloseOut()`
+is the one rule, asked by both the card and the inline button in the list, and a
+card that cannot offer it says who owns the item instead of leaving a gap. It is
+the UI honouring the rule, **not a boundary** — `board_set_status()` is granted
+to `anon` because the planning board itself has no sign-in, so anyone who can
+reach the board can still change a status there. Say that rather than implying
+the button is a lock.
+
 **Who you are on the board comes from `board_owners.email`**, the mapping the
 Monday digest is keyed on, so Home and the digest cannot disagree about whose
 work this is. First-name matching is not merely loose, it is wrong — "Aaron" and

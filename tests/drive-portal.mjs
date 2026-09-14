@@ -79,7 +79,10 @@ await step('a card opens the list of what it is counting',async()=>{
   await p.evaluate(()=>{
     const iso=d=>d.toISOString().slice(0,10);
     const day=n=>iso(new Date(Date.now()+n*864e5));
-    window.__EV=EVENTS.slice(); window.__OWN=MY_OWNERS.slice();
+    window.__EV=EVENTS.slice(); window.__OWN=MY_OWNERS.slice(); window.__ROLE=ME.role;
+    // The owner-scoped cards are what everyone who is not an admin sees, so
+    // assert them as one of those people; the admin view is asserted below.
+    ME.role='staff';
     MY_OWNERS=['carlos'];
     METRICS_LOADED=true; METRICS_DATES=new Set();
     EVENTS.push(
@@ -88,7 +91,10 @@ await step('a card opens the list of what it is counting',async()=>{
       {id:'pm:t2',boardId:'t2',type:'event',title:'Last Sunday',date:day(-7),
        campus:'LA',owner:'Carlos',isGathering:true,speaker:'Erwin',status:'done'},
       {id:'pm:t3',boardId:'t3',type:'event',title:'Not mine',date:day(10),
-       campus:'LA',owner:'Andy',isGathering:true,speaker:'',status:'scheduled'});
+       campus:'LA',owner:'Andy',isGathering:true,speaker:'',status:'scheduled'},
+      // In the current week, and Andy's — so an admin counts it and Carlos does not.
+      {id:'pm:t4',boardId:'t4',type:'event',title:"Andy's midweek",date:day(1),
+       campus:'LA',owner:'Andy',speaker:'',status:'scheduled'});
     render();
   });
   const counted=await p.$eval('.card[data-cardlist="waiting"] .v',n=>n.textContent.trim());
@@ -176,7 +182,60 @@ await step('picking a row opens that record, with a way back',async()=>{
   if(!back)throw new Error('back did not return to the list');
   await p.keyboard.press('Escape');
   await p.waitForTimeout(200);
-  await p.evaluate(()=>{EVENTS=window.__EV;MY_OWNERS=window.__OWN;METRICS_DATES=new Set();METRICS_LOADED=false;render();});
+});
+/* AN ADMIN IS LOOKING AT MOSAIC. Hannita, 14 Sep: she owns nothing on a board
+   and never will, so owner scoping answered her Home with empty cards. An
+   admin's cards count everything — and must be TITLED as counting everything,
+   because "Waiting on you" over somebody else's items is a wrong label, not a
+   loose one. */
+await step("an admin's Home counts Mosaic, and says so",async()=>{
+  const r=await p.evaluate(()=>{
+    const wasRole=ME.role, wasOwn=MY_OWNERS.slice();
+    ME.role='admin'; ME.preview=false; MY_OWNERS=['nobody'];   // owns nothing
+    render();
+    const titles=Array.from(document.querySelectorAll('.card .k')).map(n=>n.textContent.trim());
+    const plate=document.querySelector('.card[data-cardlist="plate"] .v').textContent.trim();
+    const wait=waitingOnMe().map(x=>x.title);
+    const ws=weekStartOf(TODAY), we=addDays(ws,6);
+    const weekAll=EVENTS.filter(e=>{const d=D(e.date);return d>=ws&&d<=we&&e.type==='event';}).length;
+    const out={titles,plate,wait,weekAll,
+               closeDupes:closeOutList().filter(x=>/Attendance/.test(x.title)).length};
+    ME.role=wasRole; MY_OWNERS=wasOwn; render();
+    return out;
+  });
+  console.log('       '+r.titles.join(' | '));
+  console.log('       plate '+r.plate+', waiting: '+r.wait.join(' | '));
+  if(r.titles.some(t=>/Waiting on you|On your plate/.test(t)))
+    throw new Error('it still addresses the admin as the owner: '+r.titles.join(', '));
+  if(r.plate!==String(r.weekAll))
+    throw new Error('the admin plate says '+r.plate+' but the week holds '+r.weekAll);
+  if(r.plate==='0')throw new Error("an admin who owns nothing got an empty week");
+  if(!r.wait.some(x=>/Not mine/.test(x)))
+    throw new Error("an admin is not shown what is waiting on other people");
+  if(r.closeDupes)throw new Error('an admin gets the same Sunday on two cards');
+});
+/* Admins close anything; an owner closes their own; nobody else is invited to.
+   A UI rule, not a boundary — board_set_status() is reachable without a login
+   because the board itself has none. */
+await step('the close-out button is offered to admins and owners, and nobody else',async()=>{
+  const r=await p.evaluate(()=>{
+    const wasRole=ME.role, wasOwn=MY_OWNERS.slice();
+    const ev=EVENTS.find(x=>x.id==='pm:t2');
+    ME.role='admin'; ME.preview=false; MY_OWNERS=['nobody'];
+    const asAdmin=canCloseOut(ev);
+    ME.role='staff'; MY_OWNERS=['carlos'];
+    const asOwner=canCloseOut(ev);
+    MY_OWNERS=['alisah'];
+    const asOther=canCloseOut(ev);
+    ME.role=wasRole; MY_OWNERS=wasOwn;
+    return {asAdmin,asOwner,asOther};
+  });
+  console.log('       '+JSON.stringify(r));
+  if(!r.asAdmin)throw new Error('an admin cannot close it out');
+  if(!r.asOwner)throw new Error('the owner cannot close out their own item');
+  if(r.asOther)throw new Error('somebody else was offered the button');
+  await p.evaluate(()=>{EVENTS=window.__EV;MY_OWNERS=window.__OWN;ME.role=window.__ROLE;
+    METRICS_DATES=new Set();METRICS_LOADED=false;render();});
 });
 /* Close it out, from the card. The button must never say it worked before the
    board has said so — a tick over a failed write is worse than an error. */

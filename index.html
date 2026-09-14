@@ -1851,6 +1851,15 @@ function myOwnerNames(){
   const me=firstNameOf(ME.name).toLowerCase();
   return me?[me]:[];
 }
+/* AN ADMIN IS LOOKING AT MOSAIC, NOT AT THEIR OWN PLATE.
+   Hannita, 14 Sep: "I don't and will probably never own something on a board
+   because I am the developer and builder. As admin it should be the overall
+   view for Mosaic, like what Alisah and Carlos see as executives." Owner
+   scoping answered her Home with three empty cards, which is a true answer to
+   a question nobody was asking.
+   Previewing a role turns it off, the same as everywhere else in this app: the
+   point of previewing as a leader is to see what a leader sees. */
+function seesAll(){ return ME.role==='admin'&&!ME.preview; }
 function ownedByMe(e){
   const mine=myOwnerNames();
   if(!mine.length)return false;
@@ -1899,9 +1908,22 @@ function attendanceOutstanding(){
   });
   return out;
 }
+/* WHO MAY CLOSE SOMETHING OUT. Hannita, 14 Sep: "admins can close anything
+   out, and the owner of an item can close it out."
+   This is the UI honouring that rule, not a security boundary, and the
+   difference matters: board_set_status() is granted to anon and authenticated
+   because the planning board itself has no sign-in, so anyone who can reach
+   the board can still change a status there. Hiding the button stops the
+   portal from inviting somebody to close out work that is not theirs; it does
+   not stop a determined person, and pretending otherwise would be worse than
+   saying so. */
+function canCloseOut(e){
+  if(seesAll())return true;
+  return !!e&&ownedByMe(e);
+}
 function waitingOnMe(){
-  const out=[], mine=myOwnerNames(), seen=new Set();
-  if(!mine.length)return out;
+  const out=[], all=seesAll(), mine=myOwnerNames(), seen=new Set();
+  if(!all&&!mine.length)return out;
   const soon=addDays(TODAY,42);
   /* A weekly item is one board row drawn as many entries, so a flag on it
      would otherwise be listed once per occurrence — four rows saying the same
@@ -1913,7 +1935,7 @@ function waitingOnMe(){
     out.push({evId:e.id,title,date:e.date,meta:[e.campus,e.owner].filter(Boolean).join(' · ')});
   };
   EVENTS.forEach(e=>{
-    if(e.type!=='event'||!ownedByMe(e))return;
+    if(e.type!=='event'||!(all||ownedByMe(e)))return;
     const d=D(e.date), past=d<TODAY;
     if(e.isGathering&&!e.speaker&&!past&&d<=soon)add(e,'speaker','No speaker yet — '+e.title);
     if(e.needsReview&&!past)add(e,'review','Flagged to review — '+e.title);
@@ -1921,7 +1943,7 @@ function waitingOnMe(){
   // Attendance the owner still owes. The same Sunday reaches the campus's
   // pastor through closeOutList() instead, so nobody gets it twice.
   attendanceOutstanding().forEach(({ev})=>{
-    if(ownedByMe(ev))add(ev,'attendance','Attendance not submitted — '+ev.title);
+    if(all||ownedByMe(ev))add(ev,'attendance','Attendance not submitted — '+ev.title);
   });
   out.sort((a,b)=>D(a.date)-D(b.date));
   return out;
@@ -1939,7 +1961,9 @@ function waitingOnMe(){
 function closeOutList(){
   const rows=CLOSEOUT.slice();
   const mine=homeCampusId();
-  if(mine)attendanceOutstanding().forEach(({ev,campusId})=>{
+  // An admin already has every outstanding Sunday on Waiting, so adding the
+  // campus copy here would be the same row on two cards.
+  if(mine&&!seesAll())attendanceOutstanding().forEach(({ev,campusId})=>{
     if(campusId!==mine||ownedByMe(ev))return;
     // Not closeable from here: this one is finished by entering the numbers in
     // Metrics, and a "Close it out" button would mark the board done with the
@@ -1969,11 +1993,23 @@ function pageHome(){
   /* Zero has two meanings and they are not the same news: nothing of yours is
      missing anything, or the board does not know you own anything. Saying
      "you're all clear" to somebody who owns nothing is a lie by omission. */
-  const wait=waitingOnMe(), close=closeOutList();
+  const wait=waitingOnMe(), close=closeOutList(), all=seesAll();
   const iOwn=EVENTS.some(e=>e.type==='event'&&ownedByMe(e));
-  const waitNote=wait.length?'items waiting on you to look at'
-    :(iOwn?"nothing of yours is missing anything"
-          :"nothing on the board is under your name yet");
+  /* An admin's cards count Mosaic, so they must not be titled as if they
+     counted that person — "Waiting on you" over 30 items that are Andres's is
+     not a loose label, it is a wrong one. The owner-scoped wording stays for
+     everyone else, which is nearly everyone. */
+  const plateTitle=all?"On Mosaic's plate this week":'On your plate this week';
+  const waitTitle=all?'Waiting on someone':'Waiting on you';
+  const mineCount=twAll.filter(ownedByMe).length;
+  const plateNote=all
+    ? ('across Mosaic'+(mineCount?' · '+mineCount+' yours':''))
+    : (twIsMine?'yours on the board':'across the board — nothing is yours this week');
+  const waitNote=all
+    ? (wait.length?'items waiting on someone across Mosaic':'nothing across Mosaic is missing anything')
+    : (wait.length?'items waiting on you to look at'
+        :(iOwn?"nothing of yours is missing anything"
+              :"nothing on the board is under your name yet"));
   const hi=firstNameOf(ME.name);
   return '<div class="page-head"><div><h1>'+(hi?'Hi, '+esc(hi)+'!':'Hi!')+'</h1>'+
    '<div class="sub">'+esc(homeLine())+'</div></div>'+
@@ -1981,10 +2017,8 @@ function pageHome(){
    newMenu()+'</div>'+
    (DATA_ERR?'<div class="banner">'+ic('info')+'<div>'+esc(DATA_ERR)+'</div></div>':'')+
    '<div class="cards">'+
-     card('On your plate this week',twEvents.length,
-          twIsMine?'yours on the board':'across the board — nothing is yours this week','planning','--session','plate')+
-     card('Waiting on you',wait.length,
-          waitNote,'calendar','--magenta','waiting')+
+     card(plateTitle,(all?twAll:twEvents).length,plateNote,'planning','--session','plate')+
+     card(waitTitle,wait.length,waitNote,'calendar','--magenta','waiting')+
      card('To close out',close.length,
           close.length===0?'nothing passed its date':'you have '+(close.length===1?'a thing':'a couple of things')+' to close out','planning','--milestone','closeout')+
      card(homeCampusName()?"This week's attendance in "+esc(homeCampusName()):"This week's attendance",
@@ -2103,11 +2137,13 @@ function cardListOf(kind){
   if(kind==='plate'){
     const all=EVENTS.filter(e=>{const d=D(e.date);return d>=ws&&d<=we&&e.type==='event';});
     const mine=all.filter(ownedByMe);
-    return {title:mine.length?'On your plate this week':'On the board this week',
-            rows:(mine.length?mine:all).map(e=>({evId:e.id,title:e.title,date:e.date,
+    const rows=(seesAll()||!mine.length)?all:mine;
+    const title=seesAll()?"On Mosaic's plate this week"
+              :(mine.length?'On your plate this week':'On the board this week');
+    return {title,rows:rows.map(e=>({evId:e.id,title:e.title,date:e.date,
               meta:[e.owner,e.campus,e.phase].filter(Boolean).join(' · ')}))};
   }
-  if(kind==='waiting')return {title:'Waiting on you',rows:waitingOnMe()};
+  if(kind==='waiting')return {title:seesAll()?'Waiting on someone':'Waiting on you',rows:waitingOnMe()};
   if(kind==='closeout')return {title:'To close out',rows:closeOutList()};
   return {title:'',rows:[]};
 }
@@ -3849,7 +3885,9 @@ function openList(kind){
              finished by marking the board Complete — outstanding attendance is
              finished by entering the numbers — and a button there would close
              the item with the thing it is waiting for still missing. */
-          const bId=(kind==='closeout'&&!r.noClose)?String(r.evId||'').replace(/^pm:/,'').replace(/:\d{4}-\d{2}-\d{2}$/,''):'';
+          const ev=EVENTS.find(x=>x.id===r.evId);
+          const bId=(kind==='closeout'&&!r.noClose&&canCloseOut(ev))
+            ?String(r.evId||'').replace(/^pm:/,'').replace(/:\d{4}-\d{2}-\d{2}$/,''):'';
           return '<div class="lrow"><button class="row" data-ev="'+esc(r.evId)+'">'+
             '<span class="when">'+(r.date?fmt(D(r.date)):'')+'</span>'+
             '<span class="txt"><span class="name">'+esc(r.title||'')+'</span>'+
@@ -4024,13 +4062,19 @@ function pageEvent(){
      and not already Complete. The board's own words are used for the state,
      so a card cannot claim a status the board would not. */
   const bId=pmId(boardPart(card,e));
-  const canClose=bId&&e.type==='event'&&D(e.date)<TODAY&&(e.boardStatus||'')!=='Complete';
+  const canClose=bId&&e.type==='event'&&D(e.date)<TODAY&&(e.boardStatus||'')!=='Complete'&&canCloseOut(e);
   if(canClose)
     h+='<div class="closeout-row"><button class="btn-closeout" data-closeout="'+esc(bId)+'">'+
        ic('check','width:15px;height:15px')+'Close it out</button>'+
        '<span class="closeout-note" id="closeoutNote">Marks it Complete on the planning board.</span></div>';
   else if(bId&&(e.boardStatus||'')==='Complete')
     h+='<div class="closeout-row"><span class="closeout-done">'+ic('check','width:14px;height:14px')+'Closed out</span></div>';
+  else if(bId&&e.type==='event'&&D(e.date)<TODAY&&!canCloseOut(e))
+    // Say why there is no button rather than leave a silent gap: the owner is
+    // named on the card already, so this reads as an answer, not a refusal.
+    h+='<div class="closeout-row"><span class="closeout-note">'+
+       (e.owner?esc(firstNameOf(e.owner))+' owns this one — they or an admin can close it out.'
+              :'Nobody owns this one yet, so only an admin can close it out.')+'</span></div>';
 
   h+='</div></div>'+
     '<div class="foot-links">'+
