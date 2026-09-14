@@ -1655,13 +1655,25 @@ function partFacts(e){
 
    The URL is never dropped from the data, only from the place — a card that
    quietly lost the only way into the meeting would be worse than an ugly one. */
-const URL_RX=()=>/https?:\/\/[^\s<>"')\]]+/g;
+/* A WEB ADDRESS DOES NOT ALWAYS CARRY ITS SCHEME. The staff Zoom meeting is
+   booked in Outlook as "www.mosaic.org/teammeeting" — no https:// — so this
+   matched nothing, and the address sat in the card as plain grey text three
+   times over with no way to click it. Hannita, 14 Sep.
+   www. and nothing looser, deliberately: matching a bare "something.org" would
+   also catch the domain half of every email address and any sentence that ends
+   a word with a dot before a TLD-looking one. Of the seven distinct locations
+   on the shared calendar today, one is scheme-less and it is a www. one. */
+const URL_RX=()=>/(?:https?:\/\/|www\.)[^\s<>"')\]]+/g;
+/* An href without a scheme is a RELATIVE link: href="www.mosaic.org/x" on this
+   page resolves to portal.mosaic.org/www.mosaic.org/x. So the text is shown as
+   it was written and the href is made absolute. */
+const hrefOf=u=>/^https?:\/\//i.test(u)?u:'https://'+u.replace(/^\/+/,'');
 const MEET_HOST=/(^|\.)(zoom\.us|teams\.microsoft\.com|teams\.live\.com|meet\.google\.com|webex\.com|whereby\.com|gotomeeting\.com|bluejeans\.com|chime\.aws)$/i;
 const MEET_NAME={'zoom.us':'Zoom','teams.microsoft.com':'Teams','teams.live.com':'Teams',
   'meet.google.com':'Google Meet','webex.com':'Webex','whereby.com':'Whereby',
   'gotomeeting.com':'GoToMeeting','bluejeans.com':'BlueJeans','chime.aws':'Chime'};
 function urlsIn(v){return String(v==null?'':v).match(URL_RX())||[];}
-function hostOf(u){try{return new URL(u).hostname.replace(/^www\./,'');}catch(_){return '';}}
+function hostOf(u){try{return new URL(hrefOf(u)).hostname.replace(/^www\./,'');}catch(_){return '';}}
 function meetName(u){
   const h=hostOf(u);
   for(const k in MEET_NAME)if(h===k||h.endsWith('.'+k))return MEET_NAME[k];
@@ -1673,10 +1685,36 @@ function meetLink(e){
   if(!e)return '';
   const all=urlsIn(e.detail).concat(urlsIn(e.location),urlsIn(e.desc));
   if(e.link&&MEET_HOST.test(hostOf(e.link)))all.unshift(e.link);
-  return all.find(u=>MEET_HOST.test(hostOf(u)))||'';
+  const known=all.find(u=>MEET_HOST.test(hostOf(u)));
+  if(known)return known;
+  /* A HOST WE DO NOT RECOGNISE IS STILL THE WAY IN. Mosaic books the staff
+     meeting at www.mosaic.org/teammeeting, its own redirect to Zoom, and an
+     allowlist of meeting vendors will never contain it. So where the place
+     somebody wrote is ONLY a URL, that URL is how you get in — placeOf() has
+     already replaced it with "Online", and sending nobody anywhere after
+     hiding the address loses the only way into the meeting, which is worse
+     than an ugly card.
+     EXCEPT one of our own apps. A location of facilities.mosaic.org/requests/12
+     is a record of the booking, not a door into a meeting, and "Join on
+     facilities.mosaic.org" would be a button that goes somewhere nobody is.
+     The hosts come from SECTIONS, so a new app joins this list by existing.
+     A location with a room AND a link keeps the allowlist either way, because
+     there the link may be a map or a parking note rather than the meeting. */
+  for(const v of [e.detail,e.location]){
+    const us=urlsIn(v);
+    if(us.length===1&&placeOf(v)==='Online'&&!ourApp(us[0]))return us[0];
+  }
+  return '';
 }
 /* Where it is, with any address lifted out. Trailing separators go with it,
    or "Rialto Auditorium; https://…" would read "Rialto Auditorium; · Online". */
+/* The apps this portal is a front door to. A link to one of them is a record,
+   never a meeting. Read off SECTIONS rather than listed again, so it cannot
+   fall out of step with the rail. */
+function ourApp(u){
+  const h=hostOf(u);
+  return !!h&&SECTIONS.some(s=>s.url&&hostOf(s.url)===h);
+}
 function placeOf(v){
   const raw=String(v==null?'':v);
   if(!raw)return '';
@@ -1693,7 +1731,7 @@ function linkify(v){
   while((m=rx.exec(raw))){
     const u=m[0].replace(/[.,;:)\]]+$/,'');
     out+=esc(raw.slice(last,m.index))+
-      '<a href="'+esc(u)+'" target="_blank" rel="noopener">'+
+      '<a href="'+esc(hrefOf(u))+'" target="_blank" rel="noopener">'+
       esc(u.length>56?u.slice(0,53)+'…':u)+'</a>';
     last=m.index+u.length;
     rx.lastIndex=last;
@@ -4098,9 +4136,12 @@ function pageEvent(){
     // than claiming these sends belong to this event.
     '<button data-go="comms" data-item="'+esc(e.date||'')+'">Comms on this day</button>'+
     (isSunday?'<button data-go="numbers" data-item="'+esc(e.date||'')+'">'+(m?'View in Metrics':'Submit attendance')+'</button>':'')+
+    /* hrefOf, not the raw link: a scheme-less address here resolved against
+       the portal and this button went to portal.mosaic.org/www.mosaic.org/…
+       — a Join button that goes nowhere is worse than no button. */
     ((card.parts||[e]).map(meetLink).find(Boolean)
       ?'<a class="foot-out" target="_blank" rel="noopener" href="'+
-        esc((card.parts||[e]).map(meetLink).find(Boolean))+'">Join on '+
+        esc(hrefOf((card.parts||[e]).map(meetLink).find(Boolean)))+'">Join on '+
         esc(meetName((card.parts||[e]).map(meetLink).find(Boolean)))+'</a>':'')+
     ((card.parts||[e]).find(x=>x.link&&x.type!=='facility')
       ?'<a class="foot-out" target="_blank" rel="noopener" href="'+esc((card.parts||[e]).find(x=>x.link&&x.type!=='facility').link)+'">Open in Outlook</a>':'')+

@@ -209,6 +209,21 @@ first, then anchor — makes any address left in the text followable. The URL is
 never dropped from the data, only from the place: a card that quietly lost the
 only way into the meeting would be worse than an ugly one. Hannita, 10 Sep.
 
+**A web address does not always carry its scheme.** The staff Zoom is booked in
+Outlook as `www.mosaic.org/teammeeting`, and `URL_RX` only matched `https?://`,
+so it was neither linkified nor read as Online — it sat in the card as plain
+grey text three times over. The pattern now also takes `www.` and **nothing
+looser on purpose**: a bare `something.org` branch would catch the domain half
+of every email address. Two consequences worth knowing. `hrefOf()` exists
+because a scheme-less `href` is a RELATIVE link — `href="www.mosaic.org/x"`
+resolves to `portal.mosaic.org/www.mosaic.org/x` — so anywhere a link is built
+by hand (the Join button does) it has to go through it, not just `linkify()`.
+And `meetLink()` falls back to a lone URL whose host is not a known vendor,
+because Mosaic's own redirect will never be on an allowlist and `placeOf()` has
+already hidden the address behind "Online" — except a link to one of our own
+apps, which `ourApp()` reads off `SECTIONS`: a facilities request URL is a
+record of the booking, not a door into a meeting.
+
 **An embedded app can ask the portal to move, and the ask has two halves.**
 `mosaic-can-navigate` is answered with `mosaic-navigate-ok` at load time, and
 `mosaic-navigate` moves the section and replies `mosaic-navigated`. Both

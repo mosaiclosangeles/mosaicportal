@@ -707,6 +707,49 @@ await step('a list row opens the same floating card',async()=>{
    Zoom address three times on one card and offered no way to click it. */
 console.log('--- a link is a link, and a zoom link means Online ---');
 const ZOOM='https://us06web.zoom.us/meeting/register/zBMZF-CySGeLrpoiNaKiig';
+/* A WEB ADDRESS WITHOUT ITS SCHEME IS STILL A WEB ADDRESS. The staff Zoom is
+   booked in Outlook as "www.mosaic.org/teammeeting", and it sat in the card as
+   plain grey text three times over. Hannita, 14 Sep. */
+await step('a scheme-less www address is a link, and still a way in',async()=>{
+  const r=await p.evaluate(()=>{
+    const L='www.mosaic.org/teammeeting';
+    return {place:placeOf(L),join:meetLink({detail:L}),html:linkify(L),
+            hybrid:placeOf('Rialto Auditorium; '+L),
+            hybridHtml:linkify('Rialto Auditorium; '+L),
+            // The two things a looser rule would have broken.
+            email:linkify('email hannita@mosaic.org for details'),
+            prose:linkify('Sept. 14 in the Rialto')};
+  });
+  console.log('       '+JSON.stringify({place:r.place,join:r.join,hybrid:r.hybrid}));
+  console.log('       '+r.html);
+  if(r.place!=='Online')throw new Error('it did not read as Online: '+r.place);
+  if(!r.join)throw new Error('the only way into the meeting was dropped');
+  if(!/<a href="https:\/\/www\.mosaic\.org\/teammeeting"/.test(r.html))
+    throw new Error('the href is not absolute — it would resolve against the portal: '+r.html);
+  if(r.hybrid!=='Rialto Auditorium · Online')throw new Error('hybrid lost its room: '+r.hybrid);
+  if(!/<a /.test(r.hybridHtml))throw new Error('the hybrid link is not clickable');
+  if(/<a /.test(r.email))throw new Error('it linkified half an email address: '+r.email);
+  if(/<a /.test(r.prose))throw new Error('it linkified prose: '+r.prose);
+  /* Every anchor on the card, not just the ones linkify() makes: the Join
+     button builds its own href, and it resolved against the portal —
+     portal.mosaic.org/www.mosaic.org/teammeeting. A Join button that goes
+     nowhere is worse than no button. */
+  const hrefs=await p.evaluate(()=>{
+    const d=new Date().toISOString().slice(0,10);
+    EVENTS.push({id:'ol:zoomtest',type:'other',title:'Staff Zoom Meeting',date:d,status:'done',
+      detail:'www.mosaic.org/teammeeting',location:'www.mosaic.org/teammeeting'});
+    openCard('ol:zoomtest');
+    const out=Array.from(document.querySelectorAll('#cardBody a')).map(a=>a.href);
+    document.querySelector('#cardScrim').click();
+    EVENTS.pop();
+    return out;
+  });
+  console.log('       hrefs: '+hrefs.join(' | '));
+  if(!hrefs.length)throw new Error('the card offered no link at all');
+  const bad=hrefs.filter(h=>!/^https:\/\/www\.mosaic\.org\//.test(h));
+  if(bad.length)throw new Error('a link resolved against the portal: '+bad.join(', '));
+  await p.waitForTimeout(200);
+});
 await step('a location that is only a link reads as Online',async()=>{
   const r=await p.evaluate(z=>({
     pure:placeOf(z),
