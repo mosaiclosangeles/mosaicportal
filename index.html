@@ -504,9 +504,22 @@ html.dark .btn-new{background:#fff;color:#111}
 .seg button.on{background:#111;color:#fff;font-weight:500}
 
 .cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:28px}
-.card{border:1px solid var(--hairline);border-radius:var(--r-card);padding:13px 15px;text-align:left;width:100%}
+/* A card is a <button>, and a button centres its own contents vertically —
+   so the shorter a card's text, the further down the card it sat, and four
+   cards in a row started their titles at four different heights. text-align
+   fixed the horizontal half of that and left the vertical half in place.
+   Laying it out as a column from flex-start is what actually top-aligns it.
+   Hannita, 14 Sep: "plate this week is lower than waiting on someone — that
+   should all be aligned at the same height, title and the number." */
+.card{border:1px solid var(--hairline);border-radius:var(--r-card);padding:13px 15px;text-align:left;width:100%;
+  display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start}
 .card:hover{background:#fcfcfc}
-.card .k{font-size:12px;color:var(--text2)}
+/* Two lines' worth, always. "This week's attendance in Los Angeles" wraps and
+   the others do not, so without a reserved second line the numbers under them
+   start at different heights even once the titles are top-aligned — which is
+   the other half of what she was looking at. 2.9em is two lines at the body's
+   1.45 line-height, so it follows the type rather than a magic pixel. */
+.card .k{font-size:12px;color:var(--text2);line-height:1.45;min-height:2.9em}
 .card .v{font-size:26px;font-weight:600;letter-spacing:-.02em;line-height:1.05;margin-top:7px}
 .card .n{font-size:12px;color:var(--text2);margin-top:3px}
 

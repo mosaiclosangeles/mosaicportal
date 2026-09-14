@@ -113,6 +113,16 @@ and the number printed above it cannot disagree; the test asserts they match.
 That is also why `CLOSEOUT` is the items and not a tally. Click, not hover: a
 hover panel is unreachable on a phone, which is where these get read.
 
+**A card is a `<button>`, and a button centres its own contents.** So the
+shorter a card's text, the further down the card its title sat — four cards in
+a row starting at four different heights. `text-align:left` fixed the
+horizontal half of that years ago and left the vertical half in place, which is
+why it read as a mystery rather than a rule. `.card` is a flex column from
+`flex-start` now, and `.card .k` reserves two lines (`min-height:2.9em`, two
+lines at the body's 1.45) so a title that wraps does not push its number below
+the others'. `tests/drive-portal.mjs` asserts all four share one title top and
+one number top.
+
 **"Waiting on you" is yours; a campus's missing numbers are the campus's.**
 It once counted every flagged item on the board for everyone, so the number read
 the same for all of us. `waitingOnMe()` counts what the signed-in person OWNS and

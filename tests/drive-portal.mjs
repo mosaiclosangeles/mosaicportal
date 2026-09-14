@@ -69,6 +69,23 @@ await p.screenshot({path:'portal-facilities.png'});
    takes a hunt to find out which things it counts, so the card opens the list
    and a row opens the full record — in the same dialog, not a second one over
    the first. */
+/* The cards line up. A .card is a <button>, and a button centres its own
+   contents vertically, so the shorter a card's text the lower its title sat —
+   four cards, four starting heights. Hannita, 14 Sep. */
+console.log('--- the Home cards line up ---');
+await step('every card starts its title and its number at the same height',async()=>{
+  await p.click('#nav button[data-go="home"]');
+  await p.waitForTimeout(400);
+  const r=await p.$$eval('.cards .card',cs=>cs.map(c=>({
+    label:c.querySelector('.k').textContent.trim().slice(0,26),
+    k:Math.round(c.querySelector('.k').getBoundingClientRect().top),
+    v:Math.round(c.querySelector('.v').getBoundingClientRect().top)})));
+  r.forEach(x=>console.log('       '+String(x.k).padStart(4)+' / '+String(x.v).padStart(4)+'  '+x.label));
+  const ks=new Set(r.map(x=>x.k)), vs=new Set(r.map(x=>x.v));
+  if(r.length<2)throw new Error('no cards to compare');
+  if(ks.size!==1)throw new Error('titles start at '+ks.size+' different heights');
+  if(vs.size!==1)throw new Error('numbers start at '+vs.size+' different heights');
+});
 console.log('--- the Home cards open what they count ---');
 await step('a card opens the list of what it is counting',async()=>{
   await p.click('#nav button[data-go="home"]');
