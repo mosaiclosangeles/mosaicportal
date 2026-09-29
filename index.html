@@ -31,11 +31,43 @@
 .gate-note.warn{background:#fdf3e3;color:#8a5a12}
 
 /* ---- embedded apps (full-bleed: the app starts immediately, no header) ---- */
+/* With a frame showing, #main is only the section's own chrome (today: none),
+   so it must not hold a column open beside it.
+   Written as .main.main-embedded on purpose: .main{flex:1} is defined further
+   down this stylesheet, and at equal specificity the later rule wins — which
+   is exactly how this first shipped, with Metrics squeezed into half the
+   window and an empty column beside it. */
+.main.main-embedded{flex:0 0 0;padding:0;min-width:0;overflow:hidden}
+.embed-host{flex:1;min-width:0;position:relative;height:100vh}
+.embed-host iframe{width:100%;height:100%;border:0;display:block;background:#fff;position:absolute;inset:0}
+.embed-host iframe[hidden]{display:none}
+.embed-host .embed-open{z-index:1}
+.prio-sec{margin-bottom:22px}
+.prio-sec .eyebrow{margin-bottom:2px}
+.prio-sec .row .tag{flex:none;align-self:center;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.prio-sec .row[disabled]{opacity:.6;cursor:default}
+@media(max-width:900px){.prio-sec .row .tag{display:none}}
+.closeout-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:22px;padding-top:18px;
+  border-top:1px solid var(--separator)}
+.btn-closeout{display:inline-flex;align-items:center;gap:7px;background:#111;color:#fff;font-size:13.5px;
+  font-weight:500;padding:9px 16px;border-radius:var(--r-btn);border:0;font-family:inherit;
+  letter-spacing:inherit;cursor:pointer;white-space:nowrap}
+.btn-closeout:hover{background:#000}
+.btn-closeout[disabled]{opacity:.6;cursor:default}
+.closeout-note{font-size:12.5px;color:var(--text2)}
+.lrow{display:flex;align-items:center;gap:10px}
+.lrow .row{flex:1;min-width:0}
+.btn-closeout.sm{font-size:12px;padding:6px 11px;flex:none}
+.closeout-done{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--session-d)}
+html.dark .btn-closeout{background:#fff;color:#111}
+.card-more{display:flex;align-items:center;gap:4px;margin-top:7px;font-size:12px;opacity:.85}
+.card:hover .card-more{opacity:1;text-decoration:underline}
 .embed-wrap{margin:-24px -28px -60px;position:relative;height:100vh}
 .embed-wrap iframe{width:100%;height:100%;border:0;display:block;background:#fff}
 .embed-open{position:absolute;right:14px;bottom:14px;display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#8a8a8a;background:rgba(255,255,255,.92);border:1px solid #e6e6e5;border-radius:999px;padding:6px 12px;text-decoration:none;box-shadow:0 2px 8px rgba(0,0,0,.06)}
 .embed-open:hover{color:#000}
-@media(max-width:760px){.embed-wrap{margin:-18px -16px -96px;height:calc(100vh - 58px)}
+@media(max-width:760px){.embed-host{height:calc(100vh - 58px)}
+  .embed-wrap{margin:-18px -16px -96px;height:calc(100vh - 58px)}
   .embed-open{display:none}}
 
 /* ---- account menu (rail foot) ---- */
@@ -47,6 +79,8 @@
 .um-name{font-weight:600;font-size:13.5px;color:#000}
 .um-mail{font-size:12px;color:#8a8a8a;margin-top:1px}
 .um-role{display:inline-block;margin-top:8px;font-size:10.5px;padding:3px 8px;border-radius:999px;background:#f2f2f1;color:#4a4a4a;font-weight:500}
+.um-home{display:flex;align-items:center;gap:5px;margin-top:6px;font-size:11px;color:#5c5c5c}
+.um-home svg{width:12px;height:12px;flex:none}
 .um-item{display:flex;align-items:center;gap:9px;width:100%;border:none;background:none;font-family:inherit;letter-spacing:inherit;font-size:13px;color:#000;padding:8px 10px;border-radius:7px;cursor:pointer;text-align:left;text-decoration:none;box-sizing:border-box}
 .um-item:hover{background:#f2f2f1}
 .um-item svg{width:15px;height:15px;color:#5c5c5c;flex:none}
@@ -418,23 +452,98 @@ html.dark .subnav button:hover,html.dark .subnav button.on{color:var(--text);bac
 
 /* ---------- main ---------- */
 .main{flex:1;min-width:0;padding:24px 28px 60px}
-.page-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:20px}
+.page-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:20px;position:relative}
+/* The New menu. Anchored to the button rather than centred on the screen: it is
+   a short list of places to go, not a dialog to be dismissed. */
+.newmenu{display:none;position:absolute;top:100%;right:0;margin-top:8px;z-index:40;
+  min-width:280px;background:var(--surface);border:1px solid var(--hairline);
+  border-radius:var(--r-card);box-shadow:0 12px 32px rgba(0,0,0,.14);padding:6px}
+.newmenu.on{display:block}
+.nm-row{display:flex;align-items:center;gap:12px;width:100%;text-align:left;
+  padding:10px 12px;border:0;background:none;border-radius:var(--r-btn);cursor:pointer;color:var(--text)}
+.nm-row:hover{background:var(--fill)}
+.nm-ic{flex:none;width:32px;height:32px;border-radius:var(--r-btn);display:grid;place-items:center;
+  background:var(--fill);color:var(--text2)}
+.nm-ic svg{width:16px;height:16px}
+.nm-t{display:flex;flex-direction:column;gap:1px;min-width:0}
+.nm-l{font-size:13.5px;font-weight:600}
+.nm-s{font-size:11.5px;color:var(--text2)}
+@media (max-width:560px){.newmenu{left:0;right:auto;min-width:0;width:100%}}
 h1{font-size:30px;font-weight:600;letter-spacing:-.03em;margin:0;line-height:1.1}
 .sub{font-size:14px;color:var(--text2);margin-top:5px}
 h2{font-size:16px;font-weight:600;letter-spacing:-.015em;margin:0 0 6px}
 .btn-primary{background:var(--gathering);color:#fff;font-size:13px;font-weight:500;padding:9px 16px;border-radius:var(--r-btn)}
 .btn-primary:hover{filter:brightness(.94)}
+/* Home's New, matching "+ Add item" on the planning board: black, and read
+   across rather than stacked. It was the blue btn-primary with an unsized
+   icon, which pushed the label onto its own line and made a tall square of it.
+   Hannita, 10 Sep: "black and more horizontal, just how we have the black
+   button in the planning app." */
+.btn-new{display:inline-flex;align-items:center;gap:7px;background:#111;color:#fff;
+  font-size:13.5px;font-weight:500;padding:10px 18px;border-radius:var(--r-btn);
+  border:0;font-family:inherit;letter-spacing:inherit;cursor:pointer;white-space:nowrap}
+.btn-new:hover{background:#000}
+.btn-new svg{flex:none}
+html.dark .btn-new{background:#fff;color:#111}
 .btn-ghost{border:1px solid var(--hairline);font-size:13px;padding:8px 14px;border-radius:var(--r-btn)}
 .btn-ghost:hover{background:var(--fill)}
 
+.cardScrim{position:fixed;inset:0;background:rgba(0,0,0,.28);opacity:0;pointer-events:none;
+  transition:opacity .16s;z-index:40}
+.cardScrim.open{opacity:1;pointer-events:auto}
+.cardWrap{position:fixed;z-index:41;left:50%;top:50%;transform:translate(-50%,-48%) scale(.99);
+  width:min(760px,calc(100vw - 40px));max-height:88vh;background:#fff;border-radius:18px;
+  box-shadow:0 24px 70px rgba(0,0,0,.22);display:none;flex-direction:column;opacity:0;
+  transition:opacity .16s ease,transform .16s ease}
+.cardWrap.open{display:flex;opacity:1;transform:translate(-50%,-50%) scale(1)}
+.cardClose{position:absolute;top:14px;right:14px;z-index:1;background:none;border:0;padding:6px;
+  cursor:pointer;color:var(--text2);line-height:0}
+.cardClose:hover{color:var(--text)}
+.cardClose svg{width:18px;height:18px;display:block}
+.cardBody{overflow-y:auto;padding:30px 34px 34px}
+/* On a phone it is a sheet off the bottom, because a centred box that tall
+   leaves nothing of the calendar to see behind it anyway. */
+@media(max-width:640px){
+  .cardWrap{left:0;top:auto;bottom:0;transform:translateY(12px);width:100vw;max-height:92vh;
+    border-radius:18px 18px 0 0}
+  .cardWrap.open{transform:none}
+  .cardBody{padding:26px 18px 30px}
+}
+.callist{border-top:1px solid var(--grid)}
+.cl-day{display:flex;gap:16px;padding:12px 4px;border-bottom:1px solid var(--separator)}
+.cl-day.today .cl-num{background:#111;color:#fff;border-radius:8px}
+.cl-when{flex:none;width:52px;text-align:center;padding-top:4px}
+.cl-dow{display:block;font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--text3)}
+.cl-num{display:inline-block;min-width:26px;padding:1px 4px;font-size:17px;font-weight:600;letter-spacing:-.02em}
+.cl-evs{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.cl-ev{display:flex;align-items:center;gap:9px;width:100%;text-align:left;padding:7px 8px;border-radius:8px;background:none;border:0;cursor:pointer}
+.cl-ev:hover{background:var(--fill)}
+.cl-dot{flex:none;width:8px;height:8px;border-radius:50%}
+.cl-txt{flex:1;min-width:0;display:flex;flex-direction:column}
+.cl-name{font-size:14px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cl-meta{font-size:12px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media(max-width:640px){.cl-ev .tag{display:none}}
 .seg{display:inline-flex;background:var(--fill);border-radius:var(--r-ctrl);padding:2px}
 .seg button{font-size:12px;padding:5px 11px;border-radius:6px;color:#5c5c5c}
-.seg button.on{background:#fff;color:#000;font-weight:500;box-shadow:0 0 0 1px var(--hairline)}
+.seg button.on{background:#111;color:#fff;font-weight:500}
 
 .cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:28px}
-.card{border:1px solid var(--hairline);border-radius:var(--r-card);padding:13px 15px;text-align:left;width:100%}
+/* A card is a <button>, and a button centres its own contents vertically —
+   so the shorter a card's text, the further down the card it sat, and four
+   cards in a row started their titles at four different heights. text-align
+   fixed the horizontal half of that and left the vertical half in place.
+   Laying it out as a column from flex-start is what actually top-aligns it.
+   Hannita, 14 Sep: "plate this week is lower than waiting on someone — that
+   should all be aligned at the same height, title and the number." */
+.card{border:1px solid var(--hairline);border-radius:var(--r-card);padding:13px 15px;text-align:left;width:100%;
+  display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start}
 .card:hover{background:#fcfcfc}
-.card .k{font-size:12px;color:var(--text2)}
+/* Two lines' worth, always. "This week's attendance in Los Angeles" wraps and
+   the others do not, so without a reserved second line the numbers under them
+   start at different heights even once the titles are top-aligned — which is
+   the other half of what she was looking at. 2.9em is two lines at the body's
+   1.45 line-height, so it follows the type rather than a magic pixel. */
+.card .k{font-size:12px;color:var(--text2);line-height:1.45;min-height:2.9em}
 .card .v{font-size:26px;font-weight:600;letter-spacing:-.02em;line-height:1.05;margin-top:7px}
 .card .n{font-size:12px;color:var(--text2);margin-top:3px}
 
@@ -461,26 +570,107 @@ h2{font-size:16px;font-weight:600;letter-spacing:-.015em;margin:0 0 6px}
 .chip.on{background:var(--fill);border-color:#dedede;color:#000;font-weight:500}
 .chip.off{opacity:.45}
 .swatch{width:7px;height:7px;border-radius:2px;flex:none}
+/* A drawer that asks for something is still a card: a head that says what it
+   is, a body, and the actions on their own row — the shape of the item card,
+   so the portal does not change language between reading and writing. */
+.dcard-head{padding:0 0 14px;border-bottom:1px solid var(--separator);margin-bottom:18px}
+.dcard-head h2{margin:0;font-size:19px;font-weight:600;letter-spacing:-.02em}
+.dcard-head .sub{margin-top:4px;font-size:13px;color:var(--text2);line-height:1.5}
+.dcard-body{display:flex;flex-direction:column;gap:13px}
+.dcard-foot{display:flex;gap:10px;align-items:center;flex-wrap:wrap;
+  margin-top:20px;padding-top:16px;border-top:1px solid var(--separator)}
+/* Saying nothing after a write is how people lose an afternoon, so this is a
+   block that holds its ground, not grey text under a button. */
+.dnote{display:none;margin-top:14px;padding:11px 13px;border-radius:var(--r-ctrl);
+  font-size:13px;line-height:1.45}
+.dnote.show{display:block}
+.dnote.ok{background:var(--session-t);color:var(--session-d)}
+.dnote.err{background:var(--red-t);color:var(--red-d)}
+.dnote.warn{background:var(--amber-t);color:var(--amber-d)}
+.campussel{margin-left:auto;font-family:inherit;font-size:12px;color:var(--text);
+  background:var(--surface);border:1px solid var(--hairline);border-radius:var(--r-ctrl);
+  padding:5px 9px;cursor:pointer}
+.campussel:hover{border-color:var(--grid)}
 
-/* ---------- calendar ---------- */
+/* ---------- calendar ----------
+   ONE CALENDAR, EVERYWHERE. Loyda, 8 Sep: "we want all the calendars to look
+   the same… I'm still seeing the same user interface, so I'm not feeling like
+   I'm pivoting." Comms and the Planning Board already agree; the portal was
+   the odd one out and read as messy beside them. These numbers are Comms'
+   (public/index.html) — the panel, the uppercase head on a tinted ground, the
+   124px cell, the 8px padding, the 4px gap, the pill. Change them here and in
+   Comms together, or the three drift apart again.
+
+   What is deliberately NOT copied is how status is drawn. Comms puts a flag
+   on the pill; the portal fills it, because hue = type and fill = status is
+   the rule in docs/mosaic-tokens.css and the legend below the grid says so. */
+.calwrap{background:var(--surface);border:1px solid var(--hairline);
+  border-radius:var(--r-card);overflow:hidden}
 .wk-head,.wk-body{display:grid;grid-template-columns:repeat(7,minmax(0,1fr))}
-.wk-head div{font-size:11.5px;color:var(--text2);padding:0 0 7px 4px}
-.wk-head div.today{color:#000;font-weight:500}
-.wk-body{border-top:1px solid var(--grid)}
-.cell{border-left:1px solid var(--grid);padding:5px 4px 8px;min-height:120px}
-.cell:first-child{border-left:0}
-.cell.sun{background:#fcfcfc}
-.daynum{font-size:11.5px;color:var(--text2);margin-bottom:4px}
-.daynum.today span{background:#000;color:#fff;border-radius:50%;width:19px;height:19px;
-  display:inline-flex;align-items:center;justify-content:center;font-size:10.5px}
-.ev{display:block;width:100%;text-align:left;font-size:10.5px;line-height:1.28;padding:3px 5px;
-  border-radius:4px;margin-bottom:3px;border-left:2.5px solid;overflow:hidden;
-  text-overflow:ellipsis;white-space:nowrap}
-.ev:hover{filter:brightness(.97)}
-.more{font-size:10px;color:var(--text3);padding-left:5px}
+.wk-head{background:var(--fill)}
+.wk-head div{font-size:11px;text-transform:uppercase;letter-spacing:.12em;font-weight:600;
+  color:var(--text2);padding:14px 12px;text-align:left}
+.wk-head div.today{color:var(--text)}
+.cell{border-top:1px solid var(--separator);border-left:1px solid var(--separator);
+  padding:8px;min-height:124px;display:flex;flex-direction:column;gap:4px;min-width:0;
+  overflow:hidden;background:var(--surface)}
+.cell:nth-child(7n+1){border-left:0}
+.cell.out{background:var(--fill)}
+.cell.out .daynum{opacity:.4}
+.daynum{font-size:13px;color:var(--text2);font-weight:500;margin-bottom:2px}
+.daynum.today span{background:var(--text);color:#fff;border-radius:50%;width:24px;height:24px;
+  display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:600}
+.ev{display:block;width:100%;text-align:left;font-size:11px;line-height:1.3;padding:4px 8px;
+  border-radius:4px;font-weight:500;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap;transition:transform .1s ease,filter .15s ease}
+.ev:hover{transform:translateX(2px);filter:brightness(.95)}
+.more{font-size:11px;color:var(--text3);text-align:left;padding:0 8px}
+/* One dot per source a card merged, so the merge is visible rather than
+   silent — you can see at a glance that this one card is the board entry, the
+   staff calendar entry and the room booking. */
+.evdots{display:inline-flex;gap:3px;margin-left:5px;vertical-align:1px}
+.evdots i{width:5px;height:5px;border-radius:50%;display:block}
+
+/* THE HOVER CARD. Loyda, 8 Sep: "I hover over, it gives me time, facilities
+   check or pending, and then who's responsible… you let me not do more work,
+   but you let me get the information I'm looking for, simply by moving my
+   cursor." So this answers the entry without opening it, and the click still
+   opens the full card underneath.
+   Pointer only — a phone has no hover, and a card that needs one is a card
+   half the staff never see. The tap opens the drawer instead. */
+.hovercard{position:fixed;z-index:60;width:272px;background:var(--surface);
+  border:1px solid var(--hairline);border-radius:var(--r-card);padding:13px 14px;
+  box-shadow:0 6px 22px rgba(0,0,0,.10);pointer-events:none;opacity:0;
+  transition:opacity .12s ease}
+html.dark .hovercard{box-shadow:0 6px 22px rgba(0,0,0,.5)}
+.hovercard.on{opacity:1}
+.hovercard .hc-t{font-size:14.5px;font-weight:600;letter-spacing:-.015em;line-height:1.3}
+.hovercard .hc-tags{display:flex;flex-wrap:wrap;gap:5px;align-items:center;margin-top:8px}
+.hovercard .hc-row{display:flex;justify-content:space-between;gap:12px;font-size:12.5px;
+  color:var(--text2);margin-top:7px}
+.hovercard .hc-row b{font-weight:500;color:var(--text);text-align:right;min-width:0}
+.hc-pill{font-size:10.5px;font-weight:600;padding:2px 7px;border-radius:4px;white-space:nowrap}
+/* Level templatizes the workflow; it is not a badge anyone should have to
+   reason about, so it whispers next to the type rather than sitting as a pill. */
+.hc-lvl{font-size:10.5px;color:var(--text3);font-weight:500}
 .bars{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));padding-top:4px}
 .bar{font-size:10px;padding:2px 7px;border-radius:4px;margin:0 3px 4px;overflow:hidden;
   white-space:nowrap;text-overflow:ellipsis;text-align:left;width:calc(100% - 6px)}
+/* Five key moments, drawn as diamonds so they never read as phases. */
+.mstrip{display:flex;gap:0;align-items:flex-start;overflow-x:auto;padding:4px 0 2px}
+.mspt{flex:1;min-width:74px;text-align:center;font-size:11px;color:var(--text2)}
+.mspt b{display:block;color:var(--text);font-weight:600;font-size:11.5px}
+.msdia{width:9px;height:9px;background:var(--milestone);transform:rotate(45deg);
+  border-radius:1px;margin:0 auto 7px;display:block}
+.mspt.past .msdia{background:var(--neutral)}
+/* Affirmations are not tasks: ticking one means "this is now true". */
+.rq{font-size:13px;color:var(--text2);margin:0 0 9px}
+.aff{display:flex;gap:9px;align-items:flex-start;font-size:13.5px;color:var(--text2);margin-bottom:7px}
+.aff.on{color:var(--text)}
+.affbox{width:15px;height:15px;border-radius:4px;border:1.5px solid var(--grid);flex:none;
+  margin-top:2px;display:flex;align-items:center;justify-content:center;color:#fff}
+.aff.on .affbox{background:var(--session-d);border-color:var(--session-d)}
+.affbox svg{width:10px;height:10px}
 .legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:14px;font-size:11.5px;color:var(--text2)}
 .legend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px;vertical-align:0}
 
@@ -537,8 +727,16 @@ h2{font-size:16px;font-weight:600;letter-spacing:-.015em;margin:0 0 6px}
 .mini{display:flex;gap:22px;margin:4px 0 2px}
 .mini .v{font-size:24px;font-weight:600;letter-spacing:-.02em;line-height:1.05}
 .mini .k{font-size:11.5px;color:var(--text2);margin-top:2px}
+.foot-links .foot-out{font-size:13px;color:var(--gathering);text-decoration:none}
+.foot-links .foot-out:hover{text-decoration:underline}
 .foot-links button{font-family:inherit;letter-spacing:inherit;font-size:13px;color:var(--gathering);background:none;border:0;padding:0;cursor:pointer}
 .foot-links button:hover{text-decoration:underline}
+/* An address inside the card, made followable by linkify(). Scoped to the
+   card: a value that wraps needs to break and stay right-aligned, and the
+   label/value rows on the admin screens should not change shape for it. */
+.ecard .kv a,.desc a{color:var(--gathering);text-decoration:none;overflow-wrap:anywhere}
+.ecard .kv a:hover,.desc a:hover{text-decoration:underline}
+.ecard .kv span:last-child{text-align:right;min-width:0}
 .kv button{font-family:inherit;letter-spacing:inherit;font-size:inherit;background:none;border:0;padding:0;cursor:pointer}
 .kv button:hover{text-decoration:underline}
 /* Campus hero cards — one collapsible card per top-level campus, styled after
@@ -652,8 +850,8 @@ select{font:inherit;font-size:13px;padding:7px 10px;border:1px solid var(--hairl
 <div id="gate">
   <div class="gate-card">
     <div class="gate-brand"><div class="mark"></div><div class="name">Mosaic Portal</div></div>
-    <h1>Welcome</h1>
-    <p class="gsub">Sign in with your Mosaic account.</p>
+    <h1 id="gTitle">Welcome</h1>
+    <p class="gsub" id="gSub">Sign in with your Mosaic account.</p>
     <div id="g-email-row">
       <label for="gEmail">Email</label>
       <input id="gEmail" type="email" autocomplete="email" placeholder="you@mosaic.org">
@@ -701,8 +899,19 @@ select{font:inherit;font-size:13px;padding:7px 10px;border:1px solid var(--hairl
     <div class="rail-foot"><div class="avatar">L</div><div class="who" id="who">Loyda</div></div>
   </nav>
   <main class="main" id="main"></main>
+  <!-- The embedded apps live here, NOT inside #main, because render() replaces
+       #main's innerHTML and a detached iframe reloads when it is put back. -->
+  <div class="embed-host" id="embedHost" hidden><a class="embed-open" id="embedOpen" target="_blank" rel="noopener">open</a></div>
 </div>
 <div class="scrim" id="scrim"></div>
+<!-- The event card. It floats over whatever you were looking at, the way the
+     planning board's own dialog does, so opening one entry does not cost you
+     the month you were reading. -->
+<div class="cardScrim" id="cardScrim"></div>
+<div class="cardWrap" id="cardWrap" role="dialog" aria-label="Event" aria-hidden="true">
+  <button class="cardClose" id="cardClose" aria-label="Close">SVGX</button>
+  <div class="cardBody" id="cardBody"></div>
+</div>
 <aside class="drawer" id="drawer" role="dialog" aria-label="Details" aria-hidden="true">
   <div class="drawer-head"><span class="drawer-title" id="drawerTitle"></span><button class="drawer-close" id="drawerClose" aria-label="Close">SVGX</button></div>
   <div id="drawerBody"></div>
@@ -725,10 +934,12 @@ const P = {
   wallet:'M3 8a2 2 0 012-2h14a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2zM3 10.5h18M16.5 14.5h2',
   heart:'M12 20l-7.1-7.1a4 4 0 015.7-5.6l1.4 1.4 1.4-1.4a4 4 0 015.7 5.6z',
   lock:'M6 11a2 2 0 012-2h8a2 2 0 012 2v6a2 2 0 01-2 2H8a2 2 0 01-2-2zM9 9V7a3 3 0 016 0v2',
-  door:'M4 21h16M6 21V5a2 2 0 012-2h8a2 2 0 012 2v16M14 12h.01'
+  door:'M4 21h16M6 21V5a2 2 0 012-2h8a2 2 0 012 2v16M14 12h.01',
+  plus:'M12 5v14M5 12h14'
 };
 function ic(n,s){return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"'+(s?' style="'+s+'"':'')+'><path d="'+P[n]+'"/></svg>';}
 document.getElementById('drawerClose').innerHTML = ic('x');
+document.getElementById('cardClose').innerHTML = ic('x');
 
 /* ============================ dates ============================ */
 const TODAY = new Date(); TODAY.setHours(0,0,0,0);
@@ -745,12 +956,120 @@ function pretty(dt){return ['Sunday','Monday','Tuesday','Wednesday','Thursday','
 
 /* ============================ data ============================ */
 const TYPES = {
-  event: {label:'Events',hue:'var(--gathering)',tint:'var(--gathering-t)',deep:'var(--gathering-d)',solid:'var(--gathering-s)'},
+  event: {label:'Mosaic Calendar',hue:'var(--gathering)',tint:'var(--gathering-t)',deep:'var(--gathering-d)',solid:'var(--gathering-s)'},
   comms: {label:'Comms', hue:'var(--amber)',    tint:'var(--amber-t)',    deep:'var(--amber-d)',    solid:'var(--amber-s)'},
-  other: {label:'Mosaic Calendar', hue:'var(--neutral)',  tint:'var(--neutral-t)',  deep:'var(--neutral-d)',  solid:'var(--neutral-s)'},
-  away:  {label:'Staff travel + PTO', hue:'var(--lime)', tint:'var(--lime-t)', deep:'var(--lime-d)', solid:'var(--lime-s)'},
-  facility:{label:'Facility bookings', hue:'var(--red)', tint:'var(--red-t)', deep:'var(--red-d)', solid:'var(--red-s)'}
+  other: {label:'Staff calendar', hue:'var(--lime)',  tint:'var(--lime-t)',  deep:'var(--lime-d)',  solid:'var(--lime-s)'},
+  away:  {label:'Time away', hue:'var(--lime)', tint:'var(--lime-t)', deep:'var(--lime-d)', solid:'var(--lime-s)'},
+  facility:{label:'Facilities', hue:'var(--red)', tint:'var(--red-t)', deep:'var(--red-d)', solid:'var(--red-s)'}
 };
+/* THE CALENDAR SHOWS THREE SOURCES, NOT FIVE — Loyda's cut, 8 Sep 2026.
+   Five chips read as redundant: "Events" and "Mosaic Calendar" are the same
+   thing to everybody but us, and travel + PTO is too granular to sit beside
+   them ("at that point you can do one that's birthdays"). The three that are
+   left each answer a different question, which is why they earn a row:
+
+     Mosaic Calendar — us as a church   (the planning board's own items)
+     Staff           — me as an employee (the shared Outlook calendar:
+                                          meetings, rehearsals, birthdays,
+                                          closures, and time away folded in)
+     Facilities      — us as a property  (bookings, setup and teardown)
+
+   Comms is deliberately NOT a source. It is internal, it has its own app, and
+   Loyda asked for it off the calendar; comm_events still load for Home's
+   count, they just have no source so nothing draws them here.
+
+   A source is a filter chip over one or more item types, so the underlying
+   data model is untouched — an item is still type 'other' or 'away', it is
+   only filtered and coloured as Staff. Filter through shown(), never through
+   S.filters.has(e.type), or the two rows fold back apart. */
+const SOURCES = {
+  mosaic:{label:'Mosaic Calendar',hue:'var(--gathering)',tint:'var(--gathering-t)',deep:'var(--gathering-d)',solid:'var(--gathering-s)'},
+  staff: {label:'Staff',          hue:'var(--lime)',      tint:'var(--lime-t)',     deep:'var(--lime-d)',     solid:'var(--lime-s)'},
+  fac:   {label:'Facilities',     hue:'var(--red)',       tint:'var(--red-t)',      deep:'var(--red-d)',      solid:'var(--red-s)'}
+};
+/* WHICH ROW AN ENTRY BELONGS IN — decided by what it IS, not by which system
+   stores it. The first cut routed on the source, so "Mosaic Calendar" meant
+   "came from the planning board" and "Staff" meant "came from Outlook". Since
+   Outlook holds nearly everything, Staff swallowed the week: Mosaic Future,
+   Welcome to Mosaic and Discipleship all read as staff business.
+
+   Hannita's rule, 10 Sep, and it is the right one:
+     Mosaic Calendar — the church: board items, plus Outlook entries that are
+                       church activity
+     Staff           — the employee: PTO, birthdays, huddles, internal meetings
+     Facilities      — the building: the AC, the doors, rentals, bookings
+
+   An event that is BOTH — Men's Camp, a gathering with a room held — stays one
+   card under Mosaic Calendar and carries its facilities state as an attribute.
+   Drawing it twice is the duplication the merge just removed. Facilities holds
+   what is only about the building.
+
+   THE WEAK PART IS INTERNAL, AND IT IS DELIBERATELY NARROW. Splitting "Team
+   Huddle" from "Mosaic Future" needs a rule, and Outlook gives us only the
+   subject line today: calendar-events asks Graph for subject, times, location
+   and link, not categories. So these are whole phrases, not bare words —
+   "staff meeting" and not "staff", or "Regional Bible Study PM Staff Lead"
+   would file a Bible study under staff business. When categories are added to
+   that function, they should win over this outright. */
+const INTERNAL=/\b(huddle|staff meeting|staff zoom|staff lunch|all[- ]staff|team meeting|team zoom|arena call|1:1|one[- ]on[- ]one|check[- ]in|stand[- ]?up|b'?day|birthday|payroll|onboarding|performance review)\b/i;
+function laneOf(e){
+  if(!e)return null;
+  if(e.type==='facility')return 'fac';
+  if(e.type==='away')return 'staff';     // already detected as time away upstream
+  if(e.type==='event')return 'mosaic';   // the planning board is the church's own
+  if(e.type==='comms')return null;       // not a calendar source at all
+  return INTERNAL.test(e.title||'')?'staff':'mosaic';
+}
+/* Hue follows the row, not the item's type: the three categories are what the
+   calendar is now about, so they are what the colour has to mean. */
+function palOf(e){return SOURCES[laneOf(e)]||TYPES[e.type]||TYPES.event;}
+/* What each row actually holds, said plainly — this is the copy in Settings. */
+const SRC_NOTE={
+  mosaic:'The church — gatherings, series, campaigns and programs, from the board and the shared calendar',
+  staff: 'Time away, birthdays, huddles and internal meetings — you as an employee',
+  fac:   'The building — the AC, the doors, rentals and bookings, setup and teardown included'
+};
+/* CAMPUS IS AN ATTRIBUTE, AND THE THREE SOURCES SPELL IT DIFFERENTLY.
+   The planning board stores "LA" and "NYC" (its CAMPUS_BASE); facilities
+   stores the campuses table's own name, "Los Angeles". Same campus, two
+   spellings, so a filter that compared the raw strings would show a campus
+   half its own work. Everything is folded onto CAMPUS_ORDER's names here. */
+const CAMPUS_ALIAS={
+  'la':'Los Angeles','los angeles':'Los Angeles',
+  'nyc':'New York City','ny':'New York City','new york':'New York City',
+  'new york city':'New York City',
+  'oc':'Orange County','orange county':'Orange County',
+  'chicago':'Chicago','atlanta':'Atlanta','seattle':'Seattle','london':'London',
+  'mexico':'Mexico','mexico city':'Mexico','cdmx':'Mexico','mx':'Mexico',
+  'ecuador':'Ecuador','online':'Mosaic Online','mosaic online':'Mosaic Online'
+};
+function campusOf(e){
+  const raw=(e&&e.campus||'').trim();
+  if(!raw)return '';
+  return CAMPUS_ALIAS[raw.toLowerCase()]||raw;
+}
+
+/* Does this entry belong to a source the person still has switched on?
+   An item whose type maps to no source (comms) is never on the calendar. */
+function shown(e){
+  const src=laneOf(e);
+  if(!src||!S.filters.has(src))return false;
+  // An entry with no campus — most of the shared staff calendar — belongs to
+  // everybody, so a campus filter narrows the board without hiding it. A card
+  // nobody can see is a card nobody works on.
+  const c=campusOf(e);
+  return !S.campus||!c||c===S.campus;
+}
+/* Only the campuses actually on the calendar, so the dropdown never offers a
+   campus with nothing behind it. The person's own campus is always listed,
+   even in a quiet week, or the default would select something invisible. */
+function campusesOnCalendar(){
+  const seen=new Set();
+  EVENTS.forEach(e=>{const c=campusOf(e);if(c)seen.add(c);});
+  CAMPAIGNS.forEach(e=>{const c=campusOf(e);if(c)seen.add(c);});
+  if(S.campus)seen.add(S.campus);
+  return [...seen].sort((a,b)=>campusSortIndex(a)-campusSortIndex(b));
+}
 // status: done | scheduled | waiting | drafting
 /* ---- live data ----------------------------------------------------------
    EVENTS / CAMPAIGNS come from the planning board's queryable mirror
@@ -759,9 +1078,57 @@ const TYPES = {
    METRICS comes from the Mosaic Metrics view v_service_totals using the
    signed-in person's own session. The four apps stay the systems of record;
    the portal reads and arranges. */
-let EVENTS=[], CAMPAIGNS=[], METRICS={}, TASKS=[], ATTN=[], CLOSEOUT=0, DATA_ERR=null, CAL_ON=false;
+// CLOSEOUT is the items themselves, not a count: a number on a card you can
+// open has to be able to say WHICH things it is counting.
+let EVENTS=[], CAMPAIGNS=[], METRICS={}, TASKS=[], ATTN=[], CLOSEOUT=[], DATA_ERR=null, CAL_ON=false;
+/* Attendance per campus per date. METRICS above is whichever campus the page
+   is currently speaking for; this is all of them, so a card can ask for its
+   own rather than being handed a total nobody counted. */
+let METRICS_BY_CAMPUS={};
+/* Which campus/date pairs attendance has actually been entered for, and
+   whether we managed to read them at all. "Nobody submitted this" is a claim
+   about an ABSENCE, so it may only be made from a load that succeeded — an
+   empty set because the fetch failed would accuse every owner on the board of
+   missing a week they filed on time. */
+let METRICS_DATES=new Set(), METRICS_LOADED=false;
+/* The board owner names that are this person, from board_owners.email.
+   First names alone are not an identity here: "Aaron" and "Aaron Weits" are
+   both Aaron Weits while "ACM" is Aaron McManus, so matching on the first name
+   hands one Aaron the other's work. Empty means nobody mapped that address,
+   and ownedByMe() falls back to the first name rather than to nothing. */
+let MY_OWNERS=[];
 const PM_URL='https://yrviwbqhjcrlxgozrgay.supabase.co';
 const PM_KEY='sb_publishable_3o7Avv4DEhHW7i_k5DrH6Q_tYFLrgwg';
+/* CLOSE IT OUT, FROM THE CARD.
+   The board's own save is a read-modify-write behind a version guard, and a
+   second copy of that protocol in this app is how two writers start erasing
+   each other — so the change is made by board_set_status() in the database
+   instead: one statement, atomic, and one implementation rather than two.
+   It writes what the board's own `edit` op writes (edits[id].status) and
+   merges into that item's existing edits, so a title or date already saved
+   against it survives.
+
+   The mirror this page reads is refreshed by a nightly sync, so the item would
+   otherwise sit in the list until tomorrow. The local copy is updated too —
+   which is a claim about what was saved, so it only happens after the database
+   has said yes. */
+async function pmRpc(fn,body){
+  const r=await fetch(PM_URL+'/rest/v1/rpc/'+fn,{
+    method:'POST',
+    headers:{apikey:PM_KEY,Authorization:'Bearer '+PM_KEY,'Content-Type':'application/json'},
+    body:JSON.stringify(body||{})});
+  if(!r.ok)throw new Error(await r.text()||('rpc failed ('+r.status+')'));
+  return r.json();
+}
+async function closeOut(boardId){
+  const res=await pmRpc('board_set_status',{p_item_id:boardId,p_status:'Complete'});
+  // Only now is it true. Reflect it locally so the count and the list agree
+  // with the board without waiting for the overnight sync.
+  EVENTS.forEach(e=>{if(e.boardId===boardId)e.boardStatus='Complete';});
+  const i=CLOSEOUT.findIndex(x=>String(x.evId||'').replace(/^pm:/,'').replace(/:\d{4}-\d{2}-\d{2}$/,'')===boardId);
+  if(i>=0)CLOSEOUT.splice(i,1);
+  return res;
+}
 async function pmGet(q){
   const r=await fetch(PM_URL+'/rest/v1/'+q,{headers:{apikey:PM_KEY,Authorization:'Bearer '+PM_KEY}});
   if(!r.ok)throw new Error('planning read failed ('+r.status+')');
@@ -769,12 +1136,29 @@ async function pmGet(q){
 }
 const CE_STATUS={sent:'done',approved:'done',complete:'done',scheduled:'scheduled',waiting:'waiting','waiting for approval':'waiting',proposed:'drafting','in progress':'drafting',incomplete:'drafting'};
 function mapLive(pis,ces){
-  EVENTS=[];CAMPAIGNS=[];ATTN=[];CLOSEOUT=0;
+  EVENTS=[];CAMPAIGNS=[];ATTN=[];CLOSEOUT=[];
   pis.forEach(r=>{
     if(r.deleted||!r.date)return;   // undated items live on the board, not a calendar
     const title=r.title||(r.is_sunday?'Sunday Gathering':'(untitled)');
     const past=D(r.date)<TODAY;
-    const base={type:'event',title,campus:r.campus,level:r.level,phase:r.phase_now,speaker:r.speaker,
+    /* The mirror carries more than the calendar was keeping: the board's own
+       type (Event, Program, Campaign, Staff date), its own status wording, the
+       time, the location and whether it repeats. Dropping them here is why the
+       card showed less than the board's drawer does.
+       Milestones and the Rhythm's ticks are here too, since the sync started
+       computing them off the board's own milestoneDates() and PHASE_INFO. */
+    const base={type:'event',title,boardId:r.id,campus:r.campus,level:r.level,phase:r.phase_now,speaker:r.speaker,
+      /* Only a Sunday GATHERING may own a Sunday's attendance. Items nested
+         under one inherit its date, so a weekday test hands Kids Training,
+         Choir, Baptisms and Child Dedications the whole day's number as if
+         each had counted it. The board already decides this for itself; the
+         mirror carries is_sunday and parent_id, so read them rather than
+         re-deriving a worse answer here. Hannita, 11 Sep: "this event is not
+         in metrics". */
+      isGathering:!!r.is_sunday&&!r.parent_id,
+      boardType:r.type,boardStatus:r.status,recur:r.recur,location:r.location,timeOfDay:r.time_of_day,
+      needsReview:!!r.needs_review,
+      milestones:r.milestones||null,rhythm:r.rhythm||null,
       series:r.is_series?title:undefined,owner:(r.owners||[]).join(', '),desc:r.description,
       detail:(r.speaker?r.speaker+(r.is_sunday?' speaking':''):(r.type||''))+(r.campus&&r.campus!=='LA'?' · '+r.campus:'')};
     if(r.recur==='weekly'&&r.date_end){
@@ -785,10 +1169,26 @@ function mapLive(pis,ces){
       }
       return;
     }
-    if(r.date_end&&r.date_end!==r.date){CAMPAIGNS.push({title,start:r.date,end:r.date_end,type:'event'});return;}
+    /* A RUN IS STILL AN EVENT. This used to push a multi-day item into
+       CAMPAIGNS and return, so Men's Camp existed on the calendar only as the
+       bar across the top — nothing to click, nothing to merge with, and the
+       richest record we hold about it (owner, phase, the sign-up notes, its
+       comms) was unreachable from the calendar. What you could click was the
+       shared calendar's bare copy, whose drawer had a title and a date in it
+       and nothing else.
+       So: keep the bar, which is what shows the shape of a run, AND put the
+       item on its start day like every other entry, carrying dateEnd. It is
+       how a facility booking has always worked. */
+    if(r.date_end&&r.date_end!==r.date){
+      CAMPAIGNS.push({title,start:r.date,end:r.date_end,type:'event',campus:r.campus});
+      EVENTS.push(Object.assign({},base,{id:'pm:'+r.id,date:r.date,dateEnd:r.date_end,
+        status:(r.status==='Complete'||D(r.date_end)<TODAY)?'done':'scheduled'}));
+      return;
+    }
     const id='pm:'+r.id;
     EVENTS.push(Object.assign({},base,{id,date:r.date,status:(r.status==='Complete'||past)?'done':'scheduled'}));
-    if(past&&!r.parent_id&&r.status&&r.status!=='Complete')CLOSEOUT++;
+    if(past&&!r.parent_id&&r.status&&r.status!=='Complete')
+      CLOSEOUT.push({evId:id,title,date:r.date,meta:(r.campus||'')+' · '+((r.owners||[])[0]||'')});
     if(r.is_sunday&&!r.speaker&&!past&&D(r.date)<=addDays(TODAY,42))
       ATTN.push({evId:id,title:'No speaker yet — '+title,date:r.date,meta:(r.campus||'')+' · '+((r.owners||[])[0]||'')});
     if(r.needs_review&&!past)
@@ -797,31 +1197,109 @@ function mapLive(pis,ces){
   ATTN.sort((a,b)=>D(a.date)-D(b.date));
   ces.forEach(r=>{
     if(r.archived||!r.event_date)return;
-    EVENTS.push({id:'ce:'+r.id,date:r.event_date,type:'comms',
+    EVENTS.push({id:'ce:'+r.id,date:r.event_date,type:'comms',boardItemId:r.board_item_id||null,
       status:CE_STATUS[String(r.status||'').toLowerCase()]||'drafting',
       title:r.title||(r.type||'Comm'),
       detail:(r.subtitle||r.type||'')+(r.sender?' · '+r.sender:'')});
   });
   EVENTS.sort((a,b)=>D(a.date)-D(b.date));
 }
+/* WORTH A LOOK IS THE MONDAY DIGEST'S OWN RANKING, NOT A SECOND OPINION.
+   priorities_for() in the board's database is what the Slack digest is built
+   from: it decides the sections, the order and the reason on every row. So the
+   portal calls the same function rather than working out its own version — the
+   thing that must never happen here is Home and the Monday post disagreeing
+   about what needs attention, which is exactly how the competing digest
+   template happened on 13 Aug.
+   It is keyed on a Slack id because that is who the digest posts to, so the
+   signed-in person is resolved through board_owners.email. Nobody mapped there
+   yet simply gets the old flagged list, which is what everyone had before. */
+let PRIOS=null, PRIOS_FOR=null;
+async function loadPriorities(){
+  if(!ME.email)return;
+  if(PRIOS_FOR===ME.email)return;          // already have this person's
+  PRIOS_FOR=ME.email; PRIOS=null;
+  try{
+    const who=await pmGet('board_owners?select=slack_user_id,owner_name&email=eq.'+
+      encodeURIComponent(ME.email.toLowerCase()));
+    // Every name this address answers to on the board, not just the first:
+    // Aaron Weits owns items under "Aaron", "Aaron Weits" and "Weits".
+    MY_OWNERS=(who||[]).map(r=>String(r.owner_name||'').trim().toLowerCase()).filter(Boolean);
+    const sid=who&&who[0]&&who[0].slack_user_id;
+    if(!sid)return;
+    const r=await fetch(PM_URL+'/rest/v1/rpc/priorities_for',{
+      method:'POST',
+      headers:{apikey:PM_KEY,Authorization:'Bearer '+PM_KEY,'Content-Type':'application/json'},
+      body:JSON.stringify({p_slack_user_id:sid})});
+    if(!r.ok)return;
+    PRIOS=await r.json();
+  }catch(_){ PRIOS=null; }
+}
+/* Her order, and the board's own words for each. "later" and "done" are left
+   out on purpose: Home is what needs you now, and the board is where you go to
+   read ahead. */
+const PRIO_SECTIONS=[
+  ['attention','Where your attention is most needed'],
+  ['this_week','On your plate this week'],
+  ['waiting',  'Waiting on someone'],
+  ['horizon',  'Just over the horizon'],
+  ['closeout', 'Worth closing out']
+];
+function prioGroups(){
+  if(!PRIOS||!PRIOS.length)return null;
+  const out=[];
+  for(const [key,label] of PRIO_SECTIONS){
+    const rows=PRIOS.filter(r=>r.section===key);
+    if(rows.length)out.push({key,label,rows});
+  }
+  return out.length?out:null;
+}
 async function loadLive(){
   DATA_ERR=null;
   try{
     const [pis,ces]=await Promise.all([
       pmGet('planning_items?select=*&deleted=eq.false'),
-      pmGet('comm_events?select=id,event_date,type,title,subtitle,status,sender,archived&archived=eq.false')
+      pmGet('comm_events?select=id,event_date,type,title,subtitle,status,sender,archived,board_item_id&archived=eq.false')
     ]);
     mapLive(pis,ces);
   }catch(e){DATA_ERR="Couldn't load live planning data — "+e.message+". Showing an empty calendar; the planning board itself is unaffected.";}
   try{
     if(sb){
-      let {data,error}=await sb.from('v_service_totals').select('date,gathering_type,in_person_total,online_views,baptisms').order('date',{ascending:false}).limit(80);
+      /* 🐛 PER CAMPUS, NOT ONE WORLD TOTAL.
+         This used to sum in_person_total across every campus on a date, so
+         6 Sep read 2,373 — Los Angeles 1,051 plus Ecuador 811, Mexico 439 and
+         London 72 added together. Unlabelled that was merely vague; once
+         Home started saying "This week's attendance in Mexico" it became a
+         confident wrong answer, because Mexico was 439.
+         So the rows are kept per campus and a card asks for the one it means:
+         Home for the person's home campus, an event for its own. */
+      let {data,error}=await sb.from('v_service_totals')
+        .select('date,campus_id,gathering_type,in_person_total,online_views,baptisms')
+        .order('date',{ascending:false}).limit(400);
       if(!error&&data&&data.length){
+        // Every row, not only the Sundays and not only the six dates the cards
+        // draw: this is the record of what HAS been entered, and it is read to
+        // answer whether a gathering's numbers are still outstanding.
+        METRICS_DATES=new Set(data.map(r=>(r.campus_id||'?')+'|'+r.date));
+        METRICS_LOADED=true;
         const sun=data.filter(r=>String(r.gathering_type||'sunday').toLowerCase().includes('sun'));
         const rows=sun.length?sun:data;
-        const byDate={};
-        rows.forEach(r=>{const k=r.date;byDate[k]=byDate[k]||{a:0,k:0,n:0};byDate[k].a+=(r.in_person_total||0);byDate[k].k+=(r.online_views||0);byDate[k].n+=(r.baptisms||0);});
-        METRICS={};Object.keys(byDate).sort().slice(-6).forEach(k=>METRICS[k]=byDate[k]);
+        const by={};
+        rows.forEach(r=>{
+          const c=r.campus_id||'?', k=r.date;
+          by[c]=by[c]||{};
+          by[c][k]=by[c][k]||{a:0,k:0,n:0};
+          by[c][k].a+=(r.in_person_total||0);
+          by[c][k].k+=(r.online_views||0);
+          by[c][k].n+=(r.baptisms||0);
+        });
+        METRICS_BY_CAMPUS={};
+        Object.keys(by).forEach(c=>{
+          const out={};
+          Object.keys(by[c]).sort().slice(-6).forEach(k=>out[k]=by[c][k]);
+          METRICS_BY_CAMPUS[c]=out;
+        });
+        METRICS=METRICS_BY_CAMPUS[homeCampusId()]||{};
       }
     }
   }catch(e){/* metrics card stays empty */}
@@ -899,7 +1377,7 @@ const GOALS = [
 ];
 const SECTIONS = [
   {id:'home',label:'Home',icon:'home',h:'var(--slate)',t:'var(--slate-t)'},
-  {id:'calendar',label:'Calendars',icon:'calendar',h:'var(--gathering)',t:'var(--gathering-t)'},
+  {id:'calendar',label:'Calendar',icon:'calendar',h:'var(--gathering)',t:'var(--gathering-t)'},
   {group:'WORK'},
   {id:'comms',label:'Communication',icon:'mail',h:'var(--amber)',t:'var(--amber-t)',url:'https://comms.mosaic.org'},
   {id:'planning',label:'Planning',icon:'board',h:'var(--milestone)',t:'var(--milestone-t)',url:'https://pm.mosaic.org'},
@@ -935,17 +1413,21 @@ const GIVING={ytd:1284600,annual:2150000,weeklyAvg:41400,givers:612,recurringPct
 /* ============================ state ============================ */
 const S = {
   section:'home',
-  view:'week',
+  view:'month',
   anchor:new Date(TODAY),
   month:new Date(TODAY.getFullYear(),TODAY.getMonth(),1),
-  filters:new Set(['event','comms','other','away','facility']),
+  filters:new Set(Object.keys(SOURCES)),
+  campus:'',   // '' is every campus; set to the person's own once the profile loads
   role:'comms',
   forEveryone:false,
   tlShift:0,
   eventId:'g0823',
   from:'calendar',
   goalsPath:'/',
+  newMenu:false,       // the New menu on Home, open or not
+  navBook:null,        // per section: a form to open, and the event to fill it with
   facPath:'requests',   // which Facilities page the sub-menu has selected
+  numPath:'overview',   // and which Metrics view
   deep:{}   // section -> the item that section should open on arrival
 };
 
@@ -974,12 +1456,51 @@ const GOALS_NAV=[
    too — nothing reads the app's nav at runtime. Spaces & resources is admin
    only, and the app itself falls back to Requests if somebody without the
    permission arrives there, so the two cannot disagree. */
+/* Facilities' own pages, on the rail. "New request" is deliberately not among
+   them: Hannita, 10 Sep — "can we have the new request tab not be a tab, but
+   it's just the option available in the requests tab?" The form opens as a
+   card over whichever facilities page you are on, from the "+ New request"
+   button inside the app, so a rail entry for it would be a second way to the
+   same card and a page nobody navigates to. ?page=new still works, which is
+   how the planning board hands a booking over with the event filled in. */
 const FAC_NAV=[
   {page:'requests',label:'Requests'},
-  {page:'new',label:'New request'},
   {page:'calendar',label:'Calendar'},
   {page:'spaces',label:'Spaces & resources',admin:true}
 ];
+/* Metrics' own tabs, on the rail. Hannita, 10 Sep: "the tabs at the top should
+   be now on the left hand side for the portal view… like here in the
+   facilities." Hand-written here, the same as FAC_NAV and GOALS_NAV — a view
+   added inside Metrics has to be added here too or it will not appear.
+   Not filtered by role: Metrics decides that. switchView() bounces a view the
+   person is not allowed back to Overview, so an entry they cannot use lands
+   somewhere sensible rather than nowhere. */
+const METRICS_NAV=[
+  {page:'overview', label:'Overview'},
+  {page:'campuses', label:'Campuses'},
+  {page:'kidsyouth',label:'Kids + Future'},
+  {page:'trends',   label:'Trends'},
+  {page:'report',   label:'Report'},
+  {page:'history',  label:'History'}
+];
+/* Metrics hides tabs by role, and this rail is a hand-written copy of them, so
+   it has to hide the same ones or it offers doors that do not open. Metrics
+   bounces a role to Overview rather than erroring, which is worse than an
+   error: the tab looks clicked and the page silently is not the one asked for.
+   This is ROLE_TABS from mosaic-metrics, kept deliberately identical — the
+   two lists are the thing that has to stay in step, and an unknown role falls
+   to the most restrictive, exactly as Metrics does. */
+const METRICS_ROLE_TABS={
+  admin:     ['overview','campuses','kidsyouth','trends','report','history'],
+  staff:     ['overview','campuses','kidsyouth','trends','history'],
+  leader:    ['overview','trends'],
+  volunteer: ['overview']
+};
+function metricsNavItems(){
+  const role=ME.preview?ME.previewRole:ME.role;
+  const allowed=METRICS_ROLE_TABS[role]||METRICS_ROLE_TABS.leader;
+  return METRICS_NAV.filter(m=>allowed.includes(m.page));
+}
 function facNavItems(){
   const isAdmin=ME.role==='admin'&&!ME.preview;
   return FAC_NAV.filter(it=>!it.admin||isAdmin);
@@ -991,18 +1512,283 @@ function goalsNavItems(){
 }
 
 /* ============================ helpers ============================ */
-function evOn(dt){return EVENTS.filter(e=>e.date===key(dt) && S.filters.has(e.type));}
+/* ONE CARD PER EVENT, NOT ONE LINE PER CALENDAR.
+   Hannita, 10 Sep: "have the calendar have event cards instead of actually
+   showing the lines from each calendar. So 1 card has the info from all the
+   places that event is seen." Which is Loyda's architecture applied to the
+   grid — the same event was drawn three times because three systems hold it:
+   Men's Camp arrived as a planning item, as "Mens Camp" on the shared Outlook
+   calendar and as a room booking, and the week looked three times as busy as
+   it was.
+
+   Matching is deliberately strict — same day, and the same title once
+   punctuation, case and a leading "MON 09/07" prefix are taken off. Nothing
+   fuzzy: "Mens Camp" and "Men's Camp" merge, "Choir" and "Choir Rehearsal" do
+   not. Two different events that really do share a name on one day would
+   merge, which is why the card shows a dot per source it drew from — the
+   merge is visible, not silent, and clicking still lists every part.
+
+   The card keeps the LEAD part's id, so every existing path — the drawer, the
+   deep links into Planning and Comms — works untouched. The rest hang off
+   .parts. */
+const SOURCE_RANK=['event','other','away','facility','comms'];
+function normTitle(t){
+  return String(t||'')
+    // "MON 09/07 Mens Camp" — someone's own note to themselves, not the name
+    .replace(/^\s*(mon|tue|tues|wed|weds|thu|thur|thurs|fri|sat|sun)[a-z]*\.?\s*\d{1,2}[\/.-]\d{1,2}([\/.-]\d{2,4})?\s*/i,'')
+    // Apostrophes come out, they do not become spaces: the board writes
+    // "Men's Camp" and the Outlook calendar writes "Mens Camp", and turning
+    // the first into "men s camp" is precisely how the two would fail to meet.
+    .replace(/[\u2019'\u00b4\u02bc]/g,'')
+    .toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+}
+/* WHICH COMMS BELONG TO AN EVENT — by subject, not by date.
+   Hannita, 10 Sep: "a Team Huddle has nothing to do with an ERM text. For the
+   men's event it will be a men's text or the men's email. Even if it was a
+   past date or a future date within that week."
+
+   Both earlier rules were wrong in opposite directions. Same-day swept in
+   anything that happened to share a date; exact title matched almost nothing,
+   because a comm is named for its channel as much as its subject — "Bible
+   Studies" against "Regional Bible Study PM Staff Lead".
+
+   So: strip the words that describe the channel or the timing rather than the
+   subject, stem the plurals, and ask whether every distinctive word left in
+   the COMM's name appears in the event's. "Bible Studies" → bible, study, both
+   in "Regional Bible Study PM Staff Lead" — related. "ERM Text" → erm, which
+   is in neither Team Huddle nor Men's Camp — not related. It reads one way on
+   purpose: a comm is usually named more narrowly than the event it serves. */
+const COMM_GENERIC=/^(email|text|script|reminder|promo|invite|announcement|post|social|newsletter|recap|update|opportunitie|opportunity|tomorrow|today|week|weekly|thi|next|last|the|and|for|of|to|in|on|at|mosaic|sunday|monday|tuesday|wednesday|thursday|friday|saturday|mon|tue|wed|thu|fri|sat|sun)$/;
+function subjectWords(t){
+  return normTitle(t).split(' ')
+    .map(w=>w.replace(/s$/,''))              // studies → studie → study is close enough
+    .map(w=>w.replace(/ie$/,'y'))
+    .filter(w=>w.length>2&&!COMM_GENERIC.test(w));
+}
+/* How far either side of an event a comm can still be about it. With the
+   milestones now in the mirror that is the item's own runway — Kick-Off to
+   Debrief, which is exactly the window its promotion runs in. Without them,
+   three weeks either side. */
+function commWindow(e){
+  const ms=e.milestones;
+  if(ms&&ms.kickoff&&ms.debrief)return [D(ms.kickoff),D(ms.debrief)];
+  const a=D(e.date), b=D(e.dateEnd||e.date);
+  return [addDays(a,-21),addDays(b,21)];
+}
+/* Whether a comm belongs to an event.
+
+   When the comm carries board_item_id, that is not a guess — somebody said so,
+   by starting the message from that event's card — and it is the answer, both
+   ways: a comm claimed by one event must not also attach itself to another it
+   happens to share words with. This is the upstream fix the subject matching
+   below was always waiting for; it applies to messages written since
+   comm_events gained the column, and the inference still carries everything
+   written before that. */
+function commRelated(c,e){
+  const cw=subjectWords(c.title), ew=new Set(subjectWords(e.title));
+  if(!cw.length||!ew.size)return false;
+  return cw.every(w=>ew.has(w));
+}
+/* WHEN SOMEBODY HAS SAID, WE DO NOT GUESS.
+   comm_events.board_item_id is the comms app's "For which event?" picker.
+   Set, it is the whole answer: no window and no word matching, and the comm
+   belongs to that item and to no other — a message named for Men's Camp does
+   not also drift onto Regional Bible Studies because two words happened to
+   line up. Null means nobody has said, so the inference above still runs.
+   That is the one-way door this needs: filling the field can only ever make
+   the answer more right, never less. */
+function commLink(c,e){
+  if(c.boardItemId)return c.boardItemId===e.boardId;
+  const d=D(c.date), [a,b]=commWindow(e);
+  return d>=a&&d<=b&&commRelated(c,e);
+}
+function mergeCards(list){
+  const groups=new Map(), loose=[];
+  list.forEach(e=>{
+    const n=normTitle(e.title);
+    if(!n){loose.push(Object.assign({},e,{parts:[e]}));return;}
+    const k=e.date+'|'+n;
+    if(!groups.has(k))groups.set(k,[]);
+    groups.get(k).push(e);
+  });
+  const out=loose;
+  groups.forEach(parts=>{
+    // The planning board holds the richest record, so it leads when present —
+    // but only among the parts still on screen, or turning a row off would
+    // leave a card wearing the colour of a row that is not showing.
+    const pick=f=>SOURCE_RANK.map(t=>parts.find(x=>x.type===t&&f(x))).find(Boolean);
+    const lead=pick(shown)||pick(()=>true)||parts[0];
+    out.push(Object.assign({},lead,{parts}));
+  });
+  return out;
+}
+/* MERGE FIRST, THEN FILTER — the order matters, and getting it backwards cost
+   Men's Camp its whole record. Filtering first meant each part was judged
+   alone: with the campus picker on Mexico, the board's LA item was dropped and
+   the shared calendar's "Mens Camp", which carries no campus, survived on its
+   own. The card left standing was the thin copy — a title, two dates, nothing
+   else — while the record with David, the phase and the description had been
+   thrown away before the merge could reach it.
+   So: group everything on the day, then keep the cards where SOMETHING is
+   still on screen. A filter decides which cards appear, never what a card is
+   allowed to know about itself. */
+function evOn(dt){
+  return mergeCards(EVENTS.filter(e=>e.date===key(dt)&&laneOf(e)))
+         .filter(c=>(c.parts||[c]).some(shown));
+}
+/* The dots under a merged card's name: one per source it drew from, in the
+   order the sources are listed on the filter row. */
+function partDots(e){
+  if(!e.parts||e.parts.length<2)return '';
+  const seen=[];
+  e.parts.forEach(x=>{const src=laneOf(x);if(src&&!seen.includes(src))seen.push(src);});
+  if(seen.length<2)return '';
+  return '<span class="evdots">'+seen.map(src=>
+    '<i style="background:'+SOURCES[src].hue+'" title="'+esc(SOURCES[src].label)+'"></i>').join('')+'</span>';
+}
+/* What a merged card knows that no single part does: the room booking's
+   decision, alongside the board's owner and phase. This is the "facilities
+   check or pending" Loyda asked to see on an event, and it is honest now
+   because a booking actually merged into this card. */
+function partFacts(e){
+  const parts=e.parts||[e], f={};
+  const fac=parts.find(x=>x.type==='facility');
+  if(fac)f.facility=fac;
+  parts.forEach(x=>{
+    if(x.owner&&!f.owner)f.owner=x.owner;
+    if(x.phase&&!f.phase)f.phase=x.phase;
+    if(x.speaker&&!f.speaker)f.speaker=x.speaker;
+    if(x.campus&&!f.campus)f.campus=campusOf(x);
+    if(x.level&&!f.level)f.level=x.level;
+  });
+  return f;
+}
+/* A LOCATION THAT IS A LINK IS "ONLINE".
+   Outlook keeps the meeting URL in the location field, so an Arena call
+   arrived with "https://us06web.zoom.us/meeting/register/zBMZF-CySGeLrpoiNaKiig"
+   standing where the room should be — on the card's own subtitle, in the list,
+   and a third time under Where. Hannita, 10 Sep: "if an event has a zoom link
+   then location should be ONLINE", and "any card with a link should have the
+   hyperlink".
+
+   So the two are separated rather than one printed over the other: placeOf()
+   answers where it is, meetLink() answers how to get in, and linkify() makes
+   any address left in the text followable instead of something to select and
+   copy out of a modal. A hybrid location keeps its room and gains "· Online",
+   because "Rialto Auditorium; https://zoom…" means both.
+
+   The URL is never dropped from the data, only from the place — a card that
+   quietly lost the only way into the meeting would be worse than an ugly one. */
+/* A WEB ADDRESS DOES NOT ALWAYS CARRY ITS SCHEME. The staff Zoom meeting is
+   booked in Outlook as "www.mosaic.org/teammeeting" — no https:// — so this
+   matched nothing, and the address sat in the card as plain grey text three
+   times over with no way to click it. Hannita, 14 Sep.
+   www. and nothing looser, deliberately: matching a bare "something.org" would
+   also catch the domain half of every email address and any sentence that ends
+   a word with a dot before a TLD-looking one. Of the seven distinct locations
+   on the shared calendar today, one is scheme-less and it is a www. one. */
+const URL_RX=()=>/(?:https?:\/\/|www\.)[^\s<>"')\]]+/g;
+/* An href without a scheme is a RELATIVE link: href="www.mosaic.org/x" on this
+   page resolves to portal.mosaic.org/www.mosaic.org/x. So the text is shown as
+   it was written and the href is made absolute. */
+const hrefOf=u=>/^https?:\/\//i.test(u)?u:'https://'+u.replace(/^\/+/,'');
+const MEET_HOST=/(^|\.)(zoom\.us|teams\.microsoft\.com|teams\.live\.com|meet\.google\.com|webex\.com|whereby\.com|gotomeeting\.com|bluejeans\.com|chime\.aws)$/i;
+const MEET_NAME={'zoom.us':'Zoom','teams.microsoft.com':'Teams','teams.live.com':'Teams',
+  'meet.google.com':'Google Meet','webex.com':'Webex','whereby.com':'Whereby',
+  'gotomeeting.com':'GoToMeeting','bluejeans.com':'BlueJeans','chime.aws':'Chime'};
+function urlsIn(v){return String(v==null?'':v).match(URL_RX())||[];}
+function hostOf(u){try{return new URL(hrefOf(u)).hostname.replace(/^www\./,'');}catch(_){return '';}}
+function meetName(u){
+  const h=hostOf(u);
+  for(const k in MEET_NAME)if(h===k||h.endsWith('.'+k))return MEET_NAME[k];
+  return h||'the link';
+}
+/* The way in, wherever it happens to sit: Outlook's location, the entry's own
+   link, or the description somebody pasted it into. */
+function meetLink(e){
+  if(!e)return '';
+  const all=urlsIn(e.detail).concat(urlsIn(e.location),urlsIn(e.desc));
+  if(e.link&&MEET_HOST.test(hostOf(e.link)))all.unshift(e.link);
+  const known=all.find(u=>MEET_HOST.test(hostOf(u)));
+  if(known)return known;
+  /* A HOST WE DO NOT RECOGNISE IS STILL THE WAY IN. Mosaic books the staff
+     meeting at www.mosaic.org/teammeeting, its own redirect to Zoom, and an
+     allowlist of meeting vendors will never contain it. So where the place
+     somebody wrote is ONLY a URL, that URL is how you get in — placeOf() has
+     already replaced it with "Online", and sending nobody anywhere after
+     hiding the address loses the only way into the meeting, which is worse
+     than an ugly card.
+     EXCEPT one of our own apps. A location of facilities.mosaic.org/requests/12
+     is a record of the booking, not a door into a meeting, and "Join on
+     facilities.mosaic.org" would be a button that goes somewhere nobody is.
+     The hosts come from SECTIONS, so a new app joins this list by existing.
+     A location with a room AND a link keeps the allowlist either way, because
+     there the link may be a map or a parking note rather than the meeting. */
+  for(const v of [e.detail,e.location]){
+    const us=urlsIn(v);
+    if(us.length===1&&placeOf(v)==='Online'&&!ourApp(us[0]))return us[0];
+  }
+  return '';
+}
+/* Where it is, with any address lifted out. Trailing separators go with it,
+   or "Rialto Auditorium; https://…" would read "Rialto Auditorium; · Online". */
+/* The apps this portal is a front door to. A link to one of them is a record,
+   never a meeting. Read off SECTIONS rather than listed again, so it cannot
+   fall out of step with the rail. */
+function ourApp(u){
+  const h=hostOf(u);
+  return !!h&&SECTIONS.some(s=>s.url&&hostOf(s.url)===h);
+}
+function placeOf(v){
+  const raw=String(v==null?'':v);
+  if(!raw)return '';
+  if(!urlsIn(raw).length)return raw;
+  const rest=raw.replace(URL_RX(),' ').replace(/\s{2,}/g,' ')
+    .replace(/^[\s;,·|>-]+/,'').replace(/[\s;,·|>-]+$/,'');
+  return rest?rest+' · Online':'Online';
+}
+/* Escape first, then make the addresses clickable — the text is user and
+   Outlook content, so nothing here may reach innerHTML unescaped. */
+function linkify(v){
+  const raw=String(v==null?'':v), rx=URL_RX();
+  let out='', last=0, m;
+  while((m=rx.exec(raw))){
+    const u=m[0].replace(/[.,;:)\]]+$/,'');
+    out+=esc(raw.slice(last,m.index))+
+      '<a href="'+esc(hrefOf(u))+'" target="_blank" rel="noopener">'+
+      esc(u.length>56?u.slice(0,53)+'…':u)+'</a>';
+    last=m.index+u.length;
+    rx.lastIndex=last;
+  }
+  return out+esc(raw.slice(last));
+}
 function statusStyle(e){
-  const t=TYPES[e.type];
-  if(e.status==='done')      return 'border-left-color:'+(t.solid||t.hue)+';background:'+(t.solid||t.hue)+';color:#fff';
-  if(e.status==='scheduled') return 'border-left-color:'+t.hue+';background:'+t.tint+';color:'+t.deep;
-  if(e.status==='waiting')   return 'border-left-color:'+t.hue+';background:#fff;color:'+t.deep+';border-top:1px dashed '+t.hue+';border-right:1px dashed '+t.hue+';border-bottom:1px dashed '+t.hue;
+  const t=palOf(e);
+  if(e.status==='done')      return 'background:'+(t.solid||t.hue)+';color:#fff';
+  if(e.status==='scheduled') return 'background:'+t.tint+';color:'+t.deep;
+  if(e.status==='waiting')   return 'background:var(--surface);color:'+t.deep+';border:1px dashed '+t.hue;
   return 'border-left-color:'+t.hue+';background:#fcfcfb;color:'+t.deep+';opacity:.8';
 }
 const STATUS_LABEL={done:'Sent',scheduled:'Scheduled',waiting:'Waiting on someone',drafting:'Drafting'};
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function lastSunday(){let d=addDays(TODAY,0);while(d.getDay()!==0)d=addDays(d,-1);return d;}
 function metricFor(dt){return METRICS[key(dt)]||null;}
+/* The board writes campuses short ("LA", "NYC"); Metrics stores them by id
+   with a full name. An unknown one answers with nothing rather than falling
+   back to another campus's numbers — a blank panel is honest, a stranger's
+   attendance is not. */
+const CAMPUS_LONG={la:'los angeles',nyc:'new york city',ny:'new york city'};
+function campusIdOf(name){
+  if(!name)return null;
+  const want=String(name).trim().toLowerCase();
+  const full=CAMPUS_LONG[want]||want;
+  const c=CAMPUSES.find(x=>String(x.name||'').toLowerCase()===full);
+  return c?c.id:null;
+}
+function metricsForCampus(name){
+  const id=campusIdOf(name);
+  return (id&&METRICS_BY_CAMPUS[id])||{};
+}
 function dueThisWeek(){
   const ws=weekStartOf(S.anchor), we=addDays(ws,6);
   return TASKS.filter(t=>{const d=D(t.due);return d>=ws&&d<=we&&!t.done;});
@@ -1045,6 +1831,11 @@ function renderNav(){
       (it.restricted?'<span class="lock" title="Restricted">'+ic('lock')+'</span>':'')+
       (it.beta?'<span class="badge">BETA</span>':(it.count?'<span class="count">'+it.count+'</span>':''))+
       '</button>');
+    if(it.id==='numbers'&&S.section==='numbers'){
+      out.push('<div class="subnav">'+metricsNavItems().map(m=>
+        '<button data-mp="'+esc(m.page)+'" class="'+(S.numPath===m.page?'on':'')+'">'+
+        esc(m.label)+'</button>').join('')+'</div>');
+    }
     if(it.id==='facilities'&&S.section==='facilities'){
       out.push('<div class="subnav">'+facNavItems().map(f=>
         '<button data-fp="'+esc(f.page)+'" class="'+(S.facPath===f.page?'on':'')+'">'+
@@ -1067,6 +1858,197 @@ function renderNav(){
 }
 
 /* ============================ pages ============================ */
+/* One place to start anything, and it starts it in the app that owns it.
+   The portal keeps no create forms of its own for other apps' data: each app
+   holds its own fields, its own rules and its own permissions — Facilities'
+   policies key off auth.uid(), Metrics is the project holding every Mosaic
+   login, and the counting rule that decides what an attendance number means
+   lives there too. A second form here would be a second set of rules, drifting
+   from the first from the day it shipped.
+
+   Only what this person can actually reach is offered. Someone without Metrics
+   should not be shown "Submit attendance" and then refused by the app. */
+const NEW_THINGS=[
+  ['planning',  'event',     'board', 'An event or project',   'Goes on the planning board'],
+  ['facilities','new',       'door',  'A room or a space',     'A request for Alisah to confirm'],
+  ['comms',     'new',       'mail',  'An email or a text',    'Goes on the comms calendar'],
+  ['numbers',   'new',       'chart', 'Attendance numbers',    'Submit a service to Metrics']
+];
+function newMenu(){
+  const allowed=allowedSections();
+  const items=NEW_THINGS.filter(([sec])=>allowed.includes(sec));
+  if(!items.length)return '';
+  return '<div class="newmenu'+(S.newMenu?' on':'')+'" id="newMenu">'+
+    items.map(([sec,page,icon,label,sub])=>
+      // data-newthing, not data-new: data-new is already the Calendars "New"
+      // drawer, and the delegated handler would have answered these clicks
+      // with that instead.
+      '<button class="nm-row" data-newthing="'+sec+'" data-newpage="'+page+'">'+
+        '<span class="nm-ic">'+ic(icon)+'</span>'+
+        '<span class="nm-t"><span class="nm-l">'+esc(label)+'</span>'+
+        '<span class="nm-s">'+esc(sub)+'</span></span></button>').join('')+
+    '</div>';
+}
+/* Ten of them, so somebody signing in three times a day does not read the
+   same line three times. It turns on the half-day rather than the minute: a
+   greeting that changes while you are looking at it reads as a glitch, and one
+   that never changes stops being read at all. Loyda owns wording — these are a
+   starting set, not a final one. */
+const HOME_LINES=[
+  'What do you want to work on today?',
+  "What's the one thing worth moving today?",
+  'Good to see you. Where do you want to start?',
+  "Pick one thing and let's get it moving.",
+  "What's on your mind today?",
+  'Something here is waiting on you. Want to find it?',
+  "Let's make something happen today.",
+  'What would make today a good one?',
+  'Where would you like to begin?',
+  'One good decision today is plenty.'
+];
+function homeLine(){
+  // Stable within a half-day, so a re-render never swaps it mid-read.
+  const half=Math.floor(Date.now()/(12*3600*1000));
+  return HOME_LINES[half%HOME_LINES.length];
+}
+function firstNameOf(n){ return String(n||'').trim().split(/\s+/)[0]||''; }
+/* "on your plate this week" is the planning board's word for it, so it counts
+   what YOU own, not what the week holds.
+   WHO YOU ARE ON THE BOARD COMES FROM board_owners.email, the same mapping the
+   Monday digest is keyed on, so Home and the digest cannot disagree about
+   whose work this is. Matching on the first name instead is not merely loose,
+   it is wrong: "Aaron" and "Aaron Weits" are one person and "ACM" is another,
+   so a first-name match hands one Aaron the other's events. The first name is
+   kept only for somebody not mapped yet — a rough answer beats none — and
+   anyone it gets wrong is fixed by mapping them, not by guessing harder. */
+function myOwnerNames(){
+  if(MY_OWNERS.length)return MY_OWNERS;
+  const me=firstNameOf(ME.name).toLowerCase();
+  return me?[me]:[];
+}
+/* AN ADMIN IS LOOKING AT MOSAIC, NOT AT THEIR OWN PLATE.
+   Hannita, 14 Sep: "I don't and will probably never own something on a board
+   because I am the developer and builder. As admin it should be the overall
+   view for Mosaic, like what Alisah and Carlos see as executives." Owner
+   scoping answered her Home with three empty cards, which is a true answer to
+   a question nobody was asking.
+   Previewing a role turns it off, the same as everywhere else in this app: the
+   point of previewing as a leader is to see what a leader sees. */
+function seesAll(){ return ME.role==='admin'&&!ME.preview; }
+function ownedByMe(e){
+  const mine=myOwnerNames();
+  if(!mine.length)return false;
+  const on=String(e.owner||'').split(',').map(x=>x.trim().toLowerCase()).filter(Boolean);
+  // Full name first; the first name only where nobody is mapped, in which case
+  // myOwnerNames() is itself a first name.
+  return on.some(o=>mine.includes(o)) ||
+         (!MY_OWNERS.length && on.some(o=>mine.includes(firstNameOf(o).toLowerCase())));
+}
+/* WAITING ON YOU IS WHAT YOU OWN AND WHAT IS STILL MISSING FROM IT.
+   Hannita, 11 Sep: "if I am the owner of something in the planning board and
+   the metrics data has not been submitted for that thing, that would be
+   waiting on you". So it is scoped to the owner and it asks the board and
+   Metrics what is outstanding, rather than listing everything flagged for
+   everybody — which is what it did before, and which meant the number was the
+   same for all of us.
+   Computed here rather than stored at load time, like cardListOf(), so the
+   number on the card and the list it opens are read from the same call and
+   cannot drift apart.
+   THE BOARD HAS NO LOCATION FIELD, so "we are still waiting to know where it
+   is" cannot be asked here — its drawer holds title, dates, time, speaker and
+   description, and the mirror's location column is filled for 3 items of 261.
+   Time is there but the board labels it optional and 87 of 87 upcoming items
+   leave it blank, so treating it as missing would flag the whole board and
+   teach everyone to ignore the card. Both are left out on purpose, not
+   overlooked. */
+/* Sundays at a campus whose numbers have not been entered yet. One function,
+   asked two different questions: "which of these are mine?" (Waiting on you)
+   and "which are at my campus?" (To close out).
+   Only a Sunday GATHERING may be asked — items nested under one inherit its
+   date and never counted anybody — and only from a metrics read that actually
+   succeeded, because an absence nobody could check is not an absence. */
+function attendanceOutstanding(){
+  if(!METRICS_LOADED)return [];
+  const back=addDays(TODAY,-60), out=[], seen=new Set();
+  EVENTS.forEach(e=>{
+    if(e.type!=='event'||!e.isGathering)return;
+    const d=D(e.date);
+    if(d>=TODAY||d<back)return;
+    const cid=campusIdOf(e.campus);
+    if(!cid||METRICS_DATES.has(cid+'|'+e.date))return;
+    const k=e.boardId||e.id;
+    if(seen.has(k))return;
+    seen.add(k);
+    out.push({ev:e,campusId:cid});
+  });
+  return out;
+}
+/* WHO MAY CLOSE SOMETHING OUT. Hannita, 14 Sep: "admins can close anything
+   out, and the owner of an item can close it out."
+   This is the UI honouring that rule, not a security boundary, and the
+   difference matters: board_set_status() is granted to anon and authenticated
+   because the planning board itself has no sign-in, so anyone who can reach
+   the board can still change a status there. Hiding the button stops the
+   portal from inviting somebody to close out work that is not theirs; it does
+   not stop a determined person, and pretending otherwise would be worse than
+   saying so. */
+function canCloseOut(e){
+  if(seesAll())return true;
+  return !!e&&ownedByMe(e);
+}
+function waitingOnMe(){
+  const out=[], all=seesAll(), mine=myOwnerNames(), seen=new Set();
+  if(!all&&!mine.length)return out;
+  const soon=addDays(TODAY,42);
+  /* A weekly item is one board row drawn as many entries, so a flag on it
+     would otherwise be listed once per occurrence — four rows saying the same
+     thing about the same item. One line per board item per kind. */
+  const add=(e,kind,title)=>{
+    const k=(e.boardId||e.id)+'|'+kind;
+    if(seen.has(k))return;
+    seen.add(k);
+    out.push({evId:e.id,title,date:e.date,meta:[e.campus,e.owner].filter(Boolean).join(' · ')});
+  };
+  EVENTS.forEach(e=>{
+    if(e.type!=='event'||!(all||ownedByMe(e)))return;
+    const d=D(e.date), past=d<TODAY;
+    if(e.isGathering&&!e.speaker&&!past&&d<=soon)add(e,'speaker','No speaker yet — '+e.title);
+    if(e.needsReview&&!past)add(e,'review','Flagged to review — '+e.title);
+  });
+  // Attendance the owner still owes. The same Sunday reaches the campus's
+  // pastor through closeOutList() instead, so nobody gets it twice.
+  attendanceOutstanding().forEach(({ev})=>{
+    if(all||ownedByMe(ev))add(ev,'attendance','Attendance not submitted — '+ev.title);
+  });
+  out.sort((a,b)=>D(a.date)-D(b.date));
+  return out;
+}
+/* TO CLOSE OUT IS THE CAMPUS'S, NOT ONLY THE OWNER'S.
+   Hannita, 11 Sep: a campus pastor "would see all the pending metrics data
+   that could have been inputted for events for their campus" — Alisah is not
+   the owner of the Bible studies, Andres is, so it is waiting on HIM; but the
+   numbers are still missing at her campus and somebody there has to enter
+   them. So the same Sunday reads "waiting on you" to its owner and "to close
+   out" to the campus, and never both to one person.
+   The board items keep the behaviour they had: a past item nobody marked
+   Complete, for everyone. Narrowing that is a separate decision and not one
+   anybody asked for. */
+function closeOutList(){
+  const rows=CLOSEOUT.slice();
+  const mine=homeCampusId();
+  // An admin already has every outstanding Sunday on Waiting, so adding the
+  // campus copy here would be the same row on two cards.
+  if(mine&&!seesAll())attendanceOutstanding().forEach(({ev,campusId})=>{
+    if(campusId!==mine||ownedByMe(ev))return;
+    // Not closeable from here: this one is finished by entering the numbers in
+    // Metrics, and a "Close it out" button would mark the board done with the
+    // attendance still missing.
+    rows.push({evId:ev.id,title:'Attendance not submitted — '+ev.title,date:ev.date,
+      meta:[ev.campus,ev.owner].filter(Boolean).join(' · '),noClose:true});
+  });
+  rows.sort((a,b)=>D(a.date)-D(b.date));
+  return rows;
+}
 function pageHome(){
   const ks=Object.keys(METRICS).sort();
   const lastK=ks[ks.length-1], m=lastK?METRICS[lastK]:null;
@@ -1074,26 +2056,56 @@ function pageHome(){
   const avg=prev.length?Math.round(prev.reduce((a,b)=>a+b,0)/prev.length):0;
   const delta=(m&&avg)?Math.round(((m.a-avg)/avg)*1000)/10:0;
   const ws=weekStartOf(TODAY), we=addDays(ws,6);
-  const twEvents=EVENTS.filter(e=>{const d=D(e.date);return d>=ws&&d<=we&&e.type==='event';});
+  const twAll=EVENTS.filter(e=>{const d=D(e.date);return d>=ws&&d<=we&&e.type==='event';});
+  const twMine=twAll.filter(ownedByMe);
+  // Nobody owning anything this week should read as an empty week, not as a
+  // broken card, so it falls back to the whole week and says which it is.
+  const twEvents=twMine.length?twMine:twAll;
+  const twIsMine=twMine.length>0;
   const twComms=EVENTS.filter(e=>{const d=D(e.date);return d>=ws&&d<=we&&e.type==='comms';});
   const upcoming=EVENTS.filter(e=>D(e.date)>=TODAY && e.type==='event').slice(0,5);
   const attn=ATTN.slice(0,6);
-  return '<div class="page-head"><div><h1>Home</h1><div class="sub">'+pretty(TODAY)+' · week '+weekNum(TODAY)+'</div></div>'+
-   '<button class="btn-primary" data-go="planning">New event</button></div>'+
+  /* Zero has two meanings and they are not the same news: nothing of yours is
+     missing anything, or the board does not know you own anything. Saying
+     "you're all clear" to somebody who owns nothing is a lie by omission. */
+  const wait=waitingOnMe(), close=closeOutList(), all=seesAll();
+  const iOwn=EVENTS.some(e=>e.type==='event'&&ownedByMe(e));
+  /* An admin's cards count Mosaic, so they must not be titled as if they
+     counted that person — "Waiting on you" over 30 items that are Andres's is
+     not a loose label, it is a wrong one. The owner-scoped wording stays for
+     everyone else, which is nearly everyone. */
+  const plateTitle=all?"On Mosaic's plate this week":'On your plate this week';
+  const waitTitle=all?'Waiting on someone':'Waiting on you';
+  const mineCount=twAll.filter(ownedByMe).length;
+  const plateNote=all
+    ? ('across Mosaic'+(mineCount?' · '+mineCount+' yours':''))
+    : (twIsMine?'yours on the board':'across the board — nothing is yours this week');
+  const waitNote=all
+    ? (wait.length?'items waiting on someone across Mosaic':'nothing across Mosaic is missing anything')
+    : (wait.length?'items waiting on you to look at'
+        :(iOwn?"nothing of yours is missing anything"
+              :"nothing on the board is under your name yet"));
+  const hi=firstNameOf(ME.name);
+  return '<div class="page-head"><div><h1>'+(hi?'Hi, '+esc(hi)+'!':'Hi!')+'</h1>'+
+   '<div class="sub">'+esc(homeLine())+'</div></div>'+
+   '<button class="btn-new" data-newmenu="1">'+ic('plus','width:15px;height:15px')+'New</button>'+
+   newMenu()+'</div>'+
    (DATA_ERR?'<div class="banner">'+ic('info')+'<div>'+esc(DATA_ERR)+'</div></div>':'')+
    '<div class="cards">'+
-     card('This week',twEvents.length,twComms.length+' comms alongside','calendar','--session')+
-     card('Waiting',attn.length,'speakers + flagged items','calendar','--magenta')+
-     card('To close out',CLOSEOUT,'passed date, still open','planning','--milestone')+
-     card('Attendance',m?m.a:'—',m?((delta>=0?'+':'')+delta+'% vs recent avg'):'no data yet','numbers','--gathering')+
+     card(plateTitle,(all?twAll:twEvents).length,plateNote,'planning','--session','plate')+
+     card(waitTitle,wait.length,waitNote,'calendar','--magenta','waiting')+
+     card('To close out',close.length,
+          close.length===0?'nothing passed its date':'you have '+(close.length===1?'a thing':'a couple of things')+' to close out','planning','--milestone','closeout')+
+     card(homeCampusName()?"This week's attendance in "+esc(homeCampusName()):"This week's attendance",
+          m?m.a:'—',
+          (m?((delta>=0?'+':'')+delta+'% vs recent avg'):'no data yet')+
+          '<span class="card-more">see full overview'+ic('ext','width:11px;height:11px')+'</span>',
+          'numbers','--gathering')+
    '</div>'+
-   '<div class="cols"><div><h2>Worth a look</h2>'+
-     (attn.length?attn.map(t=>'<button class="row" data-ev="'+t.evId+'"><span class="when">'+fmt(D(t.date))+'</span>'+
-       '<span class="txt"><span class="name">'+esc(t.title)+'</span><span class="meta">'+esc(t.meta||'')+'</span></span></button>').join('')
-       :'<div class="empty">Nothing waiting on anyone right now.</div>')+
+   '<div class="cols"><div><h2>Worth a look</h2>'+ worthALook(attn) +
    '</div><div><h2>Coming up</h2>'+
      (upcoming.length?upcoming.map(e=>'<button class="row" data-ev="'+e.id+'"><span class="when">'+fmt(D(e.date))+'</span>'+
-       '<span class="txt"><span class="name">'+esc(e.title)+'</span><span class="meta">'+esc(e.detail||'')+'</span></span></button>').join('')
+       '<span class="txt"><span class="name">'+esc(e.title)+'</span><span class="meta">'+esc(placeOf(e.detail))+'</span></span></button>').join('')
        :'<div class="empty">No upcoming events loaded.</div>')+
    '</div></div>'+
    '<div class="fb-card">'+
@@ -1103,6 +2115,38 @@ function pageHome(){
      '<div class="fb-btns"><button class="fb-btn" data-fb="bug">Report a problem</button>'+
        '<button class="fb-btn" data-fb="idea">Suggest an idea</button></div>'+
    '</div>';
+}
+
+/* The digest's sections, drawn as the portal draws things. The prose stays in
+   the Slack digest — two copies of a paragraph is what drifted last time — so
+   what comes across is the ranking, the section each item is in, and the board's
+   own reason for it, which is the part that must not disagree.
+   A row opens the same full card everything else on Home opens. */
+function worthALook(attn){
+  const groups=prioGroups();
+  if(!groups){
+    // Nobody mapped in board_owners, or the board could not be read: the
+    // flagged list is what everyone had before this, so fall back to it
+    // rather than showing an empty column.
+    return attn.length
+      ? attn.map(t=>'<button class="row" data-ev="'+t.evId+'"><span class="when">'+fmt(D(t.date))+'</span>'+
+          '<span class="txt"><span class="name">'+esc(t.title)+'</span>'+
+          '<span class="meta">'+esc(t.meta||'')+'</span></span></button>').join('')
+      : '<div class="empty">Nothing waiting on anyone right now.</div>';
+  }
+  return groups.map(g=>
+    '<div class="prio-sec"><div class="eyebrow">'+esc(g.label)+'</div>'+
+    g.rows.map(r=>{
+      const id='pm:'+r.item_id;
+      const known=EVENTS.some(x=>x.id===id||x.id.indexOf(id+':')===0);
+      const hit=known?EVENTS.find(x=>x.id===id||x.id.indexOf(id+':')===0):null;
+      const bits=[r.level,r.phase,r.status].filter(Boolean).join(' · ');
+      return '<button class="row"'+(hit?' data-ev="'+esc(hit.id)+'"':' disabled')+'>'+
+        '<span class="when">'+(r.due?fmt(D(r.due)):'')+'</span>'+
+        '<span class="txt"><span class="name">'+esc(r.title||'')+'</span>'+
+        '<span class="meta">'+esc(r.why||bits)+'</span></span>'+
+        (bits?'<span class="tag">'+esc(bits)+'</span>':'')+'</button>';
+    }).join('')+'</div>').join('');
 }
 
 /* Feedback — goes to portal_feedback, and admins read it in Admin > Feedback.
@@ -1131,11 +2175,52 @@ function feedbackDrawer(kind){
     ta.value='';setTimeout(closeDrawer,1200);
   });
 }
-function card(k,v,n,go,c){
+/* A PERSON'S HOME CAMPUS — a preference, not a permission.
+   profiles.campus_id decides what somebody is allowed to SEE, and is an
+   admin's to set. home_campus_id is the campus they work at, theirs to set,
+   and is only ever used to fill a form in for them: submitting attendance,
+   adding to the board, asking for a room. Keeping them apart is the whole
+   point — if this were campus_id, setting your own default would re-scope
+   your own access. Hannita, 10 Sep: "my main campus … whenever I'm reporting
+   something, creating a new event, creating a facility request." */
+let CAMPUSES=[];
+function homeCampusId(){ return ME.home_campus_id||ME.campus_id||null; }
+function homeCampusName(){
+  const c=CAMPUSES.find(x=>x.id===homeCampusId());
+  return c?c.name:'';
+}
+/* A NUMBER YOU CAN OPEN.
+   Every one of these counts something, and the number on its own leaves you to
+   go and find out which things — so a card with a list opens that list in the
+   same floating card the calendar uses, and picking a row swaps it for the
+   full record. Hannita, 10 Sep: "can it tell me the list of items? … and if I
+   click on it it can take me to that direct card."
+   Click, not hover: a hover panel is unreachable on a phone, and this is the
+   card people open on a phone between meetings. Cards with nothing to list
+   still go to their section, which is what they always did. */
+function card(k,v,n,go,c,list){
   const bg=c?'background:var('+c+'-t);border-color:transparent':'';
   const fg=c?'color:var('+c+'-d)':'';
-  return '<button class="card" data-go="'+go+'" style="'+bg+'"><div class="k" style="'+fg+';font-weight:500">'+k+
+  const act=list?'data-cardlist="'+list+'"':'data-go="'+go+'"';
+  return '<button class="card" '+act+' style="'+bg+'"><div class="k" style="'+fg+';font-weight:500">'+k+
    '</div><div class="v" style="'+fg+'">'+v+'</div><div class="n">'+n+'</div></button>';
+}
+/* What each openable card is counting. Read at click time rather than stored,
+   so the list cannot disagree with the number printed above it. */
+function cardListOf(kind){
+  const ws=weekStartOf(TODAY), we=addDays(ws,6);
+  if(kind==='plate'){
+    const all=EVENTS.filter(e=>{const d=D(e.date);return d>=ws&&d<=we&&e.type==='event';});
+    const mine=all.filter(ownedByMe);
+    const rows=(seesAll()||!mine.length)?all:mine;
+    const title=seesAll()?"On Mosaic's plate this week"
+              :(mine.length?'On your plate this week':'On the board this week');
+    return {title,rows:rows.map(e=>({evId:e.id,title:e.title,date:e.date,
+              meta:[e.owner,e.campus,e.phase].filter(Boolean).join(' · ')}))};
+  }
+  if(kind==='waiting')return {title:seesAll()?'Waiting on someone':'Waiting on you',rows:waitingOnMe()};
+  if(kind==='closeout')return {title:'To close out',rows:closeOutList()};
+  return {title:'',rows:[]};
 }
 function taskRow(t){
   return '<button class="row" data-task="'+t.id+'"><span class="tick'+(t.done?' done':'')+'">'+(t.done?ic('check'):'')+'</span>'+
@@ -1145,45 +2230,59 @@ function taskRow(t){
 
 function pageCalendar(){
   const ws=weekStartOf(S.anchor);
-  const head='<div class="page-head"><div><h1>Calendars</h1><div class="sub">'+
-    (S.view==='week'? fmt(ws)+' – '+fmt(addDays(ws,6))+', '+addDays(ws,6).getFullYear()+' · week '+weekNum(ws)
-                    : MON[S.month.getMonth()]+' '+S.month.getFullYear())+
+  const head='<div class="page-head"><div><h1>Calendar</h1><div class="sub">'+
+    MON[S.month.getMonth()]+' '+S.month.getFullYear()+
     '</div></div><div style="display:flex;gap:8px;align-items:center">'+
-    '<span class="seg"><button data-view="week" class="'+(S.view==='week'?'on':'')+'">Week</button>'+
-    '<button data-view="month" class="'+(S.view==='month'?'on':'')+'">Month</button></span>'+
+    /* Two views, and both scoped to the month. Hannita, 10 Sep: "month view and
+       list view only — those are the two categories I want available", matching
+       the planning board's own pill group. The week grid is gone rather than
+       hidden: it was the view she called "really off and not so intuitive", and
+       a second grid nobody opens is a second grid to keep in step. */
+    '<span class="seg"><button data-view="month" class="'+(S.view==='month'?'on':'')+'">Month</button>'+
+    '<button data-view="list" class="'+(S.view==='list'?'on':'')+'">List</button></span>'+
     '<button class="btn-ghost" data-nav="-1" aria-label="Previous">'+ic('left','width:15px;height:15px')+'</button>'+
     '<button class="btn-ghost" data-nav="0">Today</button>'+
     '<button class="btn-ghost" data-nav="1" aria-label="Next">'+ic('right','width:15px;height:15px')+'</button>'+
     '<button class="btn-primary" data-new="1">New</button></div></div>'+ filterBar();
-  return head + (DATA_ERR?'<div class="banner">'+ic('info')+'<div>'+esc(DATA_ERR)+'</div></div>':'') + (S.view==='week' ? weekGrid(ws) : monthGrid()) + legend();
+  return head + (DATA_ERR?'<div class="banner">'+ic('info')+'<div>'+esc(DATA_ERR)+'</div></div>':'') + (S.view==='list' ? monthList() : monthGrid()) + legend();
 }
 function filterBar(){
-  return '<div class="filters">'+Object.keys(TYPES).map(k=>
+  return '<div class="filters">'+Object.keys(SOURCES).map(k=>
     '<button class="chip '+(S.filters.has(k)?'on':'off')+'" data-filter="'+k+'">'+
-    '<span class="swatch" style="background:'+TYPES[k].hue+'"></span>'+TYPES[k].label+'</button>').join('')+
-    '<button class="chip" data-filter="__all">All</button></div>'+
-    ((S.filters.has('other')||S.filters.has('away')||S.filters.has('facility'))
+    '<span class="swatch" style="background:'+SOURCES[k].hue+'"></span>'+SOURCES[k].label+'</button>').join('')+
+    '<button class="chip" data-filter="__all">All</button>'+campusPicker()+'</div>'+
+    ((S.filters.has('staff')||S.filters.has('fac'))
       ? '<div style="font-size:12px;color:var(--text2);margin:-8px 0 14px">'+
-        [(S.filters.has('other')||S.filters.has('away'))
-          ? (CAL_ON?'Mosaic Calendar shows the shared staff calendar — meetings, rehearsals, birthdays and closures. Staff travel + PTO pulls the time-away entries out of it.'
-                   :'The shared Mosaic Calendar isn\'t connected yet, so these two rows are empty.')
+        [S.filters.has('staff')
+          ? (CAL_ON?'Staff is you as an employee — time away, birthdays, huddles and internal meetings. Everything else from the shared calendar is church activity, so it sits under Mosaic Calendar.'
+                   :'The shared Mosaic Calendar isn\'t connected yet, so Staff is empty.')
           : '',
-         S.filters.has('facility')
-          ? 'Facility bookings come from facilities.mosaic.org, and show the room held — setup and teardown included, not just the event itself. Anything still waiting on a decision is drawn as waiting.'
+         S.filters.has('fac')
+          ? 'Facilities comes from facilities.mosaic.org, and shows the room held — setup and teardown included, not just the event itself. Anything still waiting on a decision is drawn as waiting.'
           : ''].filter(Boolean).join(' ')+'</div>'
       : '');
 }
+/* Sits with the source chips: same row, same height, because it is the same
+   kind of decision — what am I looking at. */
+function campusPicker(){
+  const list=campusesOnCalendar();
+  if(!list.length)return '';
+  return '<select class="campussel" data-campus="1" aria-label="Campus">'+
+    '<option value=""'+(S.campus?'':' selected')+'>All campuses</option>'+
+    list.map(c=>'<option value="'+esc(c)+'"'+(S.campus===c?' selected':'')+'>'+esc(c)+'</option>').join('')+
+    '</select>';
+}
 function legend(){
   return '<div class="legend">'+
-   '<span><i style="background:'+TYPES.comms.solid+'"></i>Sent</span>'+
-   '<span><i style="background:'+TYPES.comms.tint+';border:1px solid '+TYPES.comms.hue+'"></i>Scheduled</span>'+
-   '<span><i style="background:#fff;border:1px dashed '+TYPES.comms.hue+'"></i>Waiting on someone</span>'+
+   '<span><i style="background:'+SOURCES.mosaic.solid+'"></i>Sent</span>'+
+   '<span><i style="background:'+SOURCES.mosaic.tint+';border:1px solid '+SOURCES.mosaic.hue+'"></i>Scheduled</span>'+
+   '<span><i style="background:#fff;border:1px dashed '+SOURCES.mosaic.hue+'"></i>Waiting on someone</span>'+
    '<span><i style="background:#fcfcfb;border:1px solid var(--grid)"></i>Drafting</span>'+
    '<span style="margin-left:auto">Hue = type · fill = status</span></div>';
 }
 function barsFor(ws){
   const we=addDays(ws,6);
-  const rows=CAMPAIGNS.filter(c=>S.filters.has(c.type)&&D(c.start)<=we&&D(c.end)>=ws);
+  const rows=CAMPAIGNS.filter(c=>shown(c)&&D(c.start)<=we&&D(c.end)>=ws);
   if(!rows.length) return '';
   return rows.map(c=>{
     const s=Math.max(0,Math.round((D(c.start)-ws)/86400000));
@@ -1193,23 +2292,41 @@ function barsFor(ws){
       '<button class="bar" style="background:'+t.tint+';color:'+t.deep+'">'+esc(c.title)+'</button></div></div>';
   }).join('');
 }
-function weekGrid(ws){
-  let h='<div class="wk-head">';
-  for(let i=0;i<7;i++){const d=addDays(ws,i);
-    h+='<div class="'+(same(d,TODAY)?'today':'')+'">'+DOW[i]+' '+d.getDate()+'</div>';}
-  h+='</div>'+barsFor(ws)+'<div class="wk-body">';
-  for(let i=0;i<7;i++){
-    const d=addDays(ws,i), evs=evOn(d);
-    h+='<div class="cell'+(i===0?' sun':'')+'">'+
-      evs.map(e=>'<button class="ev" data-ev="'+e.id+'" style="'+statusStyle(e)+'">'+esc(e.title)+'</button>').join('')+
-      '</div>';
+/* The same month, read down the page instead of across a grid. It draws from
+   evOn() like the grid does, so it is the same merged cards, the same three
+   sources and the same campus filter — a row here and a pill there can never
+   disagree about what is on a day. Days with nothing on them are left out;
+   an empty month says so once. */
+function monthList(){
+  const first=new Date(S.month.getFullYear(),S.month.getMonth(),1);
+  const last=new Date(S.month.getFullYear(),S.month.getMonth()+1,0);
+  let h='<div class="callist">', any=false;
+  for(let d=new Date(first);d<=last;d=addDays(d,1)){
+    const evs=evOn(d);
+    if(!evs.length)continue;
+    any=true;
+    h+='<div class="cl-day'+(same(d,TODAY)?' today':'')+'">'+
+       '<div class="cl-when"><span class="cl-dow">'+DOW[d.getDay()]+'</span>'+
+       '<span class="cl-num">'+d.getDate()+'</span></div><div class="cl-evs">'+
+       evs.map(e=>{
+         const t=palOf(e);
+         return '<button class="cl-ev" data-ev="'+e.id+'">'+
+           '<span class="cl-dot" style="background:'+t.hue+'"></span>'+
+           '<span class="cl-txt"><span class="cl-name">'+esc(e.title)+'</span>'+
+           (placeOf(e.detail)?'<span class="cl-meta">'+esc(placeOf(e.detail))+'</span>':'')+'</span>'+
+           partDots(e)+
+           '<span class="tag" style="background:'+t.tint+';color:'+t.deep+'">'+t.label+'</span>'+
+           '</button>';
+       }).join('')+
+       '</div></div>';
   }
+  if(!any)h+='<div class="empty">Nothing on the calendar this month — check the filters above, or try another month.</div>';
   return h+'</div>';
 }
 function monthGrid(){
   const first=new Date(S.month.getFullYear(),S.month.getMonth(),1);
   const start=weekStartOf(first);
-  let h='<div class="wk-head">'+DOW.map(d=>'<div>'+d+'</div>').join('')+'</div>';
+  let h='<div class="calwrap"><div class="wk-head">'+DOW.map(d=>'<div>'+d+'</div>').join('')+'</div>';
   for(let w=0;w<6;w++){
     const ws=addDays(start,w*7);
     if(w>0 && ws.getMonth()!==S.month.getMonth() && ws>first) break;
@@ -1217,15 +2334,15 @@ function monthGrid(){
     for(let i=0;i<7;i++){
       const d=addDays(ws,i), evs=evOn(d), out=d.getMonth()!==S.month.getMonth();
       const show=evs.slice(0,2), rest=evs.length-show.length;
-      h+='<div class="cell'+(i===0?' sun':'')+'" style="min-height:82px'+(out?';opacity:.4':'')+'">'+
+      h+='<div class="cell'+(out?' out':'')+'" style="min-height:104px">'+
         '<div class="daynum'+(same(d,TODAY)?' today':'')+'">'+(same(d,TODAY)?'<span>'+d.getDate()+'</span>':d.getDate())+'</div>'+
-        show.map(e=>'<button class="ev" data-ev="'+e.id+'" style="'+statusStyle(e)+'">'+esc(e.title)+'</button>').join('')+
+        show.map(e=>'<button class="ev" data-ev="'+e.id+'" style="'+statusStyle(e)+'">'+esc(e.title)+partDots(e)+'</button>').join('')+
         (rest>0?'<button class="more" data-day="'+key(d)+'">+'+rest+' more</button>':'')+
       '</div>';
     }
     h+='</div></div>';
   }
-  return h;
+  return h+'</div>';
 }
 
 /* Sections that embed one of the existing apps. The app stays the system of
@@ -1236,6 +2353,28 @@ function pageEmbed(id){
   let src=sec.url;
   if(id==='goals')src+=(S.goalsPath==='/'?'':S.goalsPath);
   if(id==='facilities')src+=(src.includes('?')?'&':'?')+'page='+(S.facPath||'requests');
+  if(id==='numbers'){
+    // Metrics would bounce a view this role cannot see to Overview anyway;
+    // asking for Overview in the first place keeps the rail's highlight and
+    // the frame saying the same thing.
+    const ok=metricsNavItems().some(m=>m.page===S.numPath);
+    src+=(src.includes('?')?'&':'?')+'view='+(ok?S.numPath:'overview');
+  }
+  /* Starting something for an event on the planning board — a room, a message,
+     a set of numbers. None of those apps can be written from the board: it has
+     no sign-in, and the tables behind them are RLS'd to auth.uid(). So it asks
+     the portal to open the app's own form with the event already in it.
+     Nothing here bypasses a check; it saves retyping, and it carries
+     board_item so what gets created stays tied to the event.
+
+     After the rail's own page/view, so page=new wins for the one arrival that
+     asked for a form. Metrics reads both and page=new takes precedence there. */
+  const book=S.navBook&&S.navBook[id];
+  if(book){
+    if(book.page&&id!=='facilities')src+=(src.includes('?')?'&':'?')+'page='+encodeURIComponent(book.page);
+    for(const [k,v] of Object.entries(book.params||{}))
+      if(v)src+=(src.includes('?')?'&':'?')+encodeURIComponent(k)+'='+encodeURIComponent(v);
+  }
   if(id==='numbers'||id==='comms'||id==='planning'||id==='goals'||id==='facilities')
     src+=(src.includes('?')?'&':'?')+'embed=portal';
   // Arriving from an event: tell the app which one, so people land on the
@@ -1247,8 +2386,76 @@ function pageEmbed(id){
       :(/^\d{4}-\d{2}-\d{2}$/.test(want)?'on':'item');
     src+='&'+k+'='+encodeURIComponent(want);
   }
-  return '<div class="embed-wrap"><iframe src="'+src+'" title="'+esc(sec.label)+'" allow="clipboard-write"></iframe>'+
-    '<a class="embed-open" href="'+sec.url+'" target="_blank" rel="noopener" title="Open '+esc(sec.label)+' in its own tab">'+ic('ext','width:12px;height:12px')+'open</a></div>';
+  // The sub-page this section is asking for, as the app's own vocabulary.
+  // Used to move an ALREADY-LOADED frame without reloading it.
+  const nav=id==='numbers'?{view:S.numPath||'overview'}
+          :id==='facilities'?{page:S.facPath||'requests'}
+          :id==='goals'?{path:S.goalsPath||'/'}:null;
+  /* A prefill or a deep link must RELOAD: those arrive as query parameters the
+     app only reads on boot, so posting a view change would move the tab and
+     silently drop the event that was being carried. Only a plain change of the
+     app's own view or page is safe to send as a message. */
+  showFrame(id,src,sec,(book||want)?null:nav);
+  return '';   // the frame is not in #main; see the embed host
+}
+
+/* THE FRAME IS NOT THROWN AWAY BETWEEN RENDERS.
+   render() replaces #main's innerHTML, and an iframe that is detached and put
+   back RELOADS — so the frame used to be rebuilt on every render. Metrics is
+   ~790KB and boots its whole app and its sign-in handshake from scratch, which
+   is why a change of sub-tab cost seconds of "Signing you in…" for what is
+   only a change of tab.
+   So each app keeps one iframe, parked in #embedHost, which render() never
+   touches. Switching sections hides one and shows another; switching sub-tabs
+   inside an app POSTS the new view to the frame instead of reloading it, and
+   only reloads if the frame does not acknowledge — which is what an app
+   deployed before this understands. */
+const FRAMES={};
+const embedBase=u=>String(u).replace(/[?&](view|page|path)=[^&]*/g,'');
+function showFrame(id,src,sec,nav){
+  const host=document.getElementById('embedHost');
+  if(!host)return;
+  host.hidden=false;
+  let f=FRAMES[id];
+  if(!f){
+    f=FRAMES[id]=document.createElement('iframe');
+    f.setAttribute('allow','clipboard-write');
+    f.title=sec.label;
+    f.src=src; f.dataset.src=src;
+    host.appendChild(f);
+  }else if(f.dataset.src!==src){
+    if(nav&&embedBase(f.dataset.src)===embedBase(src))askFrame(f,src,sec,nav);
+    else { f.src=src; f.dataset.src=src; }
+  }
+  Object.keys(FRAMES).forEach(k=>{FRAMES[k].hidden=(k!==id);});
+  const open=document.getElementById('embedOpen');
+  if(open){
+    open.href=sec.url;
+    open.title='Open '+sec.label+' in its own tab';
+    open.innerHTML=ic('ext','width:12px;height:12px')+'open';
+  }
+}
+function askFrame(f,src,sec,nav){
+  f.dataset.src=src;                 // what it is now being asked to show
+  let acked=false;
+  const onAck=e=>{
+    if(!EMBED_TRUSTED(e.origin))return;
+    if((e.data||{}).type!=='mosaic-nav-ok')return;
+    acked=true; window.removeEventListener('message',onAck);
+  };
+  window.addEventListener('message',onAck);
+  try{ f.contentWindow.postMessage(Object.assign({type:'mosaic-nav'},nav),new URL(src).origin); }
+  catch(_){ }
+  setTimeout(()=>{
+    window.removeEventListener('message',onAck);
+    // Not acknowledged: an app that predates this, so fall back to the reload
+    // it has always done. Only if nothing has asked for something else since.
+    if(!acked&&f.dataset.src===src)f.src=src;
+  },900);
+}
+function hideFrames(){
+  const host=document.getElementById('embedHost');
+  if(host)host.hidden=true;
 }
 
 /* ---- Admin: user management for the whole app (same profiles the four
@@ -1269,7 +2476,7 @@ function campusSortIndex(name){
   const onlineIdx=CAMPUS_ORDER.indexOf('Mosaic Online');
   return onlineIdx>=0?onlineIdx-0.5:CAMPUS_ORDER.length;
 }
-const ADMIN={profs:null,campuses:null,pending:null,err:null,fb:null,fbErr:null,q:'',role:'all',loading:false,tab:'users',apps:null,appPerms:null,appDefaults:null,campusOpen:new Set(),showInactiveCampuses:false,campusUsersOpen:new Set(),regions:null};
+const ADMIN={notice:null,profs:null,campuses:null,pending:null,err:null,fb:null,fbErr:null,q:'',role:'all',loading:false,tab:'users',apps:null,appPerms:null,appDefaults:null,campusOpen:new Set(),showInactiveCampuses:false,campusUsersOpen:new Set(),regions:null};
 const ROLE_LIST=['admin','staff','campus_pastor','leader','volunteer'];
 const SECTION_LABEL=id=>{const s=SECTIONS.find(x=>x.id===id);return s?s.label:id;};
 function adminName(p){const n=p.display_name||p.full_name||'—';return n.includes('@')?prettyNameFromEmail(n):n;}
@@ -1388,7 +2595,7 @@ const RP_ROLES=[
 const RP_SECTIONS=[
   {title:'Portal sections',rows:[
     ['Home','yes','yes','yes','yes'],
-    ['Calendars','yes','yes','yes','yes'],
+    ['Calendar','yes','yes','yes','yes'],
     ['Communication','yes','yes','no','no'],
     ['Planning','yes','yes','yes','no'],
     ['Metrics','yes','yes','yes','no'],
@@ -1556,7 +2763,7 @@ function pageAdmin(){
     return '<div class="page-head"><div><h1>Admin</h1><div class="sub">Every campus, and who\'s assigned to each</div></div>'+
       (ME.role==='admin'?'<button class="btn-primary" data-newcampus="1">New campus</button>':'')+'</div>'+tabs+pageAdminCampuses();
   const head='<div class="page-head"><div><h1>Admin</h1><div class="sub">User management · every app, one account list</div></div>'+
-    '<button class="btn-primary" data-newuser="1">New user</button></div>'+tabs;
+    '<button class="btn-primary" data-newuser="1">New user</button></div>'+tabs+paNoticeHTML();
   if(!ADMIN.profs&&!ADMIN.err){loadAdmin();return head+'<div class="empty">Loading users…</div>';}
   if(ADMIN.err)return head+'<div class="banner">'+ic('info')+'<div>Couldn\'t load users — '+esc(ADMIN.err)+'</div></div>';
   const rank={admin:0,staff:1,campus_pastor:2,leader:3,volunteer:4};
@@ -1769,7 +2976,24 @@ function puCampusRow(appKey,selectedIds,allCampuses,isAdminUser,appOn,personCamp
     : '';
   return wrap(chips+add);
 }
-function paNote(msg,err){const n=document.getElementById('paNote');if(!n)return;n.style.display='flex';n.style.borderColor=err?'var(--red)':'var(--hairline)';n.innerHTML=ic('info')+'<div>'+esc(msg)+'</div>';clearTimeout(paNote._t);paNote._t=setTimeout(()=>{const x=document.getElementById('paNote');if(x)x.style.display='none';},4500);}
+/* HELD IN STATE, NOT JUST IN THE DOM. Sending an invite nulls ADMIN.profs on
+   the way out, so the page repaints as "Loading users…" — a branch that has no
+   banner element in it at all — and a message written straight to the DOM was
+   gone before anyone could read it. Nobody could tell an invite from a
+   no-op. Keep it in ADMIN.notice and let the page draw it, so it survives the
+   reload and the re-render that follows. */
+function paNote(msg,err){
+  ADMIN.notice={msg:String(msg),err:!!err};
+  clearTimeout(paNote._t);
+  paNote._t=setTimeout(()=>{ADMIN.notice=null;if(S.section==='admin')render();},6000);
+  if(S.section==='admin')render();
+}
+function paNoticeHTML(){
+  const n=ADMIN.notice;
+  if(!n)return '<div id="paNote" class="banner" style="display:none"></div>';
+  return '<div id="paNote" class="banner" style="border-color:'+(n.err?'var(--red)':'var(--hairline)')+'">'+
+    ic('info')+'<div>'+esc(n.msg)+'</div></div>';
+}
 async function paSaveGlobalRole(id,next){
   const note=document.getElementById('paRoleNote');
   const result=await paSaveRole(id,next);
@@ -2187,7 +3411,7 @@ async function paUserPage(id){
 /* Send the actual invite email for a person (used by the drawer and by the
    "Send invite" button on a pending row). Deletes their pending row on success. */
 async function paSendInvite(v){
-  const {data,error}=await sb.functions.invoke('invite-user',{body:{email:v.email,name:v.name,role:v.role,campus_id:v.campus_id,redirect_to:location.origin+'/'}});
+  const {data,error}=await sb.functions.invoke('invite-user',{body:{email:v.email,name:v.name,role:v.role,campus_id:v.campus_id,redirect_to:location.origin+'/?t=invite'}});
   if(error){let m=error.message||'please try again.';try{const b=await error.context.json();if(b&&b.error)m=b.error;}catch(_){}return m;}
   if(data&&data.error)return data.error;
   await sb.from('pending_invites').delete().eq('email',v.email);
@@ -2195,47 +3419,61 @@ async function paSendInvite(v){
 }
 function paInviteDrawer(pendingId){
   const pv=pendingId?(ADMIN.pending||[]).find(x=>x.id===pendingId):null;
-  openDrawer('<h2 style="margin-top:0">'+(pv?'Pending invite':'New user')+'</h2><div class="sub">'+(pv?'No email has gone out yet — edit the details, send the invite, or remove it.':'Send the invite now, or save it to send once you\'ve announced the portal.')+'</div>'+
-    '<div style="display:flex;flex-direction:column;gap:12px;margin-top:16px">'+
+  openDrawer('<div class="dcard-head"><h2>'+(pv?'Pending invite':'New user')+'</h2><div class="sub">'+(pv?'No email has gone out yet — edit the details, send the invite, or remove it.':'Send the invite now, or save it to send once you\'ve announced the portal.')+'</div></div>'+
+    '<div class="dcard-body">'+
     '<div><label class="pa-lbl">Full name</label><input id="nuName" class="pa-in" type="text" placeholder="Jane Doe" value="'+esc((pv&&pv.name)||'')+'"></div>'+
     '<div><label class="pa-lbl">Email</label><input id="nuEmail" class="pa-in" type="email" placeholder="jane@mosaic.org" value="'+esc((pv&&pv.email)||'')+'"></div>'+
     '<div><label class="pa-lbl">Role</label><select id="nuRole" class="pa-in">'+['leader','staff','campus_pastor','volunteer','admin'].map(r=>'<option value="'+r+'"'+((pv?pv.role:'leader')===r?' selected':'')+'>'+roleLabel(r)+'</option>').join('')+'</select></div>'+
     '<div id="nuCampusWrap"><label class="pa-lbl">Campus</label><select id="nuCampus" class="pa-in"><option value="">Select a campus</option>'+
       (ADMIN.campuses||[]).map(c=>'<option value="'+esc(c.id)+'"'+(pv&&pv.campus_id===c.id?' selected':'')+'>'+esc(c.name)+'</option>').join('')+'</select></div></div>'+
-    '<div style="display:flex;gap:10px;align-items:center;margin-top:18px;flex-wrap:wrap">'+
+    '<div class="dcard-foot">'+
     '<button class="btn-primary" id="nuSend">Send invite</button>'+
     '<button class="gate-ghost" id="nuLater" style="margin:0">'+(pv?'Save changes':'Save for later — no email')+'</button></div>'+
-    '<div id="nuNote" style="font-size:12.5px;color:var(--text2);margin-top:10px"></div>');
+    '<div id="nuNote" class="dnote"></div>');
+  const nuNote=(msg,kind)=>{const n=document.getElementById('nuNote');
+    if(n){n.textContent=msg;n.className='dnote show '+(kind||'warn');}};
   const roleSel=document.getElementById('nuRole'),wrap=document.getElementById('nuCampusWrap');
   const sync=()=>{wrap.style.display=roleSel.value==='admin'?'none':'';};
   roleSel.addEventListener('change',sync);sync();
   const read=()=>{
     const name=document.getElementById('nuName').value.trim(),email=document.getElementById('nuEmail').value.trim().toLowerCase();
     const role=roleSel.value,campus_id=role==='admin'?null:(document.getElementById('nuCampus').value||null);
-    const note=document.getElementById('nuNote');
-    if(!name){note.textContent='Please enter a name.';return null;}
-    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){note.textContent='Please enter a valid email.';return null;}
+    if(!name){nuNote('Please enter a name.','warn');return null;}
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){nuNote('Please enter a valid email.','warn');return null;}
     return {name,email,role,campus_id};
   };
   document.getElementById('nuSend').addEventListener('click',async()=>{
     const v=read();if(!v)return;
-    const note=document.getElementById('nuNote');
     const btn=document.getElementById('nuSend');btn.disabled=true;btn.textContent='Sending…';
     const errMsg=await paSendInvite(v).catch(ex=>String((ex&&ex.message)||ex));
     btn.disabled=false;btn.textContent='Send invite';
-    if(errMsg){note.textContent="Couldn't send invite — "+errMsg;return;}
-    note.textContent='Invite sent to '+v.email+'.';
-    ADMIN.profs=null;setTimeout(()=>{closeDrawer();if(S.section==='admin')render();},900);
+    if(errMsg){nuNote("Couldn't send invite — "+errMsg,'err');return;}
+    nuNote('Invite sent to '+v.email+'.','ok');
+    // The confirmation used to live in the drawer and the drawer closed on top
+    // of it, so nobody saw it: a write with nothing to show for it. Say it
+    // again on the page the drawer closes onto, AFTER the re-render, or the
+    // render wipes the banner it was just put in.
+    ADMIN.profs=null;
+    setTimeout(()=>{
+      closeDrawer();
+      if(S.section==='admin')render();
+      paNote('Invite sent to '+v.email+'. They have an email with a link to choose a password.');
+    },900);
   });
   document.getElementById('nuLater').addEventListener('click',async()=>{
     const v=read();if(!v)return;
-    const note=document.getElementById('nuNote');
     const {error}=pv
       ?await sb.from('pending_invites').update(v).eq('id',pv.id)
       :await sb.from('pending_invites').upsert(v,{onConflict:'email'});
-    if(error){note.textContent="Couldn't save — "+(error.message||'please try again.');return;}
-    note.textContent=pv?'Saved.':'Saved — no email sent. It\'s listed under “Invite pending” until you send it.';
-    ADMIN.profs=null;setTimeout(()=>{closeDrawer();if(S.section==='admin')render();},1100);
+    if(error){nuNote("Couldn't save — "+(error.message||'please try again.'),'err');return;}
+    const saved=pv?'Saved.':'Saved — no email sent. It\'s listed under “Invite pending” until you send it.';
+    nuNote(saved,'ok');
+    ADMIN.profs=null;
+    setTimeout(()=>{
+      closeDrawer();
+      if(S.section==='admin')render();
+      paNote(pv?'Changes saved. No email has gone out.':'Saved for '+v.email+' — no email sent yet. It is under “Invite pending”.');
+    },1100);
   });
 }
 
@@ -2659,15 +3897,15 @@ function pageSettings(){
     '<select><option>Recent Sunday</option><option>Six-week trend</option><option>Kids + youth</option><option>Year to date</option><option>NYC vs LA</option></select></div>'+
     '<div class="set-row"><div><div class="k">Default calendar view</div><div class="d">Phone always renders as a list.</div></div>'+
     '<select><option>Week</option><option>Month</option></select></div>'+
-    '<h2 style="margin-top:28px">Type colours</h2>'+
-    '<div class="sub" style="margin-bottom:14px">Pick the colour for each type. Hue means type, fill means status — so changing a hue changes it everywhere that type appears.</div>'+
-    Object.keys(TYPES).map(k=>
-      '<div class="set-row"><div><div class="k">'+TYPES[k].label+'</div>'+
-      '<div class="d">Currently '+TYPES[k].label.toLowerCase()+' events and chips</div></div>'+
+    '<h2 style="margin-top:28px">Calendar colours</h2>'+
+    '<div class="sub" style="margin-bottom:14px">Pick the colour for each of the three sources. Hue means type, fill means status — so changing a hue changes it everywhere that source appears.</div>'+
+    Object.keys(SOURCES).map(k=>
+      '<div class="set-row"><div><div class="k">'+SOURCES[k].label+'</div>'+
+      '<div class="d">'+SRC_NOTE[k]+'</div></div>'+
       '<div class="swatches" data-type="'+k+'">'+PALETTE.map(p=>
-        '<button class="sw'+(('var('+p+')')===TYPES[k].hue?' sel':'')+'" data-pick="'+k+'|'+p+'" '+
+        '<button class="sw'+(('var('+p+')')===SOURCES[k].hue?' sel':'')+'" data-pick="'+k+'|'+p+'" '+
         'style="background:var('+p+')" aria-label="'+p.replace('--','')+'">'+
-        (('var('+p+')')===TYPES[k].hue?ic('check'):'')+'</button>').join('')+'</div></div>').join('')+
+        (('var('+p+')')===SOURCES[k].hue?ic('check'):'')+'</button>').join('')+'</div></div>').join('')+
     '<div class="set-row"><div><div class="k">Set for everyone</div>'+
     '<div class="d">Apply these colours across the whole staff team rather than just your account.</div></div>'+
     '<button class="tick'+(S.forEveryone?' done':'')+'" data-everyone="1" style="border-radius:5px;width:20px;height:20px" '+
@@ -2685,6 +3923,16 @@ function ceId(e){
   const raw=String(e&&e.id||'');
   return raw.startsWith('ce:')?raw.slice(3):'';
 }
+/* THE BOARD'S ID LIVES ON THE BOARD'S PART, NOT ON THE LEAD.
+   A merged card leads with whichever part ranks first, and for Men's Camp that
+   is the shared calendar's copy — so "Edit in Planning" was reading pmId() off
+   an Outlook entry, getting nothing, and sending the board no item at all. It
+   opened Planning on whatever month it starts on, which is exactly what the
+   ?item= deep link was built to stop. */
+function boardPart(card,fallback){
+  const parts=(card&&card.parts)||[fallback];
+  return parts.find(x=>x&&String(x.id||'').startsWith('pm:'))||fallback;
+}
 function pmId(e){
   const raw=String(e&&e.id||'');
   if(!raw.startsWith('pm:'))return '';
@@ -2692,59 +3940,172 @@ function pmId(e){
   const cut=rest.lastIndexOf(':');
   return (cut>0&&/^\d{4}-\d{2}-\d{2}$/.test(rest.slice(cut+1)))?rest.slice(0,cut):rest;
 }
+/* ONE CARD, FLOATING OVER WHAT YOU WERE READING.
+   This used to replace the whole page, so opening an entry from the month grid
+   cost you the month — you came back to the calendar by way of a Back button
+   and had to find your place again. Hannita, 10 Sep: "the calendar main view
+   should have this experience where it's a pop up card with the information,
+   just how it works for the planning board."
+   It is the SAME renderer as before (pageEvent), moved into an overlay rather
+   than copied into one. The card is deliberately not a section: there is no
+   URL for it and no history entry, because the thing behind it has not
+   changed. Clicking an entry inside the card — a comm, a related row — swaps
+   the card's contents rather than stacking another. */
+/* The list behind a number, in the same dialog the full card uses — so
+   picking a row swaps the contents rather than opening a second thing over
+   the first. openCard() remembers which list it came from, so there is a way
+   back that is not "close it and start again". */
+function openList(kind){
+  const {title,rows}=cardListOf(kind);
+  S.cardList=kind; S.eventId=null;
+  const body=document.getElementById('cardBody');
+  body.innerHTML='<h1 style="font-size:22px;margin:0 0 4px">'+esc(title)+'</h1>'+
+    '<div class="sub" style="margin-bottom:18px">'+
+      (rows.length?rows.length+(rows.length===1?' item':' items'):'Nothing here right now')+'</div>'+
+    (rows.length
+      ? rows.map(r=>{
+          /* Closeable rows get the button inline. A row marked noClose is not
+             finished by marking the board Complete — outstanding attendance is
+             finished by entering the numbers — and a button there would close
+             the item with the thing it is waiting for still missing. */
+          const ev=EVENTS.find(x=>x.id===r.evId);
+          const bId=(kind==='closeout'&&!r.noClose&&canCloseOut(ev))
+            ?String(r.evId||'').replace(/^pm:/,'').replace(/:\d{4}-\d{2}-\d{2}$/,''):'';
+          return '<div class="lrow"><button class="row" data-ev="'+esc(r.evId)+'">'+
+            '<span class="when">'+(r.date?fmt(D(r.date)):'')+'</span>'+
+            '<span class="txt"><span class="name">'+esc(r.title||'')+'</span>'+
+            '<span class="meta">'+esc(r.meta||'')+'</span></span></button>'+
+            (bId?'<button class="btn-closeout sm" data-closeout="'+esc(bId)+'" data-fromlist="'+esc(kind)+'">Close it out</button>':'')+
+            '</div>';
+        }).join('')
+      : '<div class="empty">Nothing here right now.</div>');
+  body.scrollTop=0;
+  document.getElementById('cardWrap').classList.add('open');
+  document.getElementById('cardWrap').setAttribute('aria-hidden','false');
+  document.getElementById('cardScrim').classList.add('open');
+  S.cardOpen=true;
+}
+function openCard(id){
+  if(!EVENTS.some(x=>x.id===id))return;
+  S.eventId=id; S.cardOpen=true;
+  // Arriving from a list, there has to be a way back to it that is not
+  // "close this and start again".
+  // The section titles already read as phrases ("To close out"), so prefixing
+  // "Back to " gave "Back to to close out". The label is enough on its own.
+  const back=S.cardList
+    ? '<button class="back" data-cardback="1">'+ic('left')+esc(cardListOf(S.cardList).title)+'</button>'
+    : '';
+  document.getElementById('cardBody').innerHTML=back+pageEvent();
+  document.getElementById('cardBody').scrollTop=0;
+  document.getElementById('cardWrap').classList.add('open');
+  document.getElementById('cardWrap').setAttribute('aria-hidden','false');
+  document.getElementById('cardScrim').classList.add('open');
+}
+function closeCard(){
+  S.cardOpen=false; S.cardList=null;
+  document.getElementById('cardWrap').classList.remove('open');
+  document.getElementById('cardWrap').setAttribute('aria-hidden','true');
+  document.getElementById('cardScrim').classList.remove('open');
+}
 function pageEvent(){
   const e=EVENTS.find(x=>x.id===S.eventId);
   if(!e) return '<h1>Not found</h1>';
-  const d=D(e.date), t=TYPES[e.type], isSunday=(e.type==='event'&&d.getDay()===0);
-  const m=isSunday?metricFor(d):null;
+  const d=D(e.date), t=palOf(e);
+  const isSunday=(e.type==='event'&&!!e.isGathering);
+  // The event's own campus, not whichever one Home happens to be showing.
+  const EM=metricsForCampus(e.campus);
+  // The card speaks for every part that merged into it, not just the lead.
+  const card=mergeCards(EVENTS.filter(x=>x.date===e.date&&laneOf(x))).find(x=>x.id===e.id)||e;
+  const facts=partFacts(card);
+  const m=isSunday?(EM[key(d)]||null):null;
   const days=Math.round((d-TODAY)/86400000);
   const camp=e.campaign||null;
-  const comms=EVENTS.filter(x=>x.type==='comms'&&((camp&&x.campaign===camp)||(!camp&&x.date===e.date)))
+  /* COMMS ARE MATCHED BY SUBJECT, NOT BY DATE.
+     comm_events carries id, event_date, type, title, subtitle, status and
+     sender — and nothing that points at an event or a campaign. Same-day was
+     the first guess and it was a collision, not a relationship: a staff
+     birthday came to own two ERM sends. Exact title was the second, and it
+     matched almost nothing, because a comm is named for its channel as much
+     as its subject.
+     So the link is the subject (commRelated) inside the event's own runway
+     (commWindow) — which is what "a men's text or the men's email, even if it
+     was a past date or a future date" actually means.
+     That inference is now the fallback, not the rule: comm_events carries a
+     board_item_id, set from the comms app's own picker, and commLink() takes
+     it over any guess. Hannita, 10 Sep: keep inferring meanwhile, because the
+     field is not required and most rows do not have one yet. */
+  const commsForEvent=EVENTS.filter(x=>x.type==='comms'&&commLink(x,e))
                     .sort((a,b)=>D(a.date)-D(b.date));
   const subs=TASKS.filter(x=>(camp&&x.campaign===camp)||(!camp&&x.parent===e.title));
   const doneN=subs.filter(x=>x.done).length;
-  const ks=Object.keys(METRICS).sort(), vals=ks.map(k=>METRICS[k].a);
+  const ks=Object.keys(EM).sort(), vals=ks.map(k=>EM[k].a);
   const avg6=vals.length?Math.round(vals.reduce((a,b)=>a+b,0)/vals.length):0;
   const mx=Math.max.apply(null,vals.concat([1]));
 
-  let h='<button class="back" data-back="1">'+ic('left')+'Back</button>'+
-    '<div style="margin-bottom:6px">'+
+  let h='<div style="margin-bottom:6px">'+
       '<span class="tag" style="background:'+t.tint+';color:'+t.deep+'">'+t.label+'</span>'+
-      (e.level?'<span class="tag">'+e.level+'</span>':'')+
-      '<span class="tag">'+STATUS_LABEL[e.status]+'</span>'+
-      (days>0?'<span style="font-size:12.5px;color:var(--text2);float:right;padding-top:4px">in '+days+' days</span>'
+      (e.phase?'<span class="tag" style="background:var(--milestone-t);color:var(--milestone-d)">'+esc(e.phase)+'</span>':'')+
+      // The board says "On track"; STATUS_LABEL speaks comms ("Sent"), which
+      // read as nonsense on a gathering that has simply happened.
+      '<span class="tag">'+esc(e.boardStatus||STATUS_LABEL[e.status])+'</span>'+
+      (e.boardType?'<span class="tag">'+esc(e.boardType)+'</span>':'')+
+      (e.level?'<span class="tag" style="background:none;color:var(--text3);font-weight:500">'+esc(e.level)+'</span>':'')+
+      (days>0?'<span style="font-size:12.5px;color:var(--text2);float:right;padding-top:4px">in '+days+(days===1?' day':' days')+'</span>'
              :(days===0?'<span style="font-size:12.5px;color:var(--gathering);float:right;padding-top:4px">today</span>':''))+
     '</div>'+
     '<h1 style="font-size:26px">'+esc(e.title)+'</h1>'+
-    '<div class="sub">'+pretty(d)+(e.detail?' · '+esc(e.detail):'')+(e.campus?' · '+esc(e.campus):'')+'</div>'+
+    '<div class="sub">'+(e.dateEnd&&e.dateEnd!==e.date?pretty(d)+' – '+pretty(D(e.dateEnd)):pretty(d))+
+      (placeOf(e.detail)?' · '+esc(placeOf(e.detail)):'')+
+      // The detail line often already names the campus — a booking's does —
+      // and "Los Angeles · 8:00 AM · Los Angeles" reads like a mistake.
+      (facts.campus&&placeOf(e.detail).indexOf(facts.campus)<0?' · '+esc(facts.campus):'')+'</div>'+
     '<div class="ecard"><div>';
 
-  h+='<div class="eyebrow">DESCRIPTION</div>'+
-     '<div class="desc">'+(e.desc?esc(e.desc):'<span style="color:var(--text2)">No description yet. Descriptions come from the planning board.</span>')+'</div>';
+  if(e.desc||e.type==='event')
+    h+='<div class="eyebrow">DESCRIPTION</div>'+
+       '<div class="desc">'+(e.desc?linkify(e.desc):'<span style="color:var(--text2)">No description yet. Descriptions come from the planning board.</span>')+'</div>';
 
-  const rows=[['Speaker',e.speaker],['Clip source',e.clip],['Series',e.series],
-              ['Owner',e.owner],['Creative',e.creative],['Phase',e.phase],['Campaign',e.campaign]]
+  const fac=facts.facility;
+  const rows=[['Speaker',facts.speaker||e.speaker],['Clip source',e.clip],['Series',e.series],
+              ['Owner',facts.owner||e.owner],['Creative',e.creative],
+              ['Phase',facts.phase||e.phase],['Campaign',e.campaign],
+              ['Level',facts.level],['Type',e.boardType],
+              ['Time',e.timeOfDay],['Location',placeOf(e.location)],
+              ['Repeats',e.recur==='weekly'?'Every week':null],
+              ['Where',e.type!=='event'?placeOf(e.detail):null],
+              ['Join',meetLink(card)||null],
+              // The room's detail is only worth repeating when it is not
+              // already the Where line directly above it.
+              ['Facilities',fac?(fac.status==='waiting'?'Waiting on a decision'
+                :fac.status==='done'?'Finished':'Approved')
+                +(fac.detail&&fac.detail!==e.detail?' · '+placeOf(fac.detail):''):null]]
              .filter(r=>r[1]);
   if(rows.length){
     h+='<div class="eyebrow">DETAILS</div>'+rows.map((r,i)=>
-      '<div class="kv"'+(i===rows.length-1?' style="border-bottom:0"':'')+'><span>'+r[0]+'</span><span>'+esc(r[1])+'</span></div>').join('');
+      '<div class="kv"'+(i===rows.length-1?' style="border-bottom:0"':'')+'><span>'+r[0]+'</span><span>'+linkify(r[1])+'</span></div>').join('');
   }
 
-  h+='<div class="eyebrow">COMMS FOR THIS EVENT · '+comms.length+'</div>';
-  h+= comms.length
-    ? comms.map(c=>'<button class="row" data-ev="'+c.id+'"><span class="when">'+fmt(D(c.date))+'</span>'+
+  h+=milestonesHTML(e.milestones)+rhythmHTML(e.rhythm);
+  if(card.parts&&card.parts.length>1){
+    h+='<div class="eyebrow">ALSO ON</div>'+card.parts.filter(x=>x.id!==e.id).map(x=>
+      '<div class="kv"><span>'+esc(SOURCES[laneOf(x)]?SOURCES[laneOf(x)].label:'')+'</span>'+
+      '<span>'+esc(x.title)+'</span></div>').join('');
+  }
+  const commsRow=c=>'<button class="row" data-ev="'+c.id+'"><span class="when">'+fmt(D(c.date))+'</span>'+
         '<span class="txt"><span class="name">'+esc(c.title)+'</span><span class="meta">'+esc(c.detail||'')+'</span></span>'+
         '<span class="tag" style="background:'+(c.status==='waiting'?'var(--red-t)':c.status==='done'?'var(--session-t)':'var(--fill)')+
         ';color:'+(c.status==='waiting'?'var(--red-d)':c.status==='done'?'var(--session-d)':'#4a4a4a')+
-        '">'+STATUS_LABEL[c.status]+'</span></button>').join('')
-    : '<div class="empty">Nothing scheduled for this event yet.</div>';
+        '">'+STATUS_LABEL[c.status]+'</span></button>';
+  if(commsForEvent.length)
+    h+='<div class="eyebrow">COMMS FOR THIS EVENT · '+commsForEvent.length+'</div>'+
+       commsForEvent.map(commsRow).join('');
 
   h+='</div><div>';
 
   if(isSunday&&!ks.length){
     h+='<div class="eyebrow">NUMBERS</div><div class="empty">No attendance data available yet.</div>';
   } else if(isSunday){
-    h+='<div class="eyebrow">NUMBERS</div>';
+    h+='<div class="eyebrow">NUMBERS'+(e.campus?' · '+esc(e.campus):'')+'</div>';
     if(m){
       const dl=Math.round(((m.a-avg6)/avg6)*1000)/10;
       h+='<div style="display:flex;gap:8px">'+
@@ -2759,7 +4120,7 @@ function pageEvent(){
     }
     h+='<div style="font-size:12px;color:var(--text2);margin:16px 0 7px">Attendance · last 5 Sundays'+(m?'':' and this one')+'</div>'+
       '<div class="bars-chart" style="height:76px">'+
-      ks.map(k=>'<div class="bar-v'+(k===key(d)?' hi':'')+'" style="height:'+Math.round(METRICS[k].a/mx*100)+'%"></div>').join('')+
+      ks.map(k=>'<div class="bar-v'+(k===key(d)?' hi':'')+'" style="height:'+Math.round(EM[k].a/mx*100)+'%"></div>').join('')+
       (m?'':'<div class="bar-v q" style="height:100%"></div>')+'</div>'+
       '<div class="bar-labels">'+ks.map(k=>{const x=D(k);return '<div>'+(x.getMonth()+1)+'/'+x.getDate()+'</div>';}).join('')+
       (m?'':'<div style="color:var(--gathering)">'+(d.getMonth()+1)+'/'+d.getDate()+'</div>')+'</div>'+
@@ -2780,13 +4141,135 @@ function pageEvent(){
       }).join('');
   }
 
+  /* Offered only where it is true: something on the board, its date passed,
+     and not already Complete. The board's own words are used for the state,
+     so a card cannot claim a status the board would not. */
+  const bId=pmId(boardPart(card,e));
+  const canClose=bId&&e.type==='event'&&D(e.date)<TODAY&&(e.boardStatus||'')!=='Complete'&&canCloseOut(e);
+  if(canClose)
+    h+='<div class="closeout-row"><button class="btn-closeout" data-closeout="'+esc(bId)+'">'+
+       ic('check','width:15px;height:15px')+'Close it out</button>'+
+       '<span class="closeout-note" id="closeoutNote">Marks it Complete on the planning board.</span></div>';
+  else if(bId&&(e.boardStatus||'')==='Complete')
+    h+='<div class="closeout-row"><span class="closeout-done">'+ic('check','width:14px;height:14px')+'Closed out</span></div>';
+  else if(bId&&e.type==='event'&&D(e.date)<TODAY&&!canCloseOut(e))
+    // Say why there is no button rather than leave a silent gap: the owner is
+    // named on the card already, so this reads as an answer, not a refusal.
+    h+='<div class="closeout-row"><span class="closeout-note">'+
+       (e.owner?esc(firstNameOf(e.owner))+' owns this one — they or an admin can close it out.'
+              :'Nobody owns this one yet, so only an admin can close it out.')+'</span></div>';
+
   h+='</div></div>'+
     '<div class="foot-links">'+
-    '<button data-go="planning" data-item="'+esc(pmId(e))+'">Edit in Planning</button>'+
-    '<button data-go="comms" data-item="'+esc(ceId(e)||e.date||'')+'">Edit comms</button>'+
+    ((card.parts||[e]).some(x=>x.type==='event')
+      ?'<button data-go="planning" data-item="'+esc(pmId(boardPart(card,e)))+'">Edit in Planning</button>':'')+
+    (fac?'<button data-go="facilities">Open in Facilities</button>':'')+
+    // Day-scoped, and says so: it opens that date in the comms calendar rather
+    // than claiming these sends belong to this event.
+    '<button data-go="comms" data-item="'+esc(e.date||'')+'">Comms on this day</button>'+
     (isSunday?'<button data-go="numbers" data-item="'+esc(e.date||'')+'">'+(m?'View in Metrics':'Submit attendance')+'</button>':'')+
+    /* hrefOf, not the raw link: a scheme-less address here resolved against
+       the portal and this button went to portal.mosaic.org/www.mosaic.org/…
+       — a Join button that goes nowhere is worse than no button. */
+    ((card.parts||[e]).map(meetLink).find(Boolean)
+      ?'<a class="foot-out" target="_blank" rel="noopener" href="'+
+        esc(hrefOf((card.parts||[e]).map(meetLink).find(Boolean)))+'">Join on '+
+        esc(meetName((card.parts||[e]).map(meetLink).find(Boolean)))+'</a>':'')+
+    ((card.parts||[e]).find(x=>x.link&&x.type!=='facility')
+      ?'<a class="foot-out" target="_blank" rel="noopener" href="'+esc((card.parts||[e]).find(x=>x.link&&x.type!=='facility').link)+'">Open in Outlook</a>':'')+
     '</div>';
   return h;
+}
+
+/* What one entry says without being opened. Only what we actually know:
+   an invented "Facilities: approved" on an event that has no booking would be
+   worse than no row at all. A booking knows its own status; a gathering has no
+   link to one yet, so it does not claim one. */
+function hoverCardHTML(e){
+  const t=palOf(e), d=D(e.date);
+  const when=e.dateEnd&&e.dateEnd!==e.date
+    ? DOW[d.getDay()]+' '+fmt(d)+' – '+DOW[D(e.dateEnd).getDay()]+' '+fmt(D(e.dateEnd))
+    : pretty(d);
+  const f=partFacts(e), rows=[];
+  rows.push(['When',when]);
+  if(e.type!=='facility')rows.push(['Status',esc(STATUS_LABEL[e.status]||'')]);
+  // The room decision, from whichever part of this card is the booking.
+  if(f.facility){
+    const st=f.facility.status;
+    const label=st==='waiting'?'Waiting on a decision':st==='done'?'Finished':'Approved';
+    const col=st==='waiting'?'var(--amber-d)':st==='done'?'var(--text2)':'var(--session-d)';
+    rows.push(['Facilities','<span style="color:'+col+'">'+label+'</span>']);
+  }
+  if(f.phase)rows.push(['Phase',esc(f.phase)]);
+  if(f.campus)rows.push(['Campus',esc(f.campus)]);
+  if(f.owner)rows.push(['Owner',esc(f.owner)]);
+  return '<div class="hc-t">'+esc(e.title)+'</div>'+
+    '<div class="hc-tags"><span class="hc-pill" style="background:'+t.tint+';color:'+t.deep+'">'+
+      esc(t.label||'')+'</span>'+(f.level?'<span class="hc-lvl">'+esc(f.level)+'</span>':'')+
+      partDots(e)+'</div>'+
+    rows.map(r=>'<div class="hc-row"><span>'+r[0]+'</span><b>'+r[1]+'</b></div>').join('');
+}
+(function hoverCards(){
+  if(!window.matchMedia||!matchMedia('(hover: hover) and (pointer: fine)').matches)return;
+  let el=null,timer=null;
+  const hide=()=>{clearTimeout(timer);if(el){el.classList.remove('on');el.remove();el=null;}};
+  document.addEventListener('mouseover',ev=>{
+    const btn=ev.target.closest&&ev.target.closest('.ev[data-ev]');
+    if(!btn){if(el&&!ev.target.closest('.hovercard'))hide();return;}
+    // Hover the merged card, not the part underneath it, so the tooltip can
+    // say what the booking decided as well as what the board owns.
+    const raw=EVENTS.find(x=>x.id===btn.dataset.ev);
+    const e=raw?mergeCards(EVENTS.filter(x=>x.date===raw.date&&laneOf(x)))
+                  .find(x=>x.id===raw.id)||raw:null;
+    if(!e||(el&&el.dataset.for===e.id))return;
+    hide();
+    timer=setTimeout(()=>{
+      el=document.createElement('div');
+      el.className='hovercard';el.dataset.for=e.id;
+      el.innerHTML=hoverCardHTML(e);
+      document.body.appendChild(el);
+      // Placed off the entry, not the cursor, so it does not jitter; flipped
+      // when there is no room, because a card off the edge says nothing.
+      const r=btn.getBoundingClientRect(), h=el.offsetHeight, w=el.offsetWidth;
+      let left=r.left, top=r.bottom+8;
+      if(left+w>innerWidth-12)left=Math.max(12,innerWidth-w-12);
+      if(top+h>innerHeight-12)top=Math.max(12,r.top-h-8);
+      el.style.left=left+'px';el.style.top=top+'px';
+      requestAnimationFrame(()=>el&&el.classList.add('on'));
+    },130);
+  });
+  document.addEventListener('mouseout',ev=>{
+    if(ev.target.closest&&ev.target.closest('.ev[data-ev]'))hide();
+  });
+  ['scroll','click','keydown'].forEach(t=>document.addEventListener(t,hide,true));
+})();
+
+/* Milestones and the Rhythm, drawn the way the board draws them: diamonds for
+   the five key moments because they are not phases, and the three affirmations
+   as what is true rather than as tasks — no owner, no due date. The wording is
+   the Rhythm's own, carried through the mirror rather than restated here. */
+function milestonesHTML(ms){
+  if(!ms)return '';
+  const NAMES=[['kickoff','Kick-Off'],['public','Public'],['ready','Ready'],
+               ['launch','Launch'],['debrief','Debrief']];
+  const rows=NAMES.filter(([k])=>ms[k]);
+  if(!rows.length)return '';
+  return '<div class="eyebrow">MILESTONES</div><div class="mstrip">'+
+    rows.map(([k,name])=>{
+      const past=D(ms[k])<TODAY, pinned=(ms.pinned||[]).includes(k);
+      return '<div class="mspt'+(past?' past':'')+'">'+
+        '<span class="msdia"'+(pinned?' title="Pinned by hand"':'')+'></span>'+
+        '<b>'+esc(name)+'</b>'+fmt(D(ms[k]))+'</div>';
+    }).join('')+'</div>';
+}
+function rhythmHTML(r){
+  if(!r)return '';
+  const done=(r.affirmations||[]).filter(a=>a.done).length;
+  return '<div class="eyebrow">THE RHYTHM · '+esc(r.phase)+' · '+done+' OF '+
+    (r.affirmations||[]).length+'</div>'+
+    (r.question?'<div class="rq">'+esc(r.question)+'</div>':'')+
+    (r.affirmations||[]).map(a=>'<div class="aff'+(a.done?' on':'')+'">'+
+      '<span class="affbox">'+(a.done?ic('check'):'')+'</span>'+esc(a.text)+'</div>').join('');
 }
 
 /* ============================ drawer ============================ */
@@ -2802,48 +4285,13 @@ function closeDrawer(){
   document.getElementById('drawer').setAttribute('aria-hidden','true');
   document.getElementById('scrim').classList.remove('open');
 }
-function eventDrawer(id){
-  const e=EVENTS.find(x=>x.id===id); if(!e) return;
-  const d=D(e.date), t=TYPES[e.type], m=(e.type==='event'&&d.getDay()===0)?metricFor(d):null;
-  const linked=EVENTS.filter(x=>x.date===e.date&&x.type==='comms'&&x.id!==e.id);
-  const subs=TASKS.filter(x=>e.title.indexOf(x.parent)===0||x.parent===e.title||(e.title==='Charles Metcalf'&&x.parent==='Charles Metcalf'));
-  let h='<div style="font-size:11px;color:var(--text2);letter-spacing:.05em">'+t.label.toUpperCase()+'</div>'+
-    '<h1 style="font-size:22px;margin-top:6px">'+esc(e.title)+'</h1>'+
-    '<div class="sub">'+pretty(d)+(e.detail?' · '+esc(e.detail):'')+'</div>'+
-    '<div style="margin:14px 0 4px"><span class="tag">'+STATUS_LABEL[e.status]+'</span>'+
-    (e.campus?'<span class="tag">'+esc(e.campus)+'</span>':'')+(e.owner?'<span class="tag">'+esc(e.owner)+'</span>':'')+'</div>';
-  if(e.type==='event'&&d.getDay()===0){
-    h+='<div class="eyebrow">ATTENDANCE</div>';
-    if(m){
-      const ks=Object.keys(METRICS),vals=ks.map(k=>METRICS[k].a),mx=Math.max(...vals);
-      const avg=Math.round(vals.reduce((a,b)=>a+b,0)/vals.length);
-      h+='<div class="mini"><div><div class="v">'+m.a+'</div><div class="k">attendance</div></div>'+
-        '<div><div class="v">'+m.k+'</div><div class="k">kids + youth</div></div>'+
-        '<div><div class="v">'+m.n+'</div><div class="k">next steps</div></div></div>'+
-        '<div class="bars-chart" style="height:70px;margin-top:14px">'+ks.map(k=>'<div class="bar-v'+(k===key(d)?' hi':'')+'" style="height:'+Math.round(METRICS[k].a/mx*100)+'%"></div>').join('')+'</div>'+
-        '<div style="font-size:12px;color:var(--text2);margin-top:7px">Six-week average '+avg+'</div>'+
-        '<button class="linkout" data-go="numbers">Open in Metrics</button>';
-    } else {
-      h+='<div class="empty">No attendance recorded. <button data-go="numbers" style="color:var(--gathering)">Submit attendance</button></div>';
-    }
-  }
-  if(linked.length){
-    h+='<div class="eyebrow">COMMS FOR THIS DAY</div>'+linked.map(c=>
-      '<div class="kv"><span>'+esc(c.title)+'</span><span>'+STATUS_LABEL[c.status]+'</span></div>').join('')+
-      '<button class="linkout" data-go="comms" data-item="'+esc(ceId(e))+'">Open in Comms</button>';
-  }
-  if(subs.length){
-    h+='<div class="eyebrow">SUBTASKS</div>'+subs.map(t=>taskRow(t)).join('')+
-      '<button class="linkout" data-go="planning">Open in Planning</button>';
-  }
-  openDrawer(h);
-}
 function dayDrawer(k){
-  const d=D(k), evs=EVENTS.filter(e=>e.date===k&&S.filters.has(e.type));
+  const d=D(k), evs=mergeCards(EVENTS.filter(e=>e.date===k&&laneOf(e)))
+                    .filter(c=>(c.parts||[c]).some(shown));
   openDrawer('<h1 style="font-size:22px">'+pretty(d)+'</h1><div class="sub">'+evs.length+' items</div>'+
     '<div style="margin-top:16px">'+evs.map(e=>'<button class="row" data-ev="'+e.id+'">'+
-    '<span class="swatch" style="background:'+TYPES[e.type].hue+';margin-top:6px"></span>'+
-    '<span class="txt"><span class="name">'+esc(e.title)+'</span><span class="meta">'+esc(e.detail||'')+'</span></span>'+
+    '<span class="swatch" style="background:'+palOf(e).hue+';margin-top:6px"></span>'+
+    '<span class="txt"><span class="name">'+esc(e.title)+partDots(e)+'</span><span class="meta">'+esc(placeOf(e.detail))+'</span></span>'+
     '<span class="tag">'+STATUS_LABEL[e.status]+'</span></button>').join('')+'</div>');
 }
 function newDrawer(){
@@ -2860,12 +4308,17 @@ function newDrawer(){
 const SECTION_PATH={home:'/',calendar:'/calendar',comms:'/comms',planning:'/pm',facilities:'/facilities',numbers:'/metrics',goals:'/goals',budgets:'/budgets',giving:'/giving',settings:'/settings',admin:'/admin'};
 function render(){
   renderNav();
-  if(S.section!=='event'&&SECTION_PATH[S.section]&&location.pathname!==SECTION_PATH[S.section]){
+  if(SECTION_PATH[S.section]&&location.pathname!==SECTION_PATH[S.section]){
     try{history.replaceState(null,'',SECTION_PATH[S.section]);}catch(e){}
   }
   const m=document.getElementById('main');
-  m.innerHTML = S.section==='event'?pageEvent()
-    : S.section==='home'?pageHome()
+  // pageEmbed() shows its frame and returns nothing, so the host has to be put
+  // away for every section that is not one — otherwise the last app you opened
+  // stays on screen underneath the page you asked for.
+  const EMBEDDED=['comms','planning','numbers','goals','facilities'];
+  if(!EMBEDDED.includes(S.section))hideFrames();
+  m.classList.toggle('main-embedded',EMBEDDED.includes(S.section));
+  m.innerHTML = S.section==='home'?pageHome()
     : S.section==='calendar'?pageCalendar()
     : S.section==='comms'?pageEmbed('comms')
     : S.section==='planning'?pageEmbed('planning')
@@ -2922,6 +4375,153 @@ window.addEventListener('message',async e=>{
   if(!s||!s.access_token||!s.refresh_token)return;
   try{e.source.postMessage(
     {type:'mosaic-auth',access_token:s.access_token,refresh_token:s.refresh_token},e.origin);}catch(_){}
+});
+
+/* An embedded app asking the portal to go somewhere else in the portal.
+   Everything is meant to speak to each other in here rather than throwing
+   people into a new tab, and until now only the portal could start a move: the
+   planning board had no way to say "open Facilities on the new-request form
+   with this event in it".
+
+   Only two sections accept this, and only the fields those forms actually read.
+   An allowlist rather than a pass-through, because this arrives from a framed
+   page: anything it can put in the URL, it could put anything in. Origin is
+   already checked above against *.mosaic.org. */
+/* The portal answering for the apps that need a sign-in.
+   ------------------------------------------------------
+   The planning board shows what the other apps hold about an event, on the
+   event. Comms it reads itself — same Supabase project, readable without a
+   sign-in by decision. Rooms and attendance it cannot: both live in the Mosaic
+   Metrics project behind RLS keyed to auth.uid(), and the board runs on a
+   publishable key with no session at all.
+
+   So it asks, and the portal answers with the signed-in person's own session.
+   That is the point rather than a workaround: the panel shows exactly what
+   THIS person is allowed to see, decided by the same policies the Facilities
+   and Metrics apps enforce, instead of a fixed projection somebody has to
+   remember to keep narrow.
+
+   Only the fields the panel draws are sent back. A booking carries internal
+   notes and a requester's phone number, and a card on the planning board is
+   not where either belongs. */
+const FAC_CONN_FIELDS='id,ref,title,status,campus_name,space_name,block_start,block_end,'+
+  'resource_count,resource_pending_count,archived_at,board_item_id';
+async function connectedFor(item){
+  const out={facilities:[],metrics:[]};
+  if(!sb||!item||!item.id)return out;
+  try{
+    const {data}=await sb.from('v_fac_requests').select(FAC_CONN_FIELDS)
+      .eq('board_item_id',item.id).is('archived_at',null).order('block_start');
+    out.facilities=(data||[]).map(r=>({ref:r.ref,title:r.title,status:r.status,
+      campus_name:r.campus_name,space_name:r.space_name,
+      resource_pending_count:r.resource_pending_count||0,
+      when:r.block_start?new Date(r.block_start).toLocaleString([],
+        {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):''}));
+  }catch(_){/* the panel says nothing rather than guessing */}
+  /* Attendance has no board_item_id to match on, so it is matched on the date
+     and the campus and the board labels it as such. For a Sunday that is the
+     definition of the thing; for anything else it is a suggestion, and saying
+     otherwise is how the wrong numbers get attached to an event. */
+  try{
+    // wantAttendance is false where the board knows the match would be wrong —
+    // anything nested under a Sunday inherits that Sunday's date, so matching
+    // on date and campus would hand it the gathering's numbers.
+    if(item.date&&item.wantAttendance){
+      const cid=await campusIdFor(item.campus);
+      let q=sb.from('v_service_totals')
+        .select('campus_id,date,service_label,in_person_total,online_views')
+        .eq('date',item.date);
+      if(cid)q=q.eq('campus_id',cid);
+      const {data}=await q;
+      out.metrics=(data||[]).map(r=>({service_label:r.service_label,
+        campus_name:CAMPUS_NAME[r.campus_id]||'',
+        in_person_total:r.in_person_total,online_views:r.online_views}));
+    }
+  }catch(_){}
+  return out;
+}
+/* The board's campus vocabulary is "LA"/"NYC"/"Global"; this project's is
+   "Los Angeles"/"New York City". Matching on the name alone matches nothing —
+   the same trap the Facilities prefill hit. Fetched once and kept. */
+const BOARD_CAMPUS={la:['Los Angeles'],nyc:['New York City','New York']};
+let CAMPUS_NAME={},CAMPUS_BY_NAME=null;
+async function campusIdFor(boardName){
+  if(!boardName||!sb)return null;
+  if(!CAMPUS_BY_NAME){
+    try{
+      const {data}=await sb.from('campuses').select('id,name');
+      CAMPUS_BY_NAME={};(data||[]).forEach(c=>{
+        CAMPUS_BY_NAME[(c.name||'').toLowerCase()]=c.id;CAMPUS_NAME[c.id]=c.name;});
+    }catch(_){CAMPUS_BY_NAME={};}
+  }
+  const want=BOARD_CAMPUS[String(boardName).toLowerCase()]||[boardName];
+  for(const w of want){const id=CAMPUS_BY_NAME[String(w).toLowerCase()];if(id)return id;}
+  return null;
+}
+window.addEventListener('message',async e=>{
+  if(!EMBED_TRUSTED(e.origin))return;
+  const d=e.data||{};
+  if(d.type!=='mosaic-connected-request')return;
+  const item=d.item||{};
+  if(!item.id||typeof item.id!=='string'||!e.source)return;
+  const got=await connectedFor(item);
+  try{e.source.postMessage(Object.assign({type:'mosaic-connected',item_id:item.id},got),e.origin);}catch(_){}
+});
+
+const NAV_ALLOWED={
+  facilities:['board_item','title','date','end_date','start','end','campus','purpose'],
+  comms:     ['board_item','title','date','campus','purpose'],
+  numbers:   ['board_item','title','date','campus'],
+  /* Planning is the one the facilities event card actually asks for, and it
+     was the only section missing here — "Planning board" on that card fell
+     through the `if(!allowed)` below and opened a new tab, which is exactly
+     what Hannita asked it to stop doing on 10 Sep: "when we're looking at it
+     from the portal, it shouldn't open a new link — it should just open up
+     the section in the app of the portal." */
+  planning:  ['board_item','item','title','date','campus']};
+window.addEventListener('message',e=>{
+  if(!EMBED_TRUSTED(e.origin))return;
+  const d=e.data||{};
+  /* "CAN YOU?" BEFORE "PLEASE DO."
+     A framed app cannot tell whether the portal around it listens for this,
+     and finding out by trying is worse than it sounds: the answer arrives
+     after the click, and window.open from inside a frame with no user gesture
+     behind it is silently blocked. So the frame asks once on load and renders
+     either a button or a plain link, and this replies. */
+  if(d.type==='mosaic-can-navigate'){
+    try{if(e.source)e.source.postMessage({type:'mosaic-navigate-ok'},e.origin);}catch(_){}
+    return;
+  }
+  if(d.type!=='mosaic-navigate')return;
+  const sec=SECTIONS.find(x=>x.id===d.section);
+  // Silently ignoring an unknown or locked section is right: a framed app should
+  // not be able to reach a part of the portal this person cannot see anyway.
+  if(!sec||!allowedSections().includes(sec.id))return;
+  const allowed=NAV_ALLOWED[sec.id];
+  if(!allowed)return;   // a section nobody has said may be arrived at this way
+  /* Kept per section, not in one shared bag: arriving at Comms must not leave
+     an event's details sitting on the Facilities frame's URL.
+
+     And only when the frame actually asked for a form. "Open Planning" with
+     no page and no params is just a move between sections, and defaulting it
+     to page=new would land somebody on the board's new-item form when all
+     they clicked was the name of the app they were already looking at. */
+  const page=(typeof d.page==='string'&&/^[a-z]{1,20}$/.test(d.page))?d.page:'';
+  const params={};
+  for(const k of allowed){
+    const v=d.params&&d.params[k];
+    if(typeof v==='string'&&v)params[k]=v.slice(0,2000);
+  }
+  if(page||Object.keys(params).length){
+    S.navBook=S.navBook||{};
+    S.navBook[sec.id]={page:page||'new',params};
+  } else if(S.navBook){ delete S.navBook[sec.id]; }
+  if(sec.id==='facilities')S.facPath=(page==='new')?'new':(S.facPath||'requests');
+  S.section=sec.id;
+  try{history.pushState({},'',SECTION_PATH[sec.id]||'/');}catch(_){}
+  render();
+  // Tell the frame it landed, so it does not open a tab as well.
+  try{if(e.source)e.source.postMessage({type:'mosaic-navigated',section:sec.id},e.origin);}catch(_){}
 });
 
 /* ============================ preview (view as staff/leader/volunteer) ============================ */
@@ -3020,8 +4620,38 @@ document.addEventListener('toggle',e=>{
   if(d.open)ADMIN.campusOpen.add(d.dataset.campus);else ADMIN.campusOpen.delete(d.dataset.campus);
 },true);
 document.addEventListener('click',e=>{
-  const t=e.target.closest('[data-go],[data-view],[data-nav],[data-filter],[data-ev],[data-day],[data-task],[data-new],[data-pick],[data-everyone],[data-tl],[data-back],[data-logout],[data-preview],[data-previewexit],[data-previewgo],[data-pickertoggle],[data-pickerrole],[data-profile],[data-fb],[data-newuser],[data-gp],[data-fp],[data-user],[data-pinv],[data-pinvsend],[data-pinvdel],[data-adtab],[data-theme],[data-newcampus],[data-editcampus],[data-addloc],[data-deactivateloc],[data-addtime],[data-rmtime],[data-toggleinactivecampus],[data-toggleusers]');
+  /* Anywhere else closes the New menu. It sits over the page, so leaving it up
+     while somebody clicks past it is how a menu ends up covering the thing
+     they were reaching for. */
+  if(S.newMenu&&!e.target.closest('#newMenu,[data-newmenu]')){S.newMenu=false;render();}
+  /* Both sides of the merge added to this list — [data-mp] is the Metrics rail,
+     [data-newmenu]/[data-newthing] the New menu. Every one of them has to be
+     here or its buttons are simply dead. */
+  const t=e.target.closest('[data-go],[data-view],[data-nav],[data-filter],[data-ev],[data-day],[data-task],[data-new],[data-pick],[data-everyone],[data-tl],[data-back],[data-logout],[data-preview],[data-previewexit],[data-previewgo],[data-pickertoggle],[data-pickerrole],[data-profile],[data-fb],[data-newuser],[data-gp],[data-fp],[data-mp],[data-user],[data-pinv],[data-pinvsend],[data-pinvdel],[data-adtab],[data-theme],[data-newcampus],[data-editcampus],[data-addloc],[data-deactivateloc],[data-addtime],[data-rmtime],[data-toggleinactivecampus],[data-toggleusers],[data-newmenu],[data-newthing],[data-cardlist],[data-cardback],[data-closeout]');
   if(!t) return;
+  /* The New menu on Home. It has to come before data-new below, and be its own
+     attribute: data-new is the Calendars drawer, and one of these buttons
+     carrying it would open that instead of starting anything. */
+  if(t.dataset.newmenu){ S.newMenu=!S.newMenu; render(); return; }
+  if(t.dataset.newthing){
+    const sec=t.dataset.newthing;
+    if(!allowedSections().includes(sec))return;
+    S.newMenu=false;
+    S.navBook=S.navBook||{};
+    /* No EVENT is carried — started from Home there is none, and coming from a
+       planning card is the path that brings one. The campus is carried though:
+       it is the same answer every time for the person filling the form in, and
+       the one they would otherwise re-pick on every attendance submission,
+       every new item and every room request. Hannita, 10 Sep. */
+    const params={};
+    const hc=homeCampusName();
+    if(hc)params.campus=hc;
+    S.navBook[sec]={page:t.dataset.newpage||'new',params};
+    if(sec==='facilities')S.facPath='new';
+    S.section=sec;
+    try{history.pushState({},'',SECTION_PATH[sec]||'/');}catch(_){}
+    render(); return;
+  }
   if(t.dataset.logout){ (sb?sb.auth.signOut():Promise.resolve()).then(()=>location.reload()); return; }
   if(t.dataset.pickertoggle){
     if(!ADMIN.campuses)loadAdmin().then(()=>{_previewCampusId=_previewPickCampus();umPop.innerHTML=umHtml();});
@@ -3037,11 +4667,13 @@ document.addEventListener('click',e=>{
   if(t.dataset.previewexit){ _pickerOpen=false; exitPreview(); umClose(); return; }
   if(t.dataset.profile){ umClose(); S.from=S.section||'home'; S.section='profile'; render(); return; }
   if(t.dataset.pick){
-    const [type,tok]=t.dataset.pick.split('|');
-    TYPES[type].hue='var('+tok+')';
-    TYPES[type].tint='var('+tok+'-t)';
-    TYPES[type].deep='var('+tok+'-d)';
-    TYPES[type].solid='var('+tok+'-s)';
+    const [src,tok]=t.dataset.pick.split('|');
+    // A source can cover more than one item type, so recolour all of them —
+    // Staff would otherwise change on the chip and not on the calendar.
+    SOURCES[src].hue='var('+tok+')';
+    SOURCES[src].tint='var('+tok+'-t)';
+    SOURCES[src].deep='var('+tok+'-d)';
+    SOURCES[src].solid='var('+tok+'-s)';
     render(); return;
   }
   if(t.dataset.everyone){ S.forEveryone=!S.forEveryone; render(); return; }
@@ -3049,7 +4681,14 @@ document.addEventListener('click',e=>{
   if(t.dataset.go){ if(allowedSections().includes(t.dataset.go)){
       S.deep=S.deep||{};
       if(t.dataset.item)S.deep[t.dataset.go]=t.dataset.item; else delete S.deep[t.dataset.go];
-      S.section=t.dataset.go; closeDrawer(); if(typeof umClose==="function")umClose(); render();} return; }
+      // Going somewhere by hand drops any prefill that section was carrying.
+      if(S.navBook)delete S.navBook[t.dataset.go];
+      /* Close the card first. Going to a section from inside one used to leave
+         it floating over the app it had just opened — and with ?item= working,
+         that meant the portal's card sitting on top of the board's own drawer
+         for the very same event. */
+      S.section=t.dataset.go; closeCard(); closeDrawer();
+      if(typeof umClose==="function")umClose(); render();} return; }
   if(t.dataset.theme){
     THEME=t.dataset.theme; try{localStorage.setItem(themeKey(),THEME);}catch(e){}
     applyTheme();
@@ -3107,7 +4746,11 @@ document.addEventListener('click',e=>{
   }
   if(t.dataset.fb){ feedbackDrawer(t.dataset.fb); return; }
   if(t.dataset.gp!==undefined){ S.goalsPath=t.dataset.gp; S.section='goals'; render(); return; }
-  if(t.dataset.fp!==undefined){ S.facPath=t.dataset.fp; S.section='facilities'; render(); return; }
+  // Clicking a sub-menu by hand drops any board prefill: it belongs to the one
+  // arrival from the planning board, and leaving it set would re-open a stale
+  // event's details the next time somebody opens that form.
+  if(t.dataset.fp!==undefined){ S.facPath=t.dataset.fp; if(S.navBook)delete S.navBook.facilities; S.section='facilities'; render(); return; }
+  if(t.dataset.mp!==undefined){ S.numPath=t.dataset.mp; if(S.navBook)delete S.navBook.numbers; S.section='numbers'; render(); return; }
   if(t.dataset.user){ S.from='admin'; S.adminUserId=t.dataset.user; S.section='admin-user'; render(); return; }
   if(t.dataset.pinv){ paInviteDrawer(t.dataset.pinv); return; }
   if(t.dataset.pinvsend){
@@ -3134,23 +4777,53 @@ document.addEventListener('click',e=>{
   if(t.dataset.nav!==undefined){
     const n=Number(t.dataset.nav);
     if(n===0){ S.anchor=new Date(TODAY); S.month=new Date(TODAY.getFullYear(),TODAY.getMonth(),1); }
-    else if(S.view==='week'){ S.anchor=addDays(S.anchor,n*7); }
+
     else { S.month=new Date(S.month.getFullYear(),S.month.getMonth()+n,1); }
     render(); return;
   }
+  if(t.dataset.campus){ return; }   // handled on change, not click
   if(t.dataset.filter){
-    if(t.dataset.filter==='__all'){ S.filters=new Set(Object.keys(TYPES)); }
+    if(t.dataset.filter==='__all'){ S.filters=new Set(Object.keys(SOURCES)); S.campus=''; }
     else if(S.filters.has(t.dataset.filter)){ S.filters.delete(t.dataset.filter); }
     else { S.filters.add(t.dataset.filter); }
     render(); return;
   }
   if(t.dataset.ev){
-    const ev=EVENTS.find(x=>x.id===t.dataset.ev);
-    if(ev && ev.type==='event'){ S.from=S.section==='event'?(S.from||'calendar'):S.section; S.eventId=ev.id; S.section='event'; closeDrawer(); render(); }
-    else { eventDrawer(t.dataset.ev); }
+    /* ONE CARD, WHATEVER IT IS. This used to branch: a planning item opened a
+       full page, everything else opened a narrow side drawer with a different
+       renderer behind it. So the shape of the card told you which system the
+       entry came from — the one thing the calendar has spent all day learning
+       not to do — and the two renderers drifted apart, because nothing made
+       them agree. eventDrawer is gone rather than kept in step. */
+    closeDrawer(); openCard(t.dataset.ev);
     return;
   }
-  if(t.dataset.back){ S.section=S.from||'calendar'; render(); return; }
+  if(t.dataset.closeout){
+    /* Never say it is done before the board says so. The button reports what
+       actually happened — "Saved" only after the database returns, the error
+       itself if it does not — because a green tick over a failed write is how
+       somebody loses an afternoon and only finds out on Monday. */
+    const btn=t, id=btn.dataset.closeout, from=btn.dataset.fromlist;
+    const note=document.getElementById('closeoutNote');
+    btn.disabled=true; const was=btn.textContent; btn.textContent='Closing…';
+    closeOut(id).then(()=>{
+      if(from){ openList(from); }               // the row is gone; redraw the list
+      else {
+        btn.textContent='Closed out';
+        if(note)note.textContent='Marked Complete on the planning board.';
+      }
+      if(S.section==='home')render();
+    }).catch(err=>{
+      btn.disabled=false; btn.textContent=was;
+      const msg=String((err&&err.message)||err).slice(0,200);
+      if(note){note.textContent="Couldn't close it out — "+msg;note.style.color='var(--red-d)';}
+      else alert("Couldn't close it out — "+msg);
+    });
+    return;
+  }
+  if(t.dataset.cardlist){ openList(t.dataset.cardlist); return; }
+  if(t.dataset.cardback){ openList(S.cardList); return; }
+  if(t.dataset.back){ S.section=S.from||'home'; render(); return; }
   if(t.dataset.day){ dayDrawer(t.dataset.day); return; }
   if(t.dataset.new){ newDrawer(); return; }
   if(t.dataset.task){
@@ -3161,7 +4834,13 @@ document.addEventListener('click',e=>{
 });
 document.getElementById('scrim').addEventListener('click',closeDrawer);
 document.getElementById('drawerClose').addEventListener('click',closeDrawer);
-document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeDrawer(); });
+document.getElementById('cardScrim').addEventListener('click',closeCard);
+document.getElementById('cardClose').addEventListener('click',closeCard);
+document.addEventListener('keydown',e=>{
+  if(e.key!=='Escape')return;
+  if(S.cardOpen){ closeCard(); return; }   // the card is the thing on top
+  closeDrawer();
+});
 
 /* ============================ sign-in ============================
    Same Supabase project + accounts as Mosaic Metrics — every existing
@@ -3226,19 +4905,45 @@ let _pickerOpen=false;        // whether the picker is expanded in the user menu
 const ROLE_PRESET={admin:"leadership",staff:"comms",campus_pastor:"comms",leader:"ops",volunteer:"volunteer"};
 const $g=id=>document.getElementById(id);
 function gateNote(msg,kind){const n=$g("gateNote");n.textContent=msg;n.className="gate-note show "+(kind||"err");}
+/* THE HEADING SAYS WHAT THE SCREEN IS. Loyda, 8 Sep: a person who clicked
+   "choose a new password" in their email and lands on a card headed "Welcome —
+   sign in with your Mosaic account" has no way to tell the link worked. The
+   fields used to change with the mode and the heading did not, so every mode
+   looked like the sign-in screen. Add a mode, add its line here. */
+const GATE_COPY={
+  signin: ["Welcome","Sign in with your Mosaic account.",""],
+  forgot: ["Reset your password","Enter your email and we'll send you a link.",""],
+  recover:["Reset your password","Choose a new password below.",""],
+  invite: ["Welcome to the Mosaic Portal","Choose a password to finish setting up your account.",
+           "Your account is ready — pick a password and you're in."],
+  // A PKCE link on its own does not say whether it was an invite or a reset,
+  // so this wording has to be true of both. Never guess: telling an invited
+  // person they are "resetting" a password they have never had is the bug.
+  setpass:["Choose your password","Pick a password below — it's what you'll sign in with from now on.",""]
+};
 function gateMode(mode){
+  const setting=mode==="recover"||mode==="invite"||mode==="setpass";
   const show=(id,on)=>{const el=$g(id);if(el)el.style.display=on?"":"none";};
-  show("g-email-row",mode!=="recover");
+  show("g-email-row",!setting);
   show("g-pass-row",mode==="signin");
-  show("g-newpass-rows",mode==="recover");
+  show("g-newpass-rows",setting);
   show("gLoginBtn",mode==="signin");
   show("gSendResetBtn",mode==="forgot");
-  show("gUpdatePassBtn",mode==="recover");
+  show("gUpdatePassBtn",setting);
   show("gForgotLink",mode==="signin");
   show("gBackToSignIn",mode==="forgot");
+  const copy=GATE_COPY[mode]||GATE_COPY.signin;
+  $g("gTitle").textContent=copy[0];
+  $g("gSub").textContent=copy[1];
   const n=$g("gateNote");if(n)n.className="gate-note";
-  if(mode==="recover")gateNote("You're resetting your password — choose a new one below.","ok");
+  if(copy[2])gateNote(copy[2],"ok");
 }
+document.addEventListener('change',e=>{
+  const sel=e.target.closest&&e.target.closest('[data-campus]');
+  if(!sel)return;
+  S.campus=sel.value;
+  render();
+});
 $g("gForgotLink").addEventListener("click",()=>gateMode("forgot"));
 $g("gBackToSignIn").addEventListener("click",()=>gateMode("signin"));
 async function gateSignIn(){
@@ -3337,7 +5042,12 @@ function umHtml(){
   const pvLabel=ME.preview?(' · previewing as '+esc(PREVIEW_ROLE_LABEL[ME.previewRole]||ME.previewRole)):"";
   return '<div class="um-head"><span class="um-av">'+avatarHtml(ME.avatar_url,ME.name)+'</span>'+
     '<div><div class="um-name">'+esc(ME.name||"")+'</div><div class="um-mail">'+esc(ME.email||"")+'</div>'+
-    '<span class="um-role">'+(isAdmin?"Admin · all campuses":esc(cap(ME.role||"")))+pvLabel+"</span></div></div>"+
+    '<span class="um-role">'+(isAdmin?"Admin · all campuses":esc(cap(ME.role||"")))+pvLabel+"</span>"+
+    /* The role says what you may reach; the house says where you work. They
+       are different things, which is why an admin can read "all campuses" and
+       still have one home. */
+    (homeCampusName()?'<span class="um-home">'+ic('home')+esc(homeCampusName())+'</span>':'')+
+    "</div></div>"+
     '<button class="um-item" data-profile="1">'+ic("info")+'Profile</button>'+
     (isAdmin?'<button class="um-item" data-go="settings">'+ic("settings")+'App settings</button>'+
       '<button class="um-item" data-go="admin">'+ic("lock")+'Admin</button>'+
@@ -3378,9 +5088,18 @@ async function profilePage(){
         '<div class="kv"><span>Name</span><span><input id="pfName" class="pa-in" style="width:170px;padding:6px 9px;font-size:13px;text-align:right" value="'+esc(ME.name||'')+'"></span></div>'+
         '<div class="kv"><span>Email</span><span>'+esc(ME.email||'')+'</span></div>'+
         '<div class="kv"><span>Role</span><span>'+esc(roleLab)+'</span></div>'+
-        '<div class="kv" style="border-bottom:0"><span>Campus</span><span>'+esc(campusLab)+'</span></div>'+
-        '<button class="btn-primary" id="pfSaveName" style="margin-top:14px">Save name</button>'+
-        '<p style="font-size:12.5px;color:var(--text2);margin:14px 0 0;line-height:1.5">Role and campus are set by an administrator.</p>'+
+        '<div class="kv"><span>Campus</span><span>'+esc(campusLab)+'</span></div>'+
+        /* Yours to set, unlike the two rows above it. It fills a form in for
+           you — attendance, a new event, a room request — and changes nothing
+           about what you are allowed to see. */
+        '<div class="kv" style="border-bottom:0"><span>Home campus</span><span>'+
+          '<select id="pfHome" class="pa-in" style="width:190px;padding:6px 9px;font-size:13px">'+
+          '<option value="">— none —</option>'+
+          CAMPUSES.filter(c=>c.active||c.id===homeCampusId())
+            .map(c=>'<option value="'+esc(c.id)+'"'+(c.id===homeCampusId()?' selected':'')+'>'+esc(c.name)+'</option>').join('')+
+          '</select></span></div>'+
+        '<button class="btn-primary" id="pfSaveName" style="margin-top:14px">Save changes</button>'+
+        '<p style="font-size:12.5px;color:var(--text2);margin:14px 0 0;line-height:1.5">Role and campus are set by an administrator. Your home campus is yours — it fills in the campus when you submit attendance, add something to the board, or ask for a room.</p>'+
       '</div>'+
       '<div class="pf-side">'+
         '<div class="pa-card">'+
@@ -3434,9 +5153,21 @@ async function profilePage(){
     const v=document.getElementById('pfName').value.trim(),n=document.getElementById('pfNote');
     if(!v){n.textContent='Please enter a name.';return;}
     const {data:{user}}=await sb.auth.getUser();
-    const {error}=await sb.from('profiles').update({display_name:v}).eq('id',user.id);
+    const homeSel=document.getElementById('pfHome');
+    const home=homeSel?(homeSel.value||null):undefined;
+    const patch={display_name:v};
+    if(home!==undefined)patch.home_campus_id=home;
+    const {error}=await sb.from('profiles').update(patch).eq('id',user.id);
     if(error){n.textContent="Couldn't save — "+(error.message||'try again.');return;}
-    ME.name=v;ADMIN.profs=null;n.textContent='Name updated.';renderNav();
+    ME.name=v;
+    if(home!==undefined)ME.home_campus_id=home;
+    ADMIN.profs=null;
+    n.textContent='Saved.';
+    // The account menu carries the home campus, and Home's attendance card is
+    // titled with it, so both have to be redrawn rather than left stale.
+    renderNav();
+    try{umPop.innerHTML=umHtml();}catch(_){ }
+    if(S.section==='home')render();
   });
   document.getElementById('pfReset').addEventListener('click',async()=>{
     const n=document.getElementById('pfNote');
@@ -3503,10 +5234,27 @@ async function enterPortal(){
   if(!user)return;
   try{const {data:s}=await sb.auth.getSession();primeSharedSession(s&&s.session);}catch(e){}
   ME.email=user.email;
-  const {data:prof}=await sb.from("profiles").select("role,display_name,full_name,campus_id,avatar_url,app_access,campus_ids").eq("id",user.id).single();
-  if(prof){ME.role=prof.role;ME.name=prof.display_name||prof.full_name;ME.campus_id=prof.campus_id;ME.avatar_url=prof.avatar_url;ME.app_access=prof.app_access;ME.campus_ids=prof.campus_ids;}
+  const {data:prof}=await sb.from("profiles").select("role,display_name,full_name,campus_id,avatar_url,app_access,campus_ids,home_campus_id").eq("id",user.id).single();
+  if(prof){ME.role=prof.role;ME.name=prof.display_name||prof.full_name;ME.campus_id=prof.campus_id;ME.avatar_url=prof.avatar_url;ME.app_access=prof.app_access;ME.campus_ids=prof.campus_ids;ME.home_campus_id=prof.home_campus_id;}
+  /* The campus list, for everyone rather than only admins: the home campus is
+     shown in the account menu and picked on the Profile page, and both of
+     those are for every person, not just the ones who can open Admin. */
+  try{
+    const {data:cs}=await sb.from('campuses').select('id,name,active').order('name');
+    if(cs)CAMPUSES=cs;
+  }catch(_){ }
   if(!ME.name||ME.name.includes("@"))ME.name=prettyNameFromEmail(ME.email);
   if(ROLE_PRESET[ME.role])S.role=ROLE_PRESET[ME.role];
+  /* The calendar opens on your own campus, because that is what you came to
+     look at — "the default campus would be based off of the campus that
+     you're a part of" (Hannita, 8 Sep). Everything with no campus of its own
+     still shows, and All campuses is one click away. */
+  if(prof&&prof.campus_id){
+    try{
+      const {data:c}=await sb.from('campuses').select('name').eq('id',prof.campus_id).single();
+      if(c&&c.name)S.campus=CAMPUS_ALIAS[c.name.toLowerCase()]||c.name;
+    }catch(_){/* no campus name, no default — All campuses is a fine start */}
+  }
   loadTheme();
   const want=PATH_SECTION[location.pathname.replace(/\/+$/,"")||"/"];
   if(want&&allowedSections().includes(want))S.section=want;
@@ -3516,6 +5264,7 @@ async function enterPortal(){
   $g("gate").classList.add("hide");
   if(!BOOTED){
     BOOTED=true;await loadLive();render();
+    loadPriorities().then(()=>{if(S.section==='home')render();});
     // The shared calendar is extra context, so it loads after the page is
     // usable and re-renders when it lands. Awaiting it before the first paint
     // meant one slow Microsoft call left staff staring at an empty screen.
@@ -3533,6 +5282,7 @@ async function enterPortal(){
       if(Date.now()-lastLoad<60000)return;
       if(document.getElementById('drawer').classList.contains('open'))return;
       lastLoad=Date.now();await loadLive();render();
+      PRIOS_FOR=null;loadPriorities().then(()=>{if(S.section==='home')render();});
       loadCalendar().then(()=>render());
       loadFacilities().then(()=>render());
     });
@@ -3540,12 +5290,36 @@ async function enterPortal(){
 }
 (function initAuth(){
   if(!sb){gateNote("Can't reach the sign-in service — check your connection and reload the page.","err");return;}
-  const inviting=location.hash.includes("type=invite");
-  const recovering=location.hash.includes("type=recovery")||inviting;
-  if(recovering)gateMode("recover");
-  if(inviting)gateNote("Welcome to the Mosaic Portal! Choose a password to finish setting up your account.","ok");
-  sb.auth.onAuthStateChange(event=>{if(event==="PASSWORD_RECOVERY")gateMode("recover");});
-  sb.auth.getSession().then(({data})=>{if(data.session){primeSharedSession(data.session);if(!recovering)enterPortal();}});
+  /* A reset or invite link reaches us one of two ways. The old implicit flow
+     puts type=recovery or type=invite in the hash. PKCE puts ?code= in the
+     query string and, on its own, says NOTHING about which of the two it was —
+     which is why an invited person was being shown the recovery copy.
+     So: read the type wherever it turns up, and when there is none, use
+     wording true of either until supabase-js tells us. It fires
+     PASSWORD_RECOVERY for a recovery link and not for an invite, so the card
+     corrects itself a moment later.
+     (The lasting fix is on the email side: point the invite template at
+     ?token_hash=…&type=invite so the type is always there.) */
+  const hash=new URLSearchParams(location.hash.replace(/^#/,""));
+  const qs=new URLSearchParams(location.search);
+  /* ?t=invite is ours, set on redirect_to when the invite goes out, because a
+     PKCE link on its own says nothing about which kind it was. It is read
+     last, so a real type= from Supabase always wins.
+     Not done in the email template instead: the Invite user template is shared
+     with Metrics, which sends its own invites with its own redirect_to, and a
+     template that composes the URL itself would send everybody to the portal. */
+  const linkType=hash.get("type")||qs.get("type")||(qs.get("t")==="invite"?"invite":"")||"";
+  const hasPkceCode=qs.has("code");
+  const inviting=linkType==="invite";
+  const recovering=linkType==="recovery";
+  // Any of the three means the person is here to set a password, so don't
+  // drop them into the portal before they have one.
+  const settingPassword=inviting||recovering||hasPkceCode;
+  if(inviting)gateMode("invite");
+  else if(recovering)gateMode("recover");
+  else if(hasPkceCode)gateMode("setpass");
+  sb.auth.onAuthStateChange(event=>{if(event==="PASSWORD_RECOVERY"&&!inviting)gateMode("recover");});
+  sb.auth.getSession().then(({data})=>{if(data.session){primeSharedSession(data.session);if(!settingPassword)enterPortal();}});
 })();
 </script>
 </body>
