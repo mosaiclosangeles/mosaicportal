@@ -385,11 +385,10 @@ await step('the rail offers a role only the tabs Metrics will serve it',async()=
   console.log('       a leader asking for Report is framed on: '+r.framed);
   if(r.seen.admin.length!==6)throw new Error('an admin should see all six');
   if(r.seen.volunteer.join()!=='overview')throw new Error('a volunteer should see Overview only');
-  if(r.seen.leader.join()!=='overview,trends')throw new Error('a leader sees Overview and Trends, got '+r.seen.leader);
+  if(r.seen.leader.join()!=='overview,trends,history')throw new Error('a leader sees Overview, Trends and History, got '+r.seen.leader);
   if(r.seen.staff.includes('report'))throw new Error('Report is admin-only in Metrics');
-  // campus_pastor is not a role Metrics knows, so it must fall to the most
-  // restrictive, exactly as Metrics does — not to everything
-  if(r.seen.campus_pastor.join()!=='overview,trends')throw new Error('an unknown role should fall to the most restrictive, got '+r.seen.campus_pastor);
+  // campus_pastor is a role Metrics knows now (staff-level, campus-scoped)
+  if(r.seen.campus_pastor.join()!=='overview,campuses,kidsyouth,trends,history')throw new Error('a campus pastor sees the staff tabs, got '+r.seen.campus_pastor);
   if(r.framed!=='overview')throw new Error('the frame was sent to a view the rail does not offer: '+r.framed);
 });
 await step('and a click carries the view into the frame',async()=>{
