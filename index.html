@@ -1366,6 +1366,94 @@ async function loadFacilities(){
     EVENTS.sort((a,b)=>D(a.date)-D(b.date));
   }catch(_){/* the other four sources still stand on their own */}
 }
+/* FACILITIES WORK THAT IS SOMEBODY'S TO MOVE.
+   Hannita, 2 Oct: Home should show "the maintenance items that somebody is
+   overseeing for a request that they made … or anything related to a
+   facilities rental", so the portal and Facilities read as one app. Three
+   kinds, each with an owner who can be named without guessing:
+     repair  — a maintenance request you made or made for somebody, with the
+               step that is next on it (the same steps the Slack bot follows)
+     decide  — a room request waiting on a decision, for whoever may approve
+     rental  — an outside rental coming up inside six weeks with checklist
+               steps still open, for the same people
+   RLS decides what comes back, with the signed-in person's own session, as
+   it does for the calendar. A read that failed leaves FAC_WORK null and adds
+   nothing — an absence may only be claimed from a read that succeeded. */
+let FAC_WORK=null;
+async function loadFacWork(){
+  if(!sb||!ME.id)return;
+  try{
+    const [{data:reqs,error},{data:can}]=await Promise.all([
+      sb.from('v_fac_requests')
+        .select('id,ref,title,request_type,status,is_external,requested_by,requested_for,'+
+                'requester_name,requested_by_name,campus_name,space_name,block_start,created_at,'+
+                'task_count,task_done_count')
+        .in('status',['submitted','in_review','approved'])
+        .is('archived_at',null),
+      sb.rpc('can',{p_app:'facilities',p_perm:'approve'})]);
+    if(error||!reqs)return;
+    const maint=reqs.filter(r=>r.request_type==='maintenance');
+    let rep={};
+    if(maint.length){
+      const {data:rs,error:e2}=await sb.from('fac_repairs')
+        .select('request_id,pro_name,visit_at,visit_done_at,quote_at,quote_shared_at,quote_decision,'+
+                'work_at,work_done_at,paid_at')
+        .in('request_id',maint.map(r=>r.id));
+      if(e2)return;
+      (rs||[]).forEach(r=>{rep[r.request_id]=r;});
+    }
+    FAC_WORK={reqs,rep,approver:can===true};
+  }catch(_){FAC_WORK=null;}
+}
+/* The next step on a repair, in the words the bot uses in #buildings. Dates
+   are the visit or the work, whichever is next, so the row sorts by when
+   something actually happens. */
+function repairStep(q,r){
+  const now=new Date(), at=x=>x?new Date(x):null;
+  const visit=at(r&&r.visit_at), work=at(r&&r.work_at);
+  const on=d=>fmt(d);
+  if(!r||(!r.pro_name&&!visit&&!work))return {t:'Line someone up',d:null};
+  if(visit&&!r.visit_done_at&&!r.quote_at&&!work)
+    return visit>now?{t:'Visit on '+on(visit),d:visit}:{t:'Did they come?',d:visit};
+  if(!visit&&!r.quote_at&&!work)return {t:'Date for them to come',d:null};
+  if(!r.quote_at&&!work)return {t:'Quote to get',d:visit};
+  if(!work)return {t:'Date for the work',d:null};
+  if(!r.work_done_at)return work>now?{t:'Work on '+on(work),d:work}:{t:'Is the work done?',d:work};
+  if(!r.paid_at)return {t:'Paid yet?',d:work};
+  return null;
+}
+function facWorkRows(all){
+  const out=[];
+  if(!FAC_WORK)return out;
+  const {reqs,rep,approver}=FAC_WORK, me=ME.id, soon=addDays(TODAY,42);
+  const meta=q=>[q.ref,q.space_name||q.campus_name,q.requested_by_name||q.requester_name]
+    .filter(Boolean).join(' · ');
+  const row=(q,title,d)=>out.push({go:'facilities',item:q.id,title:title+' — '+(q.title||q.ref||''),
+    date:key(d?new Date(d):new Date(q.block_start||q.created_at)),meta:meta(q)});
+  reqs.forEach(q=>{
+    const mine=q.requested_by===me||q.requested_for===me;
+    if(q.request_type==='maintenance'){
+      const r=rep[q.id];
+      // A quote is an FYI, never a gate — but Alisah's buttons are on it, so
+      // it is the one repair step that is the approver's rather than yours.
+      if((all||approver)&&r&&r.quote_shared_at&&!r.quote_decision&&!mine)
+        return row(q,'Quote to look at',r.quote_at||r.quote_shared_at);
+      if(!(all||mine))return;
+      const s=repairStep(q,r);
+      if(s)row(q,s.t,s.d);
+      return;
+    }
+    if(!(all||approver))return;
+    if(q.status==='submitted'||q.status==='in_review')
+      return row(q,'Waiting on a decision',q.block_start);
+    const start=q.block_start?new Date(q.block_start):null;
+    if(q.is_external&&start&&start>=TODAY&&start<=soon&&(q.task_count||0)>(q.task_done_count||0)){
+      const left=q.task_count-q.task_done_count;
+      row(q,left+(left===1?' step':' steps')+' left',start);
+    }
+  });
+  return out;
+}
 function weekNum(d){const t=addDays(weekStartOf(d),4);const y0=new Date(t.getFullYear(),0,1);return Math.ceil(((t-y0)/86400000+1)/7);}
 const GOALS = [
   {k:'Sunday attendance average',v:412,t:450,hue:'var(--gathering)'},
@@ -1999,7 +2087,13 @@ function canCloseOut(e){
 }
 function waitingOnMe(){
   const out=[], all=seesAll(), mine=myOwnerNames(), seen=new Set();
-  if(!all&&!mine.length)return out;
+  // Facilities work is keyed on the person's id, not on a board name, so it
+  // still reaches somebody who owns nothing on the board.
+  if(!all&&!mine.length){
+    out.push(...facWorkRows(all));
+    out.sort((a,b)=>D(a.date)-D(b.date));
+    return out;
+  }
   const soon=addDays(TODAY,42);
   /* A weekly item is one board row drawn as many entries, so a flag on it
      would otherwise be listed once per occurrence — four rows saying the same
@@ -2021,6 +2115,7 @@ function waitingOnMe(){
   attendanceOutstanding().forEach(({ev})=>{
     if(all||ownedByMe(ev))add(ev,'attendance','Attendance not submitted — '+ev.title);
   });
+  out.push(...facWorkRows(all));
   out.sort((a,b)=>D(a.date)-D(b.date));
   return out;
 }
@@ -2383,7 +2478,8 @@ function pageEmbed(id){
   const want=S.deep&&S.deep[id];
   if(want){
     // comms takes either: an id opens that message, a date lands on its month
-    const k=id==='planning'?'item':id==='numbers'?'date'
+    // facilities takes ?request=<id>, and opens that request's panel
+    const k=id==='planning'?'item':id==='numbers'?'date':id==='facilities'?'request'
       :(/^\d{4}-\d{2}-\d{2}$/.test(want)?'on':'item');
     src+='&'+k+'='+encodeURIComponent(want);
   }
@@ -3972,7 +4068,11 @@ function openList(kind){
           const ev=EVENTS.find(x=>x.id===r.evId);
           const bId=(kind==='closeout'&&!r.noClose&&canCloseOut(ev))
             ?String(r.evId||'').replace(/^pm:/,'').replace(/:\d{4}-\d{2}-\d{2}$/,''):'';
-          return '<div class="lrow"><button class="row" data-ev="'+esc(r.evId)+'">'+
+          /* A facilities row opens the request itself in Facilities, where its
+             steps are — there is no portal card for a repair with no date. */
+          const act=r.go?'data-go="'+esc(r.go)+'" data-item="'+esc(r.item||'')+'"'
+                        :'data-ev="'+esc(r.evId)+'"';
+          return '<div class="lrow"><button class="row" '+act+'>'+
             '<span class="when">'+(r.date?fmt(D(r.date)):'')+'</span>'+
             '<span class="txt"><span class="name">'+esc(r.title||'')+'</span>'+
             '<span class="meta">'+esc(r.meta||'')+'</span></span></button>'+
@@ -4164,7 +4264,7 @@ function pageEvent(){
     '<div class="foot-links">'+
     ((card.parts||[e]).some(x=>x.type==='event')
       ?'<button data-go="planning" data-item="'+esc(pmId(boardPart(card,e)))+'">Edit in Planning</button>':'')+
-    (fac?'<button data-go="facilities">Open in Facilities</button>':'')+
+    (fac?'<button data-go="facilities" data-item="'+esc(String(fac.id).replace(/^fac:/,''))+'">Open in Facilities</button>':'')+
     // Day-scoped, and says so: it opens that date in the comms calendar rather
     // than claiming these sends belong to this event.
     '<button data-go="comms" data-item="'+esc(e.date||'')+'">Comms on this day</button>'+
@@ -4896,7 +4996,7 @@ function primeSharedSession(session){
   let raw=null;try{raw=localStorage.getItem(key);}catch(e){}
   try{mosaicAuthStorage.setItem(key,raw||JSON.stringify(session));}catch(e){}
 }
-const ME={email:null,role:null,name:null,preview:false,previewRole:null};
+const ME={id:null,email:null,role:null,name:null,preview:false,previewRole:null};
 let _previewRealCampus=null;  // admin's real campus_id, saved while previewing
 let _previewCampusId=null;    // campus being previewed as
 let _pickerRole='staff';      // selected role in the "View as" picker
@@ -5234,7 +5334,7 @@ async function enterPortal(){
   const {data:{user}}=await sb.auth.getUser();
   if(!user)return;
   try{const {data:s}=await sb.auth.getSession();primeSharedSession(s&&s.session);}catch(e){}
-  ME.email=user.email;
+  ME.email=user.email; ME.id=user.id;
   const {data:prof}=await sb.from("profiles").select("role,display_name,full_name,campus_id,avatar_url,app_access,campus_ids,home_campus_id").eq("id",user.id).single();
   if(prof){ME.role=prof.role;ME.name=prof.display_name||prof.full_name;ME.campus_id=prof.campus_id;ME.avatar_url=prof.avatar_url;ME.app_access=prof.app_access;ME.campus_ids=prof.campus_ids;ME.home_campus_id=prof.home_campus_id;}
   /* The campus list, for everyone rather than only admins: the home campus is
@@ -5273,6 +5373,7 @@ async function enterPortal(){
     // repaint when each one lands.
     loadCalendar().then(()=>{if(BOOTED)render();});
     loadFacilities().then(()=>{if(BOOTED)render();});
+    loadFacWork().then(()=>{if(BOOTED&&S.section==='home')render();});
     /* Come back to the tab and you get current data. There's no push from
        Outlook or the planning board, so a tab left open all afternoon would
        otherwise still show the morning. Refetch on return, at most once a
@@ -5286,6 +5387,7 @@ async function enterPortal(){
       PRIOS_FOR=null;loadPriorities().then(()=>{if(S.section==='home')render();});
       loadCalendar().then(()=>render());
       loadFacilities().then(()=>render());
+      loadFacWork().then(()=>{if(S.section==='home')render();});
     });
   }
 }

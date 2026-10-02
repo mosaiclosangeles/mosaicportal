@@ -166,6 +166,20 @@ reason the test stub now answers the `campuses` table: it returned `[]`, so
 `campusIdOf()` answered null for everything and every campus-keyed assertion
 passed by not running.
 
+**Facilities work is on "Waiting on you" too.** Hannita, 2 Oct: the repairs
+somebody is overseeing and the rentals coming up belong on Home with everything
+else. `loadFacWork()` reads open requests from `v_fac_requests` and their
+`fac_repairs` rows with the person's own session, and `facWorkRows()` turns them
+into three kinds: a **repair** you reported (`requested_by`/`requested_for` is
+your id — not a board name, so it reaches somebody who owns nothing on the
+board) with its next step in the bot's words; a room request **waiting on a
+decision**; and an outside **rental** inside six weeks with checklist steps
+open. The last two, and a repair quote nobody has answered, go to whoever
+`can('facilities','approve')`. A failed read leaves `FAC_WORK` null and adds
+nothing. These rows carry `go`/`item` rather than `evId`: a repair often has no
+date and no portal card, so the row opens the request itself in Facilities via
+`?request=<id>` — which "Open in Facilities" on an event card now sends too.
+
 **Location and time are not checked, and that is deliberate.** The board's drawer
 holds title, dates, time, speaker and description — there is no location field at
 all, and the mirror's `location` column is filled for 3 items of 261. Time exists

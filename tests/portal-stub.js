@@ -8,15 +8,31 @@ const BOOKINGS=[
   {id:'q1',ref:'EV-1011',title:'Reyes & Calloway — Wedding',request_type:'event',status:'approved',
    campus_name:'Los Angeles',space_name:'Rialto Auditorium',organization:'Reyes & Calloway',
    requester_name:'Marisol Reyes',requested_by_name:'Marisol Reyes',attendees:180,
+   is_external:true,requested_by:'u-marisol',task_count:5,task_done_count:2,
    block_start:iso(2,15),block_end:iso(2,23),archived_at:null},
   {id:'q2',ref:'FR-1013',title:'Youth band rehearsal',request_type:'facility_use',status:'submitted',
    campus_name:'Los Angeles',space_name:'Rialto Stage',organization:null,
    requester_name:'Hannita',requested_by_name:'Hannita',attendees:25,
+   is_external:false,requested_by:'me',task_count:0,task_done_count:0,
    block_start:iso(4,19),block_end:iso(4,22),archived_at:null},
   {id:'q3',ref:'MT-1004',title:'Plumbing / restrooms',request_type:'maintenance',status:'approved',
    campus_name:'Los Angeles',space_name:null,organization:null,
    requester_name:'Alisah',requested_by_name:'Alisah',attendees:null,
-   block_start:iso(1,8),block_end:iso(1,17),archived_at:null}
+   is_external:false,requested_by:'u-alisah',task_count:0,task_done_count:0,
+   block_start:iso(1,8),block_end:iso(1,17),archived_at:null},
+  // A repair the signed-in person reported, with nobody lined up yet.
+  {id:'q4',ref:'MX-1005',title:'AC not cooling in the green room',request_type:'maintenance',status:'submitted',
+   campus_name:'Los Angeles',space_name:'Green Room',organization:null,
+   requester_name:'Hannita',requested_by_name:'Hannita',attendees:null,
+   is_external:false,requested_by:'me',task_count:0,task_done_count:0,
+   block_start:iso(5,9),block_end:iso(5,10),archived_at:null}
+];
+/* The repair rows behind the maintenance requests. q3's quote has been shared
+   with Alisah and not answered, so it is the approver's to look at. */
+const REPAIRS=[
+  {request_id:'q3',pro_name:'Rafael (Westside Plumbing)',visit_at:iso(-3,9),visit_done_at:iso(-3,10),
+   quote_at:iso(-2,12),quote_shared_at:iso(-2,12),quote_decision:null,
+   work_at:null,work_done_at:null,paid_at:null}
 ];
 window.__BOOKINGS=BOOKINGS;
 
@@ -36,6 +52,7 @@ function builder(table){
   let rows = table==='v_fac_requests' ? BOOKINGS.slice()
            : table==='profiles' ? [PROFILE]
            : table==='campuses' ? CAMPUS_ROWS.slice()
+           : table==='fac_repairs' ? REPAIRS.slice()
            : [];
   const api={
     select(){return api;}, order(){return api;}, limit(){return api;},

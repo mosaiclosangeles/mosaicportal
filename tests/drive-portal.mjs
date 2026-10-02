@@ -119,7 +119,8 @@ await step('a card opens the list of what it is counting',async()=>{
   await p.waitForTimeout(300);
   const r=await p.evaluate(()=>({
     open:document.getElementById('cardWrap').classList.contains('open'),
-    rows:document.querySelectorAll('#cardBody .row[data-ev]').length,
+    // Facilities rows open the request in Facilities, so they carry data-go
+    rows:document.querySelectorAll('#cardBody .row[data-ev],#cardBody .row[data-go]').length,
     heading:(document.querySelector('#cardBody h1')||{}).textContent
   }));
   console.log('       card says '+counted+', list shows '+r.rows+' — "'+r.heading+'"');
@@ -158,7 +159,9 @@ await step("a campus's pending numbers reach that campus, not only the owner",as
   const r=await p.evaluate(()=>{
     const was=MY_OWNERS.slice();
     MY_OWNERS=['alisah'];                       // not an owner of anything seeded
-    const close=closeOutList(), wait=waitingOnMe();
+    // Board work only: the stub's signed-in id also reported a repair, and
+    // that one IS hers — it is asserted under "facilities work on Home".
+    const close=closeOutList(), wait=waitingOnMe().filter(x=>!x.go);
     MY_OWNERS=was;
     return {close:close.map(x=>x.title),wait:wait.map(x=>x.title),
             noClose:close.filter(x=>x.noClose).length};
@@ -230,6 +233,56 @@ await step("an admin's Home counts Mosaic, and says so",async()=>{
   if(!r.wait.some(x=>/Not mine/.test(x)))
     throw new Error("an admin is not shown what is waiting on other people");
   if(r.closeDupes)throw new Error('an admin gets the same Sunday on two cards');
+});
+/* FACILITIES WORK IS ON HOME TOO. Hannita, 2 Oct: the repairs somebody is
+   overseeing and the rentals coming up should show on Home with everything
+   else, so the portal and Facilities read as one app. A repair is yours by
+   requested_by / requested_for — your id, not a board name — so it reaches
+   somebody who owns nothing on the board. */
+console.log('--- facilities work on Home ---');
+await step('a repair you reported shows on Waiting, with its next step',async()=>{
+  const r=await p.evaluate(()=>{
+    const wasRole=ME.role, wasOwn=MY_OWNERS.slice(), wasW=FAC_WORK;
+    ME.role='staff'; ME.preview=false; MY_OWNERS=[];   // owns nothing on the board
+    FAC_WORK={...FAC_WORK,approver:false};
+    const t=waitingOnMe().map(x=>x.title+' @'+(x.go||'')+':'+(x.item||''));
+    ME.role=wasRole; MY_OWNERS=wasOwn; FAC_WORK=wasW;
+    return t;
+  });
+  console.log('       '+r.join(' | '));
+  if(!r.some(x=>/^Line someone up — AC not cooling.*@facilities:q4$/.test(x)))
+    throw new Error('the repair the person reported is not on their Waiting');
+  if(r.some(x=>/Plumbing|Wedding|Youth band/.test(x)))
+    throw new Error('somebody who cannot approve was shown other people\'s requests');
+});
+await step('an approver sees decisions, an open quote and a rental with steps left',async()=>{
+  const r=await p.evaluate(()=>{
+    const wasRole=ME.role, wasOwn=MY_OWNERS.slice();
+    ME.role='staff'; ME.preview=false; MY_OWNERS=[];
+    const t=waitingOnMe().map(x=>x.title);
+    ME.role=wasRole; MY_OWNERS=wasOwn;
+    return t;
+  });
+  console.log('       '+r.join(' | '));
+  if(!r.some(x=>/^Waiting on a decision — Youth band/.test(x)))throw new Error('no decision row');
+  if(!r.some(x=>/^Quote to look at — Plumbing/.test(x)))throw new Error('no quote row');
+  if(!r.some(x=>/^3 steps left — Reyes/.test(x)))throw new Error('no rental row');
+});
+await step('a facilities row opens that request in Facilities',async()=>{
+  await p.evaluate(()=>{ME.role='staff';MY_OWNERS=[];S.section='home';render();});
+  await p.click('.card[data-cardlist="waiting"]');
+  await p.waitForTimeout(300);
+  await p.click('#cardBody .row[data-go="facilities"][data-item="q4"]');
+  await p.waitForSelector('#embedHost iframe:not([hidden])',{timeout:6000});
+  const src=await p.getAttribute('#embedHost iframe:not([hidden])','src');
+  console.log('       '+src);
+  await p.evaluate(()=>{ME.role='admin';S.section='home';S.deep={};render();});
+  if(!/[?&]request=q4\b/.test(src))throw new Error('the frame was not sent ?request=q4');
+});
+await step('a failed facilities read claims nothing',async()=>{
+  const n=await p.evaluate(()=>{const w=FAC_WORK;FAC_WORK=null;
+    const c=waitingOnMe().filter(x=>x.go).length;FAC_WORK=w;return c;});
+  if(n)throw new Error(n+' facilities rows from a read that failed');
 });
 /* Admins close anything; an owner closes their own; nobody else is invited to.
    A UI rule, not a boundary — board_set_status() is reachable without a login
@@ -590,7 +643,8 @@ await step('a booking and a board item on one day become one card',async()=>{
 await step('the bookings actually land in the calendar',async()=>{
   const got=await p.evaluate(()=>EVENTS.filter(e=>e.type==='facility').map(e=>e.title+' ['+e.status+'] '+e.detail));
   got.forEach(g=>console.log('       '+g));
-  if(got.length!==3)throw new Error('expected 3 bookings, got '+got.length);
+  const want=await p.evaluate(()=>window.__BOOKINGS.length);
+  if(got.length!==want)throw new Error('expected '+want+' bookings, got '+got.length);
   if(!got.some(g=>/\[waiting\]/.test(g)))throw new Error('the submitted one should draw as waiting');
 });
 await step('they use the blocked window, not the event times',async()=>{
