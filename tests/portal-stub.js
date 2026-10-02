@@ -20,8 +20,9 @@ const BOOKINGS=[
    requester_name:'Alisah',requested_by_name:'Alisah',attendees:null,
    is_external:false,requested_by:'u-alisah',task_count:0,task_done_count:0,
    block_start:iso(1,8),block_end:iso(1,17),archived_at:null},
-  // A repair the signed-in person reported, with nobody lined up yet.
-  {id:'q4',ref:'MX-1005',title:'AC not cooling in the green room',request_type:'maintenance',status:'submitted',
+  // A repair the signed-in person reported, with nobody lined up yet. Same id
+  // and ref as the facilities harness's q12, so a screenshot can frame it.
+  {id:'q12',ref:'MX-1060',title:'Paint, drywall & general repair — Green room',request_type:'maintenance',status:'submitted',
    campus_name:'Los Angeles',space_name:'Green Room',organization:null,
    requester_name:'Hannita',requested_by_name:'Hannita',attendees:null,
    is_external:false,requested_by:'me',task_count:0,task_done_count:0,

@@ -250,7 +250,7 @@ await step('a repair you reported shows on Waiting, with its next step',async()=
     return t;
   });
   console.log('       '+r.join(' | '));
-  if(!r.some(x=>/^Line someone up — AC not cooling.*@facilities:q4$/.test(x)))
+  if(!r.some(x=>/^Line someone up — Paint.*@facilities:q12$/.test(x)))
     throw new Error('the repair the person reported is not on their Waiting');
   if(r.some(x=>/Plumbing|Wedding|Youth band/.test(x)))
     throw new Error('somebody who cannot approve was shown other people\'s requests');
@@ -272,12 +272,12 @@ await step('a facilities row opens that request in Facilities',async()=>{
   await p.evaluate(()=>{ME.role='staff';MY_OWNERS=[];S.section='home';render();});
   await p.click('.card[data-cardlist="waiting"]');
   await p.waitForTimeout(300);
-  await p.click('#cardBody .row[data-go="facilities"][data-item="q4"]');
+  await p.click('#cardBody .row[data-go="facilities"][data-item="q12"]');
   await p.waitForSelector('#embedHost iframe:not([hidden])',{timeout:6000});
   const src=await p.getAttribute('#embedHost iframe:not([hidden])','src');
   console.log('       '+src);
   await p.evaluate(()=>{ME.role='admin';S.section='home';S.deep={};render();});
-  if(!/[?&]request=q4\b/.test(src))throw new Error('the frame was not sent ?request=q4');
+  if(!/[?&]request=q12\b/.test(src))throw new Error('the frame was not sent ?request=q12');
 });
 await step('a failed facilities read claims nothing',async()=>{
   const n=await p.evaluate(()=>{const w=FAC_WORK;FAC_WORK=null;
