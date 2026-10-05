@@ -307,6 +307,33 @@ rather than `start_at`/`end_at`: a booking is the room being unavailable, and
 that includes setup and teardown — reading `start_at` would show a 2pm setup
 as a 5pm wedding and leave the room apparently free at three.
 
+## Update posts from any app use one template
+
+Hannita, 5 Oct 2026, after the first #buildings roundup from Tiff's Facilities
+Agent: *"Let's use this as a template for any update notifications from any
+app across the board."* So for any of these apps, whenever it tells its channel
+what has changed:
+
+- **It goes out only when Hannita says so**, as the app (never a person's
+  account), and she sees the draft first.
+- **It covers everything since that app's last update post**, not just the
+  latest change. Record each one it sends so the next knows where to start.
+- **It never announces something that is not live yet.**
+- **It has the same shape every time:**
+
+  > *What's new with <app>* — one friendly line: here's a roundup.
+  >
+  > *Things you can post here* (or *ask me*) — each as a bold label, a real
+  > example in italics written the way people actually talk, and one or two
+  > sentences on what happens next.
+  >
+  > *What I'll keep an eye on* — the follow-ups it does on its own.
+  >
+  > *What I'll stay out of* — what it deliberately does not answer, so nobody
+  > reads its silence as broken.
+  >
+  > *How can I support you better?* — ask for ideas, and say where to reply.
+
 ## Somebody already decided this — ask before undoing it
 
 Several people work on these apps, through several separate Claude sessions
