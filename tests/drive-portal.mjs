@@ -576,18 +576,25 @@ await step('comms attach by subject, not by the day they go out',async()=>{
 /* A link somebody actually made beats any guess, and stops the guessing.
    Without this, a comm named for one event could still drift onto another that
    happened to share its words. */
-await step('an explicit board_item_id wins over the guess',async()=>{
+await step('an explicit board_item_ids link wins over the guess',async()=>{
   const r=await p.evaluate(()=>{
     const camp={title:"Men's Camp",boardId:'k:men-s-camp',date:'2026-09-11'};
     const other={title:'Mens Ministry Night',boardId:'k:other',date:'2026-09-11'};
-    const linked={title:'Mens Text',date:'2026-09-05',boardItemId:'k:men-s-camp'};
+    const linked={title:'Mens Text',date:'2026-09-05',boardItemIds:['k:men-s-camp']};
+    // one message for two events: it belongs to both, wherever each sits in the list
+    const shared={title:'Fall invite',date:'2026-09-05',boardItemIds:['k:other','k:men-s-camp']};
+    const third ={title:'Mens Camp',boardId:'k:third',date:'2026-09-11'};
     const loose ={title:'Mens Camp',date:'2026-09-05'};
     return {
       linkedToIts:   commLink(linked,camp),
       linkedNotOther:commLink(linked,other),   // named for the Camp, so only the Camp
       looseInferred: commLink(loose,camp),
       // an explicit link ignores the window entirely — a debrief email months later
-      farOutside:    commLink({title:'x',date:'2027-04-01',boardItemId:'k:men-s-camp'},camp)
+      farOutside:    commLink({title:'x',date:'2027-04-01',boardItemIds:['k:men-s-camp']},camp),
+      sharedFirst:   commLink(shared,other),
+      sharedSecond:  commLink(shared,camp),
+      sharedNotThird:commLink(shared,third),  // same words as the comm's events, still not linked
+      emptyInferred: commLink({title:'Mens Camp',date:'2026-09-05',boardItemIds:[]},camp)
     };
   });
   console.log('       '+JSON.stringify(r));
@@ -595,6 +602,9 @@ await step('an explicit board_item_id wins over the guess',async()=>{
   if(r.linkedNotOther)throw new Error('a linked comm must not also drift onto another event');
   if(!r.looseInferred)throw new Error('an unlinked comm should still be inferred');
   if(!r.farOutside)throw new Error('an explicit link should not be bounded by the window');
+  if(!r.sharedFirst||!r.sharedSecond)throw new Error('a comm linked to several events should reach every one of them');
+  if(r.sharedNotThird)throw new Error('a linked comm must not drift onto an event outside its list');
+  if(!r.emptyInferred)throw new Error('an empty list means nobody has said, so the guess should still run');
 });
 /* Merge first, then filter. Backwards, a campus picker on another campus threw
    the board's record away before the merge could reach it, and Men's Camp
