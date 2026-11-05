@@ -70,12 +70,15 @@ apart again. `tests/drive-portal.mjs` asserts the three by name.
 subject.** `comm_events.board_item_id` now exists — the comms app sets it when
 a message is started from a planning card — and `commLink()` prefers it: set,
 it is the whole answer, with no window and no word matching, and the comm
-belongs to that item and no other. **A message can now be linked to several
-events** (5 Nov): `board_item_ids` (text[]) holds every one, `board_item_id`
-only the first, so the portal reads the array and a comm shows under each
-event in it — reading `board_item_id` would hide it from all but the first. That is the upstream fix the paragraph below
+belongs to that item and no other. That is the upstream fix the paragraph below
 was waiting for; it arrived on 10 Sep and this note was stale for a day, which
 is its own lesson about keeping the record with the code.
+
+**A message can now be linked to several events** (5 Nov): `board_item_ids`
+(text[]) holds every one and `board_item_id` only the first, so the portal reads
+the array and a comm shows under each event in it — reading `board_item_id`
+would hide it from all but the first. An empty array is "nobody has said", as
+null was, and falls through to the inference below.
 
 The inference still runs, and still matters, because nothing was backfilled:
 every message written before the column existed carries null, and guessing
