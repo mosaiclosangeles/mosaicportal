@@ -74,6 +74,12 @@ belongs to that item and no other. That is the upstream fix the paragraph below
 was waiting for; it arrived on 10 Sep and this note was stale for a day, which
 is its own lesson about keeping the record with the code.
 
+**A message can now be linked to several events** (5 Nov): `board_item_ids`
+(text[]) holds every one and `board_item_id` only the first, so the portal reads
+the array and a comm shows under each event in it — reading `board_item_id`
+would hide it from all but the first. An empty array is "nobody has said", as
+null was, and falls through to the inference below.
+
 The inference still runs, and still matters, because nothing was backfilled:
 every message written before the column existed carries null, and guessing
 which of those 242 rows belonged to which event would have attached the wrong
