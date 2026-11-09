@@ -1320,7 +1320,7 @@ async function loadCalendar(){
     CAL_ON=!!data.configured;
     (data.events||[]).forEach(e=>{
       EVENTS.push({id:e.id,date:e.date,dateEnd:(e.end&&e.end!==e.date)?e.end:null,
-        title:e.title,type:e.kind==='away'?'away':'other',status:'done',
+        title:e.title,type:e.kind==='away'?'away':'other',status:'done',fromCalendar:true,
         detail:e.where||'',owner:'',campus:'',link:e.link||''});
     });
   }catch(_){/* the calendar is extra context; the board still stands on its own */}
@@ -1861,6 +1861,14 @@ function statusStyle(e){
 }
 // 'done' reads Complete, matching the comms app's own label (Loyda, 9 Nov)
 const STATUS_LABEL={done:'Complete',scheduled:'Scheduled',waiting:'Waiting on someone',drafting:'Drafting'};
+/* The shared calendar files every Outlook entry as 'done' — that is its solid
+   fill, not a claim that it happened — and reads up to 300 days ahead. Under
+   "Complete" that would call next month's meeting finished, so its words follow
+   the clock: anything not yet over is Scheduled. Codex on #10. */
+function statusLabel(e){
+  if(e&&e.fromCalendar&&e.status==='done'&&D(e.dateEnd||e.date)>=TODAY)return STATUS_LABEL.scheduled;
+  return (e&&STATUS_LABEL[e.status])||'';
+}
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function lastSunday(){let d=addDays(TODAY,0);while(d.getDay()!==0)d=addDays(d,-1);return d;}
 function metricFor(dt){return METRICS[key(dt)]||null;}
@@ -4150,7 +4158,7 @@ function pageEvent(){
       (e.phase?'<span class="tag" style="background:var(--milestone-t);color:var(--milestone-d)">'+esc(e.phase)+'</span>':'')+
       // The board says "On track"; STATUS_LABEL speaks comms ("Complete"), which
       // read as nonsense on a gathering that has simply happened.
-      '<span class="tag">'+esc(e.boardStatus||STATUS_LABEL[e.status])+'</span>'+
+      '<span class="tag">'+esc(e.boardStatus||statusLabel(e))+'</span>'+
       (e.boardType?'<span class="tag">'+esc(e.boardType)+'</span>':'')+
       (e.level?'<span class="tag" style="background:none;color:var(--text3);font-weight:500">'+esc(e.level)+'</span>':'')+
       (days>0?'<span style="font-size:12.5px;color:var(--text2);float:right;padding-top:4px">in '+days+(days===1?' day':' days')+'</span>'
@@ -4198,7 +4206,7 @@ function pageEvent(){
         '<span class="txt"><span class="name">'+esc(c.title)+'</span><span class="meta">'+esc(c.detail||'')+'</span></span>'+
         '<span class="tag" style="background:'+(c.status==='waiting'?'var(--red-t)':c.status==='done'?'var(--session-t)':'var(--fill)')+
         ';color:'+(c.status==='waiting'?'var(--red-d)':c.status==='done'?'var(--session-d)':'#4a4a4a')+
-        '">'+STATUS_LABEL[c.status]+'</span></button>';
+        '">'+statusLabel(c)+'</span></button>';
   if(commsForEvent.length)
     h+='<div class="eyebrow">COMMS FOR THIS EVENT · '+commsForEvent.length+'</div>'+
        commsForEvent.map(commsRow).join('');
@@ -4295,7 +4303,7 @@ function hoverCardHTML(e){
     : pretty(d);
   const f=partFacts(e), rows=[];
   rows.push(['When',when]);
-  if(e.type!=='facility')rows.push(['Status',esc(STATUS_LABEL[e.status]||'')]);
+  if(e.type!=='facility')rows.push(['Status',esc(statusLabel(e))]);
   // The room decision, from whichever part of this card is the booking.
   if(f.facility){
     const st=f.facility.status;
@@ -4395,7 +4403,7 @@ function dayDrawer(k){
     '<div style="margin-top:16px">'+evs.map(e=>'<button class="row" data-ev="'+e.id+'">'+
     '<span class="swatch" style="background:'+palOf(e).hue+';margin-top:6px"></span>'+
     '<span class="txt"><span class="name">'+esc(e.title)+partDots(e)+'</span><span class="meta">'+esc(placeOf(e.detail))+'</span></span>'+
-    '<span class="tag">'+STATUS_LABEL[e.status]+'</span></button>').join('')+'</div>');
+    '<span class="tag">'+statusLabel(e)+'</span></button>').join('')+'</div>');
 }
 function newDrawer(){
   openDrawer('<div class="sub" style="margin-top:8px">The portal is read-only in v1. It reads and arranges; the four apps stay the systems of record.</div>'+
