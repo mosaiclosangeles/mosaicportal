@@ -1859,7 +1859,8 @@ function statusStyle(e){
   if(e.status==='waiting')   return 'background:var(--surface);color:'+t.deep+';border:1px dashed '+t.hue;
   return 'border-left-color:'+t.hue+';background:#fcfcfb;color:'+t.deep+';opacity:.8';
 }
-const STATUS_LABEL={done:'Sent',scheduled:'Scheduled',waiting:'Waiting on someone',drafting:'Drafting'};
+// 'done' reads Complete, matching the comms app's own label (Loyda, 9 Nov)
+const STATUS_LABEL={done:'Complete',scheduled:'Scheduled',waiting:'Waiting on someone',drafting:'Drafting'};
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function lastSunday(){let d=addDays(TODAY,0);while(d.getDay()!==0)d=addDays(d,-1);return d;}
 function metricFor(dt){return METRICS[key(dt)]||null;}
@@ -2371,7 +2372,7 @@ function campusPicker(){
 }
 function legend(){
   return '<div class="legend">'+
-   '<span><i style="background:'+SOURCES.mosaic.solid+'"></i>Sent</span>'+
+   '<span><i style="background:'+SOURCES.mosaic.solid+'"></i>Complete</span>'+
    '<span><i style="background:'+SOURCES.mosaic.tint+';border:1px solid '+SOURCES.mosaic.hue+'"></i>Scheduled</span>'+
    '<span><i style="background:#fff;border:1px dashed '+SOURCES.mosaic.hue+'"></i>Waiting on someone</span>'+
    '<span><i style="background:#fcfcfb;border:1px solid var(--grid)"></i>Drafting</span>'+
@@ -4147,7 +4148,7 @@ function pageEvent(){
   let h='<div style="margin-bottom:6px">'+
       '<span class="tag" style="background:'+t.tint+';color:'+t.deep+'">'+t.label+'</span>'+
       (e.phase?'<span class="tag" style="background:var(--milestone-t);color:var(--milestone-d)">'+esc(e.phase)+'</span>':'')+
-      // The board says "On track"; STATUS_LABEL speaks comms ("Sent"), which
+      // The board says "On track"; STATUS_LABEL speaks comms ("Complete"), which
       // read as nonsense on a gathering that has simply happened.
       '<span class="tag">'+esc(e.boardStatus||STATUS_LABEL[e.status])+'</span>'+
       (e.boardType?'<span class="tag">'+esc(e.boardType)+'</span>':'')+
