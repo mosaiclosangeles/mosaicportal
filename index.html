@@ -1319,8 +1319,14 @@ async function loadCalendar(){
     if(error||!data||!data.ok)return;
     CAL_ON=!!data.configured;
     (data.events||[]).forEach(e=>{
-      EVENTS.push({id:e.id,date:e.date,dateEnd:(e.end&&e.end!==e.date)?e.end:null,
-        title:e.title,type:e.kind==='away'?'away':'other',status:'done',fromCalendar:true,
+      /* Done once it is over, scheduled until then: the same rule the board's
+         own items follow. Every entry used to be 'done', which drew next
+         month's meetings with the solid fill the legend calls Complete.
+         Codex on #10. */
+      const dateEnd=(e.end&&e.end!==e.date)?e.end:null;
+      EVENTS.push({id:e.id,date:e.date,dateEnd,
+        title:e.title,type:e.kind==='away'?'away':'other',
+        status:D(dateEnd||e.date)<TODAY?'done':'scheduled',
         detail:e.where||'',owner:'',campus:'',link:e.link||''});
     });
   }catch(_){/* the calendar is extra context; the board still stands on its own */}
@@ -1861,14 +1867,7 @@ function statusStyle(e){
 }
 // 'done' reads Complete, matching the comms app's own label (Loyda, 9 Nov)
 const STATUS_LABEL={done:'Complete',scheduled:'Scheduled',waiting:'Waiting on someone',drafting:'Drafting'};
-/* The shared calendar files every Outlook entry as 'done' — that is its solid
-   fill, not a claim that it happened — and reads up to 300 days ahead. Under
-   "Complete" that would call next month's meeting finished, so its words follow
-   the clock: anything not yet over is Scheduled. Codex on #10. */
-function statusLabel(e){
-  if(e&&e.fromCalendar&&e.status==='done'&&D(e.dateEnd||e.date)>=TODAY)return STATUS_LABEL.scheduled;
-  return (e&&STATUS_LABEL[e.status])||'';
-}
+function statusLabel(e){return (e&&STATUS_LABEL[e.status])||'';}
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function lastSunday(){let d=addDays(TODAY,0);while(d.getDay()!==0)d=addDays(d,-1);return d;}
 function metricFor(dt){return METRICS[key(dt)]||null;}

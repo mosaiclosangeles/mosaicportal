@@ -576,26 +576,34 @@ await step('comms attach by subject, not by the day they go out',async()=>{
 /* A link somebody actually made beats any guess, and stops the guessing.
    Without this, a comm named for one event could still drift onto another that
    happened to share its words. */
-/* "Complete" means it is over. The shared calendar files every Outlook entry
-   as 'done' for its fill and reads 300 days ahead, so a meeting next month
-   must not read as finished. Codex on #10. */
-await step('a calendar entry still ahead reads Scheduled, not Complete',async()=>{
-  const r=await p.evaluate(()=>{
+/* "Complete" means it is over. The shared calendar reads 300 days ahead, and
+   every Outlook entry used to arrive as 'done', which drew next month's
+   meetings with the solid fill the legend calls Complete and labelled them
+   so. Status now follows the clock, so the fill and the words agree.
+   Codex on #10, twice. */
+await step('a calendar entry still ahead is Scheduled, not Complete',async()=>{
+  const r=await p.evaluate(async()=>{
     const k=d=>{const x=new Date(TODAY);x.setDate(x.getDate()+d);return x.toISOString().slice(0,10);};
-    return {
-      future:   statusLabel({fromCalendar:true,status:'done',date:k(30)}),
-      multiDay: statusLabel({fromCalendar:true,status:'done',date:k(-2),dateEnd:k(2)}),
-      past:     statusLabel({fromCalendar:true,status:'done',date:k(-30)}),
-      comm:     statusLabel({type:'comms',status:'done',date:k(30)}),
-      drafting: statusLabel({type:'comms',status:'drafting',date:k(3)})
-    };
+    const fns=sb.functions, realInvoke=fns.invoke, before=EVENTS.length;
+    fns.invoke=async()=>({data:{ok:true,configured:true,events:[
+      {id:'t:future',date:k(30),title:'Future meeting'},
+      {id:'t:running',date:k(-2),end:k(2),title:'Running retreat',kind:'away'},
+      {id:'t:past',date:k(-30),title:'Past meeting'}]}});
+    try{await loadCalendar();}finally{fns.invoke=realInvoke;}
+    const by=id=>EVENTS.find(e=>e.id===id);
+    const out={};
+    ['t:future','t:running','t:past'].forEach(id=>{const e=by(id);out[id]=e?[e.status,statusLabel(e),statusStyle(e)]:null;});
+    EVENTS.splice(before);
+    out.comm=statusLabel({type:'comms',status:'done'});
+    return out;
   });
   console.log('       '+JSON.stringify(r));
-  if(r.future!=='Scheduled')throw new Error('a meeting next month must not read as Complete');
-  if(r.multiDay!=='Scheduled')throw new Error('an entry still running is not Complete yet');
-  if(r.past!=='Complete')throw new Error('a past calendar entry reads Complete');
+  if(!r['t:future']||r['t:future'][0]!=='scheduled'||r['t:future'][1]!=='Scheduled')
+    throw new Error('a meeting next month must be Scheduled, in its fill and its words');
+  if(r['t:running'][0]!=='scheduled')throw new Error('an entry still running is not Complete yet');
+  if(r['t:past'][0]!=='done'||r['t:past'][1]!=='Complete')throw new Error('a past calendar entry is Complete');
+  if(r['t:future'][2]===r['t:past'][2])throw new Error('future and past entries should not share a fill');
   if(r.comm!=='Complete')throw new Error('a comm marked done reads Complete, as the comms app does');
-  if(r.drafting!=='Drafting')throw new Error('other statuses keep their own label');
 });
 await step('an explicit board_item_ids link wins over the guess',async()=>{
   const r=await p.evaluate(()=>{
