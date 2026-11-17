@@ -594,7 +594,7 @@ select{font:inherit;font-size:13px;padding:7px 10px;border:1px solid var(--hairl
 .ne-toggle-label{display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:500;cursor:pointer}
 .ne-toggle-label input[type=checkbox]{width:15px;height:15px;cursor:pointer;accent-color:var(--gathering);flex-shrink:0}
 .ne-info{display:flex;align-items:flex-start;gap:8px;font-size:12px;color:var(--text2);margin-top:8px;padding:9px 11px;background:var(--fill);border-radius:8px;line-height:1.4}
-.ne-info svg{flex-shrink:0;margin-top:1px;opacity:.55}
+.ne-info svg{flex-shrink:0;margin-top:1px;opacity:.55;width:15px;height:15px}
 html.dark .ne-section-sub,.dark .ne-section-sub{background:var(--fill)}
 </style>
 </head>
@@ -2684,7 +2684,7 @@ async function openNewEventDrawer(){
         '<textarea id="neFacNotes" class="pa-in" rows="2" style="resize:vertical"></textarea></div>'+
     '</div>'+
     '<div class="ne-info">'+ic('calendar')+'<span>This event will appear in Calendars once added to the planning board.</span></div>'+
-    '<div class="ne-info" style="opacity:.6">'+ic('numbers')+'<span>Attendance can be submitted in Metrics after the event.</span></div>'+
+    '<div class="ne-info" style="opacity:.6">'+ic('chart')+'<span>Attendance can be submitted in Metrics after the event.</span></div>'+
     '<div id="neErr" style="color:var(--magenta);font-size:13px;margin-top:8px;min-height:18px"></div>'+
     '<button class="btn-primary" id="neSubmit" style="margin-top:14px;width:100%">Add to planning board</button>'
   );
