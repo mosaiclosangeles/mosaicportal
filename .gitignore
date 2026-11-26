@@ -2,3 +2,5 @@
 tests/portal.html
 # Screenshots drive-portal.mjs writes on each run
 tests/*.png
+# Python bytecode from scripts/
+__pycache__/

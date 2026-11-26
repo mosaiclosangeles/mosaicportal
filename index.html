@@ -2900,7 +2900,8 @@ function pageAdmin(){
     '<button class="btn-primary" data-newuser="1">New user</button></div>'+tabs+paNoticeHTML();
   if(!ADMIN.profs&&!ADMIN.err){loadAdmin();return head+'<div class="empty">Loading users…</div>';}
   if(ADMIN.err)return head+'<div class="banner">'+ic('info')+'<div>Couldn\'t load users — '+esc(ADMIN.err)+'</div></div>';
-  const archived=ADMIN.profs.filter(p=>p.archived_at).filter(p=>!ADMIN.q.trim()||adminName(p).toLowerCase().includes(ADMIN.q.trim().toLowerCase()));
+  const shownInDir=new Set((ADMIN.dir||[]).map(d=>d.profile_id).filter(Boolean));
+  const archived=ADMIN.profs.filter(p=>p.archived_at&&!shownInDir.has(p.id)).filter(p=>!ADMIN.q.trim()||adminName(p).toLowerCase().includes(ADMIN.q.trim().toLowerCase()));
   let rows=dirFilter(dirRows());
   const total=dirRows().length;
   const statusSel='<select id="paStatus"><option value="all">Every status</option>'+
@@ -2942,6 +2943,8 @@ const DIR_STATUS={
   invite_sent:{label:'Invite sent',cls:'sent'},
   invite_saved:{label:'Invite saved',cls:'saved'},
   no_invite:{label:'No invite',cls:'none'},
+  // Ex-staff: their portal account is archived. Never offered an invite.
+  archived:{label:'Archived',cls:'nodir'},
   not_in_directory:{label:'Not in directory',cls:'nodir'}
 };
 function dirPill(k){const st=DIR_STATUS[k]||DIR_STATUS.no_invite;return '<span class="sd-pill '+st.cls+'" data-status="'+k+'">'+st.label+'</span>';}
@@ -2955,11 +2958,18 @@ function dirRows(){
     const pv=pend.find(v=>v.id===d.pending_invite_id)||pend.find(v=>dirEmails(d).includes(String(v.email).toLowerCase()))||null;
     return {kind:'dir',key:'d:'+d.id,name:d.name||d.email||'—',d,prof,pend:pv,status:d.activation||'no_invite',role:(prof&&prof.role)||d.role||null};
   });
-  profs.filter(p=>!linked.has(p.id)&&!known.has(String(p.full_name||'').toLowerCase()))
-    .forEach(p=>out.push({kind:'prof',key:'p:'+p.id,name:adminName(p),d:null,prof:p,pend:null,status:'not_in_directory',role:p.role}));
+  /* Every live account no directory row links — including a person's SECOND
+     account, whose email the directory already knows. Hiding that one hid an
+     account that can still sign in (portal #12 review, finding 6). */
+  profs.filter(p=>!linked.has(p.id)).forEach(p=>{
+    const em=String(p.full_name||'').toLowerCase();
+    const owner=known.has(em)?dir.find(d=>dirEmails(d).includes(em)):null;
+    out.push({kind:'prof',key:'p:'+p.id,name:adminName(p),d:null,prof:p,pend:null,status:'not_in_directory',role:p.role,
+      second:owner?(owner.name||owner.email):null});
+  });
   pend.filter(v=>!known.has(String(v.email).toLowerCase()))
     .forEach(v=>out.push({kind:'pend',key:'i:'+v.id,name:v.name||v.email,d:null,prof:null,pend:v,status:'invite_saved',role:v.role}));
-  const rank={signed_in:0,invite_sent:1,invite_saved:2,no_invite:3,not_in_directory:4};
+  const rank={signed_in:0,invite_sent:1,invite_saved:2,no_invite:3,not_in_directory:4,archived:5};
   return out.sort((a,b)=>String(a.name).localeCompare(String(b.name))||(rank[a.status]-rank[b.status]));
 }
 function dirFilter(rows){
@@ -2988,7 +2998,9 @@ function dirTags(list){
 function dirRowHTML(r){
   const d=r.d, p=r.prof, v=r.pend;
   const open=r.kind==='dir'?'data-dir="'+esc(d.id)+'"':r.kind==='prof'?'data-user="'+esc(p.id)+'"':'data-pinv="'+esc(v.id)+'"';
-  const sub=d?[(d.nicknames||[]).join(', '),d.title].filter(Boolean).join(' · '):(r.kind==='prof'?'Portal account — not in the directory yet':'Saved invite — not in the directory yet');
+  const sub=d?[(d.nicknames||[]).join(', '),d.title].filter(Boolean).join(' · ')
+    :r.second?'Second portal account for '+r.second+' — keep both until an admin decides'
+    :(r.kind==='prof'?'Portal account — not in the directory yet':'Saved invite — not in the directory yet');
   const mail=d?'<div class="sd-mail">'+esc(d.email||'—')+'</div>'+(d.emails_secondary||[]).map(e=>'<div class="sd-mail2">'+esc(e)+'</div>').join('')
             :'<div class="sd-mail">'+esc((v&&v.email)||(p&&String(p.full_name||'').includes('@')?p.full_name:'')||'—')+'</div>';
   const slack=d?(d.slack_user_id?'<div class="sd-sub">Slack linked</div>':'<div class="sd-sub">Not on Slack</div>'):'';
@@ -3012,12 +3024,23 @@ function dirRowHTML(r){
     '<td>'+role+'</td>'+
     '<td style="text-align:right;white-space:nowrap">'+act+'</td></tr>';
 }
-/* Save an invite for a directory person with none — the same pending_invites
-   row "Save for later" writes, role 'staff' (Hannita, 26 Nov). No email. */
+/* Save an invite for a directory person with none. The DATABASE decides
+   whether they may have one — staff_directory_save_invite(), the same check
+   the seed's last step runs — because only it can see whether their email
+   already has an account (an archived profile, a Houses login, a second
+   address). Saved only, role 'staff' (Hannita, 26 Nov). No email. */
+const SAVE_INVITE_SAYS={
+  has_account:'already has an account under one of their emails — no invite saved. Open their account, or merge the rows.',
+  archived:'is archived in the directory — no invite saved.',
+  no_email:'has no email in the directory — add one first.',
+  already_saved:'already has a saved invite.',
+  not_found:'is no longer in the directory.'
+};
 async function dirSaveInvite(id){
-  const d=(ADMIN.dir||[]).find(x=>x.id===id);if(!d||!d.email)return;
-  const {error}=await sb.from('pending_invites').upsert({email:d.email,name:d.name,role:'staff',campus_id:d.campus_id||null},{onConflict:'email'});
+  const d=(ADMIN.dir||[]).find(x=>x.id===id);if(!d)return;
+  const {data,error}=await sb.rpc('staff_directory_save_invite',{p_id:id});
   if(error){paNote("Couldn't save the invite — "+(error.message||'please try again.'),true);return;}
+  if(data!=='saved'){paNote((d.name||d.email)+' '+(SAVE_INVITE_SAYS[data]||('— not saved ('+data+').')),true);return;}
   ADMIN.profs=null;paNote('Invite saved for '+d.email+' — no email sent. Press Send invite when you\'re ready.');
 }
 /* One person, every field, editable by an admin. Reads the raw row (an

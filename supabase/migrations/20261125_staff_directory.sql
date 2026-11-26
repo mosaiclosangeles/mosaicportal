@@ -317,8 +317,10 @@ alter table public.staff_directory_staging enable row level security;
 revoke all on public.staff_directory_staging from anon, authenticated;
 
 -- ------------------------------------------------------- the view
--- status: 'active' = has signed in at least once; otherwise 'not activated'.
+-- status: 'active' = has signed in at least once; 'archived' = their portal
+-- account is archived (ex-staff); otherwise 'not activated'.
 -- activation says where in between:
+--   archived      the linked profile is archived — NOT someone to invite
 --   signed_in     profile + auth.users.last_sign_in_at
 --   invite_sent   auth user/profile exists, never signed in
 --   invite_saved  a pending_invites row for any of their emails (no email sent)
@@ -346,8 +348,10 @@ select d.id,
        coalesce(p.role, d.role, pi.role)                              as role,
        d.profile_id,
        pi.id                                                          as pending_invite_id,
-       case when u.last_sign_in_at is not null then 'active' else 'not activated' end as status,
-       case when u.last_sign_in_at is not null then 'signed_in'
+       case when p.archived_at is not null or ap.id is not null then 'archived'
+            when u.last_sign_in_at is not null then 'active' else 'not activated' end as status,
+       case when p.archived_at is not null or ap.id is not null then 'archived'
+            when u.last_sign_in_at is not null then 'signed_in'
             when p.id is not null              then 'invite_sent'
             when pi.id is not null             then 'invite_saved'
             else 'no_invite' end                                      as activation,
@@ -356,8 +360,13 @@ select d.id,
        d.needs_review,
        d.updated_at
   from public.staff_directory d
-  left join public.profiles p  on p.id = d.profile_id and p.archived_at is null
+  left join public.profiles p  on p.id = d.profile_id
   left join auth.users u       on u.id = p.id
+  -- An archived account is never linked (the link skips archived profiles),
+  -- so look for one under any of the row's emails as well.
+  left join lateral (select p2.id from auth.users u2 join public.profiles p2 on p2.id = u2.id
+                      where d.profile_id is null and p2.archived_at is not null
+                        and lower(u2.email) = any(staff_directory_all_emails(d)) limit 1) ap on true
   left join lateral (select x.id, x.role from public.pending_invites x
                       where lower(x.email) = any(staff_directory_all_emails(d))
                       order by (lower(x.email) = d.email) desc limit 1) pi on true
@@ -366,9 +375,11 @@ select d.id,
  where d.archived_at is null;
 
 -- The portal reads the view through this function (auth.users is not readable
--- by authenticated). Signed-in staff only. A non-admin sees colleagues
--- without their secondary (often personal) emails, secondary Slack ids or the
--- review note; their own row comes back whole.
+-- by authenticated). Staff read everyone; anyone else — a Houses-role login —
+-- still gets their OWN row, so "you are not in the directory" is only ever
+-- said when it is true (portal #12 review, finding 8). A non-admin sees
+-- colleagues without their secondary (often personal) emails, secondary Slack
+-- ids or the review note; their own row comes back whole.
 create or replace function public.staff_directory_list()
 returns setof public.staff_directory_v
 language sql stable security definer set search_path to 'public'
@@ -383,13 +394,50 @@ as $$
          case when public.is_admin() then v.needs_review end,
          v.updated_at
     from public.staff_directory_v v
-   where public.staff_directory_can_read()
+   where public.staff_directory_can_read() or (auth.uid() is not null and v.profile_id = auth.uid())
    order by v.name
 $$;
 
 revoke all on public.staff_directory_v from anon, authenticated;
 revoke all on function public.staff_directory_list() from public, anon;
 grant execute on function public.staff_directory_list() to authenticated;
+
+-- ------------------------------------------------------- saving an invite
+-- The one place that decides whether a directory person may get a saved
+-- invite: Admin → Users' "Save invite" calls it, and so does the seed's last
+-- step, so the two cannot disagree (portal #12 review, finding 5). Saved
+-- only — pending_invites, role 'staff' (Hannita, 26 Nov); nothing is emailed.
+-- Refuses anyone archived, anyone without an email, and anyone who already
+-- has an auth account under ANY of their emails (an archived profile, a
+-- Houses login, a second address) — an invite for them would make a second
+-- account or fail at Send.
+create or replace function public.staff_directory_save_invite(p_id uuid)
+returns text language plpgsql security definer set search_path to 'public'
+as $$
+declare d staff_directory;
+begin
+  if auth.uid() is not null and not public.is_admin() then
+    raise exception 'Only an admin can save an invite' using errcode = '42501';
+  end if;
+  select * into d from staff_directory where id = p_id;
+  if not found then return 'not_found'; end if;
+  if d.archived_at is not null then return 'archived'; end if;
+  if d.email is null then return 'no_email'; end if;
+  if d.profile_id is not null
+     or exists (select 1 from auth.users u where lower(u.email) = any(staff_directory_all_emails(d))) then
+    return 'has_account';
+  end if;
+  if exists (select 1 from pending_invites pi where lower(pi.email) = any(staff_directory_all_emails(d))) then
+    return 'already_saved';
+  end if;
+  insert into pending_invites (email, name, role, campus_id)
+  values (d.email, d.full_name, 'staff', d.primary_campus_id)
+  on conflict (email) do nothing;
+  return 'saved';
+end $$;
+
+revoke all on function public.staff_directory_save_invite(uuid) from public, anon;
+grant execute on function public.staff_directory_save_invite(uuid) to authenticated;
 
 -- ------------------------------------------------------- who_is
 -- The lookup every agent makes first: who is asking? By Slack user id (the

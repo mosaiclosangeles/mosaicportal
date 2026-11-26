@@ -51,3 +51,6 @@ drawer, Profile → "You in the directory") against the stub's made-up people.
 The database side — what a non-admin may change, the one-person-one-row rule,
 `who_is()` — is checked by `../supabase/tests/staff_directory_test.sql`, run
 against a throwaway local Postgres; `staff_directory_stubs.sql` says how.
+`staff_directory_seed_test.sql` and `staff_directory_golive_test.sql` cover
+the seed and the go-live step the same way, and `../scripts/test_loaders.py`
+the two loader scripts.

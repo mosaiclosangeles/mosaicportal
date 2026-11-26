@@ -126,4 +126,55 @@ do $$ begin
 end $$;
 reset role;
 
+-- Finding 5: a person whose portal account is archived reads 'archived',
+-- not 'no_invite', and nothing saves an invite for anyone who has an account.
+insert into auth.users (id, email, last_sign_in_at) values
+  ('00000000-0000-0000-0000-000000000004','gone.staff@example.org', now() - interval '1 year'),
+  ('00000000-0000-0000-0000-000000000005','houses.only@example.org', now()),
+  ('00000000-0000-0000-0000-000000000006','alt.only@example.org', null);
+insert into profiles (id, full_name, role, archived_at) values
+  ('00000000-0000-0000-0000-000000000004','Gone Staff','staff', now()),
+  ('00000000-0000-0000-0000-000000000005','Houses Person','houses', null);
+insert into staff_directory (email, full_name, source) values
+  ('gone.staff@example.org','Gone Staff','corrections'),
+  ('houses.only@example.org','Houses Person','corrections');
+-- An auth account under a SECONDARY email, no profile (e.g. a Houses login).
+insert into staff_directory (email, emails_secondary, full_name, source) values
+  ('main.addr@example.org','{alt.only@example.org}','Alt Only','corrections');
+do $$ declare a text; r text; begin
+  select activation into a from staff_directory_v where email = 'gone.staff@example.org';
+  if a is distinct from 'archived' then raise exception 'finding 5: an archived account reads %', a; end if;
+  r := staff_directory_save_invite((select id from staff_directory where email = 'gone.staff@example.org'));
+  if r <> 'has_account' then raise exception 'finding 5: archived account: save_invite said %', r; end if;
+  r := staff_directory_save_invite((select id from staff_directory where email = 'main.addr@example.org'));
+  if r <> 'has_account' then raise exception 'finding 5: account under a secondary email: save_invite said %', r; end if;
+  r := staff_directory_save_invite((select id from staff_directory where email = 'new@example.org'));
+  if r <> 'saved' then raise exception 'a person with no account could not get an invite: %', r; end if;
+  if not exists (select 1 from pending_invites where email = 'new@example.org' and role = 'staff') then
+    raise exception 'save_invite said saved and saved nothing';
+  end if;
+  if exists (select 1 from pending_invites where email in ('gone.staff@example.org','main.addr@example.org','alt.only@example.org')) then
+    raise exception 'finding 5: an invite was saved for someone with an account';
+  end if;
+end $$;
+-- Only an admin may save one.
+set role authenticated;
+set test.uid = '00000000-0000-0000-0000-000000000002';
+do $$ begin
+  begin perform staff_directory_save_invite((select id from staff_directory_list() where email = 'two@example.org'));
+    raise exception 'a non-admin saved an invite';
+  exception when insufficient_privilege then null; end;
+end $$;
+-- Finding 8: a Houses-role person with a row still gets their own row back
+-- (and only that) — "you are not in the directory" would be false.
+set test.uid = '00000000-0000-0000-0000-000000000005';
+do $$ declare n int; me text; begin
+  select count(*), max(email) into n, me from staff_directory_list();
+  if n <> 1 or me is distinct from 'houses.only@example.org' then
+    raise exception 'finding 8: a Houses-role person read % row(s) (own: %)', n, me;
+  end if;
+end $$;
+reset role;
+reset test.uid;
+
 select 'all staff directory checks passed' as result;

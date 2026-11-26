@@ -942,25 +942,31 @@ await step('everyone is a row, each with the status it is actually in',async()=>
   await openUsers();
   const rows=await p.$$eval('.sd-table tbody tr[data-row]',trs=>trs.map(tr=>({
     key:tr.dataset.row,name:tr.querySelector('.nm').textContent,status:tr.querySelector('.sd-pill').dataset.status,
-    pill:tr.querySelector('.sd-pill').textContent,send:!!tr.querySelector('[data-pinvsend]'),save:!!tr.querySelector('[data-dirinvite]')})));
-  console.log('       '+rows.map(r=>r.name+'='+r.pill).join(' | '));
-  const by=Object.fromEntries(rows.map(r=>[r.name,r]));
-  const meName=await p.evaluate(()=>ME.name);
-  const want={[meName]:'signed_in','Ivy Sent':'invite_sent','Sam Saved':'invite_saved','Nora None':'no_invite',
-              'Solo Account':'not_in_directory','Otto Orphan':'invite_saved'};
-  for(const [n,st] of Object.entries(want)){
-    if(!by[n])throw new Error(n+' is missing from the list');
-    if(by[n].status!==st)throw new Error(n+' reads '+by[n].status+', expected '+st);
+    pill:tr.querySelector('.sd-pill').textContent,txt:tr.innerText,
+    send:!!tr.querySelector('[data-pinvsend]'),save:!!tr.querySelector('[data-dirinvite]')})));
+  console.log('       '+rows.map(r=>r.key+'='+r.pill).join(' | '));
+  const by=Object.fromEntries(rows.map(r=>[r.key,r]));
+  const want={'d:d-me':'signed_in','d:d-ivy':'invite_sent','d:d-sam':'invite_saved','d:d-nora':'no_invite','d:d-hal':'no_invite',
+              'd:d-old':'archived','p:u-solo':'not_in_directory','p:u-ivy2':'not_in_directory','i:pi-orphan':'invite_saved'};
+  for(const [k,st] of Object.entries(want)){
+    if(!by[k])throw new Error(k+' is missing from the list');
+    if(by[k].status!==st)throw new Error(k+' reads '+by[k].status+', expected '+st);
   }
-  if(rows.length!==6)throw new Error('expected 6 people (4 directory, 1 account, 1 invite), got '+rows.length);
-  if(rows.some(r=>r.name==='Old Archived'))throw new Error('an archived account is in the live list');
-  if(rows.some(r=>r.name==='Sam Saved'&&rows.filter(x=>x.name==='Sam Saved').length>1))throw new Error('a saved invite shows twice');
+  if(rows.length!==Object.keys(want).length)throw new Error('expected '+Object.keys(want).length+' rows, got '+rows.length+': '+rows.map(r=>r.key));
+  if(rows.filter(r=>r.name==='Sam Saved').length>1)throw new Error('a saved invite shows twice');
   // Send invite only where an invite is saved; Save invite only where there is none.
-  const sends=rows.filter(r=>r.send).map(r=>r.name).sort().join(',');
-  if(sends!=='Otto Orphan,Sam Saved')throw new Error('Send invite is on: '+sends);
-  const saves=rows.filter(r=>r.save).map(r=>r.name).join(',');
-  if(saves!=='Nora None')throw new Error('Save invite is on: '+saves);
+  const sends=rows.filter(r=>r.send).map(r=>r.key).sort().join(',');
+  if(sends!=='d:d-sam,i:pi-orphan')throw new Error('Send invite is on: '+sends);
+  const saves=rows.filter(r=>r.save).map(r=>r.key).sort().join(',');
+  if(saves!=='d:d-hal,d:d-nora')throw new Error('Save invite is on: '+saves);
   if(!await p.$('.sd-table tr[data-row="i:pi-orphan"] [data-pinvdel]'))throw new Error('a saved invite lost its Remove button');
+  // Review finding 5: ex-staff are Archived, never offered an invite.
+  if(by['d:d-old'].pill!=='Archived')throw new Error('an archived account reads '+by['d:d-old'].pill);
+  // Review finding 6: a person's second account is listed, and says what it is.
+  if(!/second portal account/i.test(by['p:u-ivy2'].txt))throw new Error('a second account is not called one: '+by['p:u-ivy2'].txt);
+  // ...and the archived account is not listed a second time under Archived users.
+  const archivedSection=await p.$$eval('.pa-table:not(.sd-table) .nm',n=>n.map(x=>x.textContent));
+  if(archivedSection.includes('Old Archived'))throw new Error('an archived person is listed twice');
 });
 await step('a row carries campus, location, ministries, emails and Slack',async()=>{
   const me=await p.$eval('.sd-table tr[data-row="d:d-me"]',tr=>tr.innerText);
@@ -1005,14 +1011,26 @@ await step('a person opens to every field, and an admin save writes them',async(
   if(w.patch.emails_secondary.join(',')!=='sam.home@example.org')throw new Error('secondary emails lost on save');
   await p.evaluate(()=>closeDrawer());
 });
-await step('Save invite writes a saved invite as staff, and sends nothing',async()=>{
+await step('Save invite goes through the server check, and sends nothing',async()=>{
   await openUsers();
   await p.evaluate(()=>{window.__writes=[];window.__invoked=[];const inv=sb.functions.invoke;sb.functions.invoke=(n,o)=>{window.__invoked.push(n);return inv(n,o);};});
   await p.click('.sd-table tr[data-row="d:d-nora"] [data-dirinvite]');
-  await p.waitForFunction(()=>window.__writes.some(w=>w.table==='pending_invites'),{timeout:4000});
-  const r=await p.evaluate(()=>({w:window.__writes.find(w=>w.table==='pending_invites'),inv:window.__invoked}));
-  if(r.w.op!=='upsert'||r.w.patch.email!=='nora@example.org'||r.w.patch.role!=='staff')throw new Error(JSON.stringify(r.w));
+  await p.waitForFunction(()=>window.__writes.length>0,{timeout:4000});
+  const r=await p.evaluate(()=>({w:window.__writes,inv:window.__invoked}));
+  if(r.w.length!==1||r.w[0].table!=='rpc:staff_directory_save_invite'||r.w[0].patch.p_id!=='d-nora')
+    throw new Error('Save invite wrote '+JSON.stringify(r.w));
   if(r.inv.includes('invite-user'))throw new Error('saving an invite sent one');
+  await p.waitForFunction(()=>/Invite saved/.test(document.querySelector('#paNote')?.textContent||''),{timeout:4000});
+});
+await step('Save invite is refused for someone who already has an account',async()=>{
+  /* Review finding 5: the email already has an auth account (here a Houses
+     login). The server says so; the page passes that on and saves nothing. */
+  await openUsers();
+  await p.evaluate(()=>{window.__writes=[];});
+  await p.click('.sd-table tr[data-row="d:d-hal"] [data-dirinvite]');
+  await p.waitForFunction(()=>/already has an account/i.test(document.querySelector('#paNote')?.textContent||''),{timeout:4000});
+  const w=await p.evaluate(()=>window.__writes);
+  if(w.some(x=>x.table==='pending_invites'))throw new Error('a pending invite was written directly: '+JSON.stringify(w));
 });
 await step('a directory that fails to load says so, and keeps accounts and invites',async()=>{
   await p.evaluate(()=>{window.__dirFail=true;});

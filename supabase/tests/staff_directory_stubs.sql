@@ -5,7 +5,11 @@
 --   psql -d sd_test -v ON_ERROR_STOP=1 \
 --     -f supabase/tests/staff_directory_stubs.sql \
 --     -f supabase/migrations/20261125_staff_directory.sql \
---     -f supabase/tests/staff_directory_test.sql
+--     -f supabase/tests/<one of the test files>
+--
+-- Test files, one fresh database each: staff_directory_test.sql (trigger, RLS,
+-- who_is, save_invite), staff_directory_seed_test.sql (the seed),
+-- staff_directory_golive_test.sql (the go-live step).
 --
 -- Never run this against a Supabase project: it creates an auth schema.
 -- auth.uid() reads the GUC test.uid, so a test can act as a person.

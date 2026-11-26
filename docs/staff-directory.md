@@ -9,7 +9,7 @@ Status: **draft, nothing applied to the live database.** Files:
 | `supabase/seed/20261125_staff_directory_seed.sql` | fills the directory from staging + live tables; saves invites |
 | `scripts/directory_corrections_sql.py` | local corrections JSON → staging SQL on stdout |
 | `scripts/slack_users_sql.py` | Slack `users.list` → staging SQL on stdout |
-| `supabase/tests/` | SQL behaviour checks with made-up people, for a throwaway local Postgres |
+| `supabase/tests/`, `scripts/test_loaders.py` | behaviour checks with made-up people, for a throwaway local Postgres |
 
 v1 (25 Nov) was never applied, so its migration and seed were revised in place.
 
@@ -74,19 +74,32 @@ psql "$DB" -f supabase/seed/20261125_staff_directory_seed.sql
 psql "$DB" -f supabase/migrations/20261126_golive_all_campus_access.sql
 ```
 
-Both scripts print SQL to stdout and write nothing else; `--inline` prints a
-form the Supabase SQL editor accepts (no psql variables). Their output carries
-people's data — don't commit it. Each load replaces the previous load from the
-same source.
+Both scripts print SQL to stdout and write nothing else. The output is
+dollar-quoted, so psql and the Supabase SQL editor both take it as it is;
+`--psql` prints the `\set json` form instead, with backslashes doubled so a
+`\"` or `\n` inside a value survives. Their output carries people's data —
+don't commit it. Each load replaces the previous load from the same source.
+`scripts/test_loaders.py` checks both forms round-trip.
 
 `slack_users_sql.py` needs `users:read` and `users:read.email`. It skips bots,
-Slackbot, deactivated accounts and guests — unless a guest's Slack id or email
-is in the corrections.
+Slackbot, deactivated accounts, guests (unless their Slack id or email is in
+the corrections), and anyone the corrections remove. `slack_people`, the
+Facilities bot's cache, is used **only when no Slack list was loaded** — it
+never forgets an account, so unioning it would bring back the deactivated
+accounts and guests the list left out.
 
-**Precedence:** corrections > Slack > profiles / pending invites. Rows marked
-`remove: true` are never seeded, and their emails keep every other source from
-seeding them too. The seed is idempotent; on a re-run, rows a person or an
-admin has since edited (`source` `self` / `admin`) only have blanks filled.
+**Precedence:** corrections > Slack > profiles / pending invites.
+
+**Removals** (`remove: true`) match on every key the row gives — primary and
+secondary emails, Slack id and merged ids — in every source, and a row an
+earlier run made for that person is **archived** (not deleted) on the next run.
+
+**Clashes don't stop the run.** The seed works one person at a time: keys
+another live row still holds are left off and named in `needs_review`, and if a
+person still cannot be applied, that person is noted and skipped rather than
+rolling everyone else back. The seed is idempotent; on a re-run, rows a person
+or an admin has since edited (`source` `self` / `admin`) only have blanks
+filled.
 
 ## Activation and invites
 
@@ -94,7 +107,13 @@ Nothing new: `pending_invites` is still "invite saved, no email sent", and
 "Send invite" still calls `invite-user`. `staff_directory_v.activation` is
 derived, never stored: `signed_in` → `invite_sent` (profile, never signed in)
 → `invite_saved` (a `pending_invites` row for any of their emails) →
-`no_invite`.
+`no_invite`; and `archived` for ex-staff whose portal account is archived
+(found by link or by any of their emails), who are never offered an invite.
+
+**One rule decides who may get a saved invite:** `staff_directory_save_invite(id)`
+refuses anyone archived, without an email, with an auth account under any of
+their emails, or with an invite already saved. Admin → Users' Save invite
+calls it, and so does the seed's last step.
 
 **The seed's last step is now on** (Hannita, 26 Nov): everyone in the
 directory without a portal account gets a **saved** invite, role `staff`.
@@ -110,13 +129,17 @@ Nothing is emailed; an admin presses Send invite.
 - **Colleagues** read each other through `staff_directory_list()`, which
   leaves out secondary emails, secondary Slack ids and the review note for
   anyone but an admin or the person themselves. Secondary emails are often
-  personal addresses.
+  personal addresses. Someone who may not read the directory (a Houses-role
+  login) still gets their own row back, so Profile never tells a person who
+  is in it that they are not.
 
 ## The portal (option B, Hannita 26 Nov)
 
 - **Admin → Users is the directory.** No separate tab. Every directory person
   is a row, plus any portal account or saved invite the directory does not
-  know yet ("Not in directory"), so nothing that used to be listed drops off.
+  know yet ("Not in directory") — including a person's **second portal
+  account**, labelled as one — so nothing that can sign in drops off. Ex-staff
+  read **Archived**.
   Status pill (Active / Invite sent / Invite saved / No invite), campus +
   location + overseen, ministry chips, title and nicknames, emails, Slack.
   **Send invite** and **Remove** on saved invites (the old "Invite pending"
@@ -142,7 +165,10 @@ even an admin. Both people are already `admin` with `campus_ids` null, so the
 step changes nothing today; it clears a narrowing list for an admin, or sets
 every active campus for a non-admin (without raising them to admin). Who it
 applies to is read from the corrections rows that carry `_access`, so no name
-is written in the file.
+is written in the file. A person is matched by any of their emails and through
+the directory row's profile link, every live profile they have gets it, and an
+`_access` row that finds no profile is reported (NOTICE, and `_golive_unmatched`
+for the session).
 
 ## `who_is`
 

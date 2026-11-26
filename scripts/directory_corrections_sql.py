@@ -6,9 +6,10 @@ The corrections file holds people's names and personal emails, so it never goes
 into git, and neither does this script's output. Run it at apply time:
 
     python3 scripts/directory_corrections_sql.py corrections.json > /tmp/load.sql
-    psql "$DB_URL" -f /tmp/load.sql            # default: psql \\set + :'json'
-    # or, for the Supabase SQL editor (no psql variables):
-    python3 scripts/directory_corrections_sql.py --inline corrections.json
+    psql "$DB_URL" -f /tmp/load.sql      # or paste into the Supabase SQL editor
+
+The default output is dollar-quoted and runs anywhere. --psql emits the
+\\set json + :'json' form instead (psql only).
 
 The file is {"people": [ {...}, ... ]} (or a bare list). Each object goes in as
 one jsonb row, unchanged; supabase/seed/20261125_staff_directory_seed.sql reads
@@ -19,7 +20,9 @@ _note) and reports anything it cannot place in needs_review.
 Loading replaces the previous corrections load (a DELETE of source='corrections'
 staging rows), so running it twice does not double anybody.
 """
-import json, secrets, sys
+import json, os, sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _staging_sql import staging_sql
 
 KNOWN = {"name", "slack", "merge_slack", "email", "emails_secondary", "nicknames",
          "campus", "location", "oversees", "oversees_location", "ministries",
@@ -27,7 +30,7 @@ KNOWN = {"name", "slack", "merge_slack", "email", "emails_secondary", "nicknames
 
 
 def main(argv):
-    inline = "--inline" in argv
+    use_psql = "--psql" in argv
     paths = [a for a in argv if not a.startswith("--")]
     if len(paths) != 1:
         sys.exit(__doc__)
@@ -49,24 +52,9 @@ def main(argv):
     if problems:
         sys.exit("\n".join(problems))
 
-    payload = json.dumps(people, ensure_ascii=False)
     removed = sum(1 for p in people if p.get("remove"))
-    print(f"-- {len(people)} correction rows ({removed} marked remove). Generated, do not commit.")
-    print("begin;")
-    print("delete from public.staff_directory_staging where source = 'corrections';")
-    if inline:
-        tag = "j" + secrets.token_hex(6)
-        while f"${tag}$" in payload:
-            tag = "j" + secrets.token_hex(6)
-        print("insert into public.staff_directory_staging (source, payload)")
-        print(f"select 'corrections', x from jsonb_array_elements(${tag}${payload}${tag}$::jsonb) x;")
-    else:
-        quoted = payload.replace("'", "''")
-        print(f"\\set json '{quoted}'")
-        print("insert into public.staff_directory_staging (source, payload)")
-        print("select 'corrections', x from jsonb_array_elements(:'json'::jsonb) x;")
-    print("commit;")
-
+    sys.stdout.write(staging_sql(people, "corrections", psql=use_psql,
+                                 comment=f"{len(people)} correction rows ({removed} marked remove)."))
 
 if __name__ == "__main__":
     main(sys.argv[1:])

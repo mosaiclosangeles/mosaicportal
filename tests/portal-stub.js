@@ -58,7 +58,7 @@ const DIR_ROWS=[
    oversees_all:false,campus_ids_overseen:['c1'],campuses_overseen:['Los Angeles'],ministries:['Systems'],teams:[],
    slack_user_id:'UME',slack_ids_secondary:[],role:'admin',activation:'signed_in',status:'active',pending_invite_id:null,
    last_sign_in_at:iso(-1,9),needs_review:null},
-  {id:'d-ivy',profile_id:'u-ivy',name:'Ivy Sent',email:'ivy@example.org',emails_secondary:[],nicknames:[],title:null,
+  {id:'d-ivy',profile_id:'u-ivy',name:'Ivy Sent',email:'ivy@example.org',emails_secondary:['ivy.alt@example.org'],nicknames:[],title:null,
    campus_id:'c1',campus:'Los Angeles',location_id:null,location:null,oversees_all:false,campus_ids_overseen:[],campuses_overseen:[],
    ministries:['Kids'],teams:[],slack_user_id:'UIVY',slack_ids_secondary:[],role:'staff',activation:'invite_sent',status:'not activated',
    pending_invite_id:null,last_sign_in_at:null,needs_review:null},
@@ -69,8 +69,21 @@ const DIR_ROWS=[
   {id:'d-nora',profile_id:null,name:'Nora None',email:'nora@example.org',emails_secondary:[],nicknames:[],title:null,
    campus_id:'c1',campus:'Los Angeles',location_id:null,location:null,oversees_all:true,campus_ids_overseen:[],campuses_overseen:[],
    ministries:[],teams:[],slack_user_id:null,slack_ids_secondary:[],role:null,activation:'no_invite',status:'not activated',
-   pending_invite_id:null,last_sign_in_at:null,needs_review:'from Slack only — campus and ministries not set'}
+   pending_invite_id:null,last_sign_in_at:null,needs_review:'from Slack only — campus and ministries not set'},
+  // Ex-staff: their portal account is archived. Not somebody to invite.
+  {id:'d-old',profile_id:'u-old',name:'Old Archived',email:'old@example.org',emails_secondary:[],nicknames:[],title:null,
+   campus_id:'c1',campus:'Los Angeles',location_id:null,location:null,oversees_all:false,campus_ids_overseen:[],campuses_overseen:[],
+   ministries:[],teams:[],slack_user_id:null,slack_ids_secondary:[],role:'volunteer',activation:'archived',status:'archived',
+   pending_invite_id:null,last_sign_in_at:null,needs_review:null},
+  // No portal profile, but an auth account exists under their email (a
+  // Houses login): the server refuses an invite for them.
+  {id:'d-hal',profile_id:null,name:'Hal Houses',email:'hal@example.org',emails_secondary:[],nicknames:[],title:null,
+   campus_id:'c1',campus:'Los Angeles',location_id:null,location:null,oversees_all:false,campus_ids_overseen:[],campuses_overseen:[],
+   ministries:[],teams:[],slack_user_id:'UHAL',slack_ids_secondary:[],role:null,activation:'no_invite',status:'not activated',
+   pending_invite_id:null,last_sign_in_at:null,needs_review:null}
 ];
+/* What staff_directory_save_invite() answers, per person. */
+const SAVE_INVITE={'d-nora':'saved','d-hal':'has_account'};
 /* The raw table, as an admin reads it in the detail drawer. */
 const DIR_RAW=DIR_ROWS.map(d=>({id:d.id,full_name:d.name,email:d.email,emails_secondary:d.emails_secondary,nicknames:d.nicknames,
   title:d.title,primary_campus_id:d.campus_id,location_id:d.location_id,campus_ids_overseen:d.campus_ids_overseen,oversees_all:d.oversees_all,
@@ -84,6 +97,8 @@ const PENDING=[
 const OTHER_PROFILES=[
   {id:'u-ivy',full_name:'ivy@example.org',display_name:'Ivy Sent',role:'staff',campus_id:'c1',avatar_url:null,archived_at:null},
   {id:'u-solo',full_name:'solo@example.org',display_name:'Solo Account',role:'leader',campus_id:'c1',avatar_url:null,archived_at:null},
+  // A second portal account for Ivy, under her secondary email. No directory row links it.
+  {id:'u-ivy2',full_name:'ivy.alt@example.org',display_name:'Ivy Sent',role:'staff',campus_id:'c1',avatar_url:null,archived_at:null},
   {id:'u-old',full_name:'old@example.org',display_name:'Old Archived',role:'volunteer',campus_id:'c1',avatar_url:null,archived_at:iso(-90,9)}
 ];
 const LOCATIONS=[{id:'l-pol',campus_id:'c3',location:'Polanco',active:true},{id:'l-rc',campus_id:'c3',location:'Roma Condesa',active:true}];
@@ -130,7 +145,9 @@ const client={
     resetPasswordForEmail:()=>Promise.resolve({error:null})
   },
   from:builder,
-  rpc:(name)=>name==='staff_directory_list'
+  rpc:(name,args)=>name==='staff_directory_save_invite'
+    ? (window.__writes.push({table:'rpc:'+name,op:'rpc',patch:args}),Promise.resolve({data:SAVE_INVITE[args&&args.p_id]||'not_found',error:null}))
+    : name==='staff_directory_list'
     ? Promise.resolve(window.__dirFail?{data:null,error:{message:'function staff_directory_list() does not exist'}}:{data:DIR_ROWS.map(d=>Object.assign({},d)),error:null})
     : Promise.resolve({data:name==='can'?true:null,error:null}),
   functions:{invoke:()=>Promise.resolve({data:{ok:true,configured:true,events:[]},error:null})},
