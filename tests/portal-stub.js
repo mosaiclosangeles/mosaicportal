@@ -91,7 +91,9 @@ window.supabase={createClient:()=>client};
 const realFetch=window.fetch.bind(window);
 window.fetch=function(u,o){
   const url=typeof u==='string'?u:(u&&u.url)||'';
-  if(url.includes('yrviwbqhjcrlxgozrgay'))
+  // PM_URL is the Metrics project since 26 Nov 2026; the app's own Metrics reads
+  // go through the stubbed client above, so any plain REST fetch is a board read.
+  if(url.includes('iknjgrltglwupxjtegfh.supabase.co/rest/v1/'))
     return Promise.resolve(new Response('[]',{status:200,headers:{'Content-Type':'application/json'}}));
   return realFetch(u,o);
 };

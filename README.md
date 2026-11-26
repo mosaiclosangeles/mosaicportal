@@ -6,7 +6,7 @@ The staff portal for Mosaic — one front door for the tools the team already us
 |---|---|---|
 | **Portal home** (this repo) | [portal.mosaic.org](https://portal.mosaic.org) | `mosaicportal` · auth via the Mosaic Metrics Supabase |
 | Metrics | [metrics.mosaic.org](https://metrics.mosaic.org) | `mosaic-metrics` · Supabase `Mosaic Metrics` (`iknjgrltglwupxjtegfh`) |
-| Comms | [comms.mosaic.org](https://comms.mosaic.org) | `mosaic-comm` · Supabase `mosaic-comm` (`yrviwbqhjcrlxgozrgay`) |
+| Comms | [comms.mosaic.org](https://comms.mosaic.org) | `mosaic-comm` · Supabase `Mosaic Metrics` (`iknjgrltglwupxjtegfh`; was `mosaic-comm` until 26 Nov 2026) |
 | Planning Board | [pm.mosaic.org](https://pm.mosaic.org) | `mosaicprojectmanagement` · Supabase `mosaic-comm` |
 | Facilities | [facilities.mosaic.org](https://facilities.mosaic.org) | `mosaicfacilities` · Supabase `Mosaic Metrics`, `fac_*` tables |
 | Goals | [mosaic-hub.replit.app](https://mosaic-hub.replit.app) | `goaltrackerv2` (Replit) |
