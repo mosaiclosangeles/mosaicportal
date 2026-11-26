@@ -43,3 +43,11 @@ It exists because Facilities shipped twice in a row without being clicked
 once: first the whole portal built to a preview URL nobody looked at, then the
 rail button rendered the Settings page. Both would have been caught by the
 first two assertions in here.
+
+## The staff directory's SQL
+
+`drive-portal.mjs` covers the directory's screens (Admin → Users, a person's
+drawer, Profile → "You in the directory") against the stub's made-up people.
+The database side — what a non-admin may change, the one-person-one-row rule,
+`who_is()` — is checked by `../supabase/tests/staff_directory_test.sql`, run
+against a throwaway local Postgres; `staff_directory_stubs.sql` says how.

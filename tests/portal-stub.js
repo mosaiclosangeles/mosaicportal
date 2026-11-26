@@ -48,21 +48,72 @@ const CAMPUS_ROWS=[
   {id:'c2',name:'New York City',active:true},
   {id:'c3',name:'Mexico',active:true}
 ];
+/* THE STAFF DIRECTORY. Made-up people, one in each state the Users list
+   draws: signed in (the signed-in admin herself), invite sent, invite saved,
+   no invite — plus a portal account and a saved invite the directory does not
+   know, which must still be listed rather than dropping off the page. */
+const DIR_ROWS=[
+  {id:'d-me',profile_id:'me',name:PROFILE.display_name,email:PROFILE.email,emails_secondary:['me.second@example.org'],
+   nicknames:['HC'],title:'Systems lead',campus_id:'c3',campus:'Mexico',location_id:'l-pol',location:'Polanco',
+   oversees_all:false,campus_ids_overseen:['c1'],campuses_overseen:['Los Angeles'],ministries:['Systems'],teams:[],
+   slack_user_id:'UME',slack_ids_secondary:[],role:'admin',activation:'signed_in',status:'active',pending_invite_id:null,
+   last_sign_in_at:iso(-1,9),needs_review:null},
+  {id:'d-ivy',profile_id:'u-ivy',name:'Ivy Sent',email:'ivy@example.org',emails_secondary:[],nicknames:[],title:null,
+   campus_id:'c1',campus:'Los Angeles',location_id:null,location:null,oversees_all:false,campus_ids_overseen:[],campuses_overseen:[],
+   ministries:['Kids'],teams:[],slack_user_id:'UIVY',slack_ids_secondary:[],role:'staff',activation:'invite_sent',status:'not activated',
+   pending_invite_id:null,last_sign_in_at:null,needs_review:null},
+  {id:'d-sam',profile_id:null,name:'Sam Saved',email:'sam@example.org',emails_secondary:['sam.home@example.org'],nicknames:[],title:'Producer',
+   campus_id:'c2',campus:'New York City',location_id:null,location:null,oversees_all:false,campus_ids_overseen:[],campuses_overseen:[],
+   ministries:['Production','Creative'],teams:[],slack_user_id:'USAM',slack_ids_secondary:[],role:null,activation:'invite_saved',status:'not activated',
+   pending_invite_id:'pi-sam',last_sign_in_at:null,needs_review:null},
+  {id:'d-nora',profile_id:null,name:'Nora None',email:'nora@example.org',emails_secondary:[],nicknames:[],title:null,
+   campus_id:'c1',campus:'Los Angeles',location_id:null,location:null,oversees_all:true,campus_ids_overseen:[],campuses_overseen:[],
+   ministries:[],teams:[],slack_user_id:null,slack_ids_secondary:[],role:null,activation:'no_invite',status:'not activated',
+   pending_invite_id:null,last_sign_in_at:null,needs_review:'from Slack only — campus and ministries not set'}
+];
+/* The raw table, as an admin reads it in the detail drawer. */
+const DIR_RAW=DIR_ROWS.map(d=>({id:d.id,full_name:d.name,email:d.email,emails_secondary:d.emails_secondary,nicknames:d.nicknames,
+  title:d.title,primary_campus_id:d.campus_id,location_id:d.location_id,campus_ids_overseen:d.campus_ids_overseen,oversees_all:d.oversees_all,
+  ministries:d.ministries,teams:d.teams,slack_user_id:d.slack_user_id,slack_ids_secondary:d.slack_ids_secondary,profile_id:d.profile_id,
+  needs_review:d.needs_review,source:'corrections'}));
+const MINISTRIES=['Kids','Worship','Production','Creative','Systems','Next Gen'].map((name,i)=>({name,sort_order:i,active:true}));
+const PENDING=[
+  {id:'pi-sam',email:'sam@example.org',name:'Sam Saved',role:'staff',campus_id:'c2',created_at:iso(-3,9)},
+  {id:'pi-orphan',email:'orphan@example.org',name:'Otto Orphan',role:'leader',campus_id:'c1',created_at:iso(-2,9)}
+];
+const OTHER_PROFILES=[
+  {id:'u-ivy',full_name:'ivy@example.org',display_name:'Ivy Sent',role:'staff',campus_id:'c1',avatar_url:null,archived_at:null},
+  {id:'u-solo',full_name:'solo@example.org',display_name:'Solo Account',role:'leader',campus_id:'c1',avatar_url:null,archived_at:null},
+  {id:'u-old',full_name:'old@example.org',display_name:'Old Archived',role:'volunteer',campus_id:'c1',avatar_url:null,archived_at:iso(-90,9)}
+];
+const LOCATIONS=[{id:'l-pol',campus_id:'c3',location:'Polanco',active:true},{id:'l-rc',campus_id:'c3',location:'Roma Condesa',active:true}];
+/* Every write the page makes, so a test can say exactly what was sent —
+   "the self card changed only ministries" is a claim about this list. */
+window.__writes=[];
+window.__dirFail=false;
 function builder(table){
   let rows = table==='v_fac_requests' ? BOOKINGS.slice()
-           : table==='profiles' ? [PROFILE]
+           : table==='profiles' ? [PROFILE].concat(OTHER_PROFILES)
            : table==='campuses' ? CAMPUS_ROWS.slice()
            : table==='fac_repairs' ? REPAIRS.slice()
+           : table==='staff_directory' ? DIR_RAW.slice()
+           : table==='staff_ministries' ? MINISTRIES.slice()
+           : table==='pending_invites' ? PENDING.slice()
+           : table==='campus_locations' ? LOCATIONS.slice()
            : [];
+  const log=(op,patch)=>({eq(col,val){window.__writes.push({table,op,patch,where:{[col]:val}});return Promise.resolve({data:null,error:null});}});
   const api={
     select(){return api;}, order(){return api;}, limit(){return api;},
-    eq(){return api;}, is(){return api;}, in(){return api;}, gte(){return api;}, lte(){return api;},
+    // Only the directory filters for real: the drawer opens one person by id.
+    eq(col,val){ if(table==='staff_directory')rows=rows.filter(r=>r[col]===val); return api;},
+    is(){return api;}, in(){return api;}, gte(){return api;}, lte(){return api;},
     neq(){return api;}, not(){return api;}, or(){return api;},
     single(){return Promise.resolve({data:rows[0]||null,error:null});},
     maybeSingle(){return Promise.resolve({data:rows[0]||null,error:null});},
-    insert(){return Promise.resolve({data:null,error:null});},
-    update(){return {eq(){return Promise.resolve({data:null,error:null});}};},
-    delete(){return {eq(){return Promise.resolve({data:null,error:null});}};},
+    insert(patch){window.__writes.push({table,op:'insert',patch});return Promise.resolve({data:null,error:null});},
+    upsert(patch){window.__writes.push({table,op:'upsert',patch});return Promise.resolve({data:null,error:null});},
+    update(patch){return log('update',patch);},
+    delete(){return log('delete',null);},
     then(res){return Promise.resolve({data:rows,error:null}).then(res);}
   };
   return api;
@@ -79,7 +130,9 @@ const client={
     resetPasswordForEmail:()=>Promise.resolve({error:null})
   },
   from:builder,
-  rpc:(name)=>Promise.resolve({data:name==='can'?true:null,error:null}),
+  rpc:(name)=>name==='staff_directory_list'
+    ? Promise.resolve(window.__dirFail?{data:null,error:{message:'function staff_directory_list() does not exist'}}:{data:DIR_ROWS.map(d=>Object.assign({},d)),error:null})
+    : Promise.resolve({data:name==='can'?true:null,error:null}),
   functions:{invoke:()=>Promise.resolve({data:{ok:true,configured:true,events:[]},error:null})},
   storage:{from:()=>({createSignedUrls:()=>Promise.resolve({data:[],error:null}),
     upload:()=>Promise.resolve({error:null}), remove:()=>Promise.resolve({error:null})})}

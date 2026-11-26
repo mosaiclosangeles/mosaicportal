@@ -1,157 +1,172 @@
-# Staff Directory — design note (draft, 25 Nov 2026)
+# Staff Directory — design note (draft v2, 26 Nov 2026)
 
-Status: **draft, nothing applied.** Files:
+Status: **draft, nothing applied to the live database.** Files:
 
-- `supabase/migrations/20261125_staff_directory.sql` — table, triggers, RLS,
-  `staff_directory_v`, `staff_directory_list()`, `who_is()`
-- `supabase/seed/20261125_staff_directory_seed.sql` — fills it from the live
-  tables; idempotent
+| File | What |
+|---|---|
+| `supabase/migrations/20261125_staff_directory.sql` | tables, write trigger, RLS, `staff_directory_v`, `staff_directory_list()`, `who_is()` |
+| `supabase/migrations/20261126_golive_all_campus_access.sql` | **go-live, permission step** — the two people who see every campus |
+| `supabase/seed/20261125_staff_directory_seed.sql` | fills the directory from staging + live tables; saves invites |
+| `scripts/directory_corrections_sql.py` | local corrections JSON → staging SQL on stdout |
+| `scripts/slack_users_sql.py` | Slack `users.list` → staging SQL on stdout |
+| `supabase/tests/` | SQL behaviour checks with made-up people, for a throwaway local Postgres |
+
+v1 (25 Nov) was never applied, so its migration and seed were revised in place.
 
 ## Why
 
-Hannita, 25 Nov 2026: *"everybody in Slack needs to have an account in the
-staff portal … whether it's active or not … It just means they haven't logged
-in yet."* And: *"If Soti asks a question, we should know her campus is LA and
-her ministry is kids, so she's probably asking about LA kids."*
-
-Today every agent knows who is asking only by name, and scopes by "Los Angeles
-unless a campus is named" (Hannita, 22 Sep). That default is right for most
-people and wrong for McLaren in London, Chad in Chicago or Alfonso in Mexico.
+Hannita, 25 Nov: *"everybody in Slack needs to have an account in the staff
+portal … whether it's active or not … It just means they haven't logged in
+yet."* And the agents should know who is asking — campus and ministry — from
+their Slack id rather than guessing from a display name.
 
 ## Where the record lives
 
-A new table, `staff_directory`, in the Mosaic Metrics project — the same
-project that owns every login, so the portal, Metrics, Facilities and Houses
-all read the same people.
+`staff_directory`, in the Mosaic Metrics project (the one that owns every
+login). A table, not columns on `profiles`, because `profiles.id` is a foreign
+key to `auth.users`: somebody never invited cannot have a profile, and the
+directory has to hold them anyway. `profile_id` links the login once there is
+one.
 
-**Why a table, not columns on `profiles`.** `profiles.id` is a foreign key to
-`auth.users`. Somebody who has never been invited cannot have a profiles row,
-and the whole point is that they have a directory row anyway. So the directory
-holds the person; `profile_id` links it to their login once they have one.
+One row per person (Hannita, 26 Nov):
 
-What it does **not** replace:
+| Column | |
+|---|---|
+| `email` | the primary (Mosaic) email |
+| `emails_secondary text[]` | any of these, or `email`, links the row to a portal profile and to `who_is()` |
+| `slack_user_id`, `slack_ids_secondary text[]` | nullable — some staff are not on Slack; a second Slack account is a secondary id, not a second row |
+| `full_name`, `nicknames text[]`, `title` | |
+| `primary_campus_id` | where they work |
+| `location_id` → `campus_locations` | inside that campus (Mexico: Polanco, Roma Condesa). `campus_locations` already models locations — Metrics and the portal's Campuses tab read it — so no new list was invented. Must belong to the primary campus; a campus change clears a location that no longer fits |
+| `campus_ids_overseen uuid[]`, `oversees_all` | what else they look after |
+| `ministries text[]` | tags from `staff_ministries` |
+| `teams text[]` | from `reminder_routing`, informational |
+| `role` | display role for people with no profile yet; once there is one, `profiles.role` wins |
+| `needs_review` | why an admin should look (two portal profiles, Slack-only, a note from the corrections) |
 
-| Existing | Stays | Directory's relation to it |
-|---|---|---|
-| `pending_invites` | the one "account saved, no email sent" list | read only, for status |
-| `profiles.role`, `campus_id`, `campus_ids` | permissions, an admin's | the view shows `profiles.role` once there is one |
-| `profiles.home_campus_id` | the person's own pick in Settings | a change there is copied into the directory |
-| `reminder_routing` (Paola's Metrics bot) | who owns which numbers | read once by the seed; never written |
-| `slack_people` (Facilities bot) | cache of Slack `users.info` | read by the seed and `who_is` fallback |
+**None of the campus fields is a permission.** `profiles.role`,
+`campus_id` and `campus_ids` stay the permission fields, an admin's to set —
+the same line the portal already draws between `home_campus_id` and
+`campus_id`.
 
-One row per person: `slack_user_id` (unique), `email` (unique, lower-cased),
-`full_name`, `primary_campus_id`, `ministry` (one value), `teams` (every area
-they own, from `reminder_routing.group_label`), `role` (display role for people
-without a profile), `profile_id` (null until activated), `source`,
-`needs_review`, `archived_at`.
+**Ministries are a lookup table**, `staff_ministries`, so an admin can add one
+without a migration (Admin → Users → a person → "Add a ministry to the list").
+The write trigger rejects a tag that is not in it. "Young Adults" is now
+**Next Gen**; the seed maps the old name if it ever appears. Renaming a tag
+later is `update staff_ministries` plus
+`update staff_directory set ministries = array_replace(ministries, old, new)`.
 
-`primary_campus_id` is **where somebody works**, for scoping an answer. It is
-not a permission and grants nothing — the same line the portal already draws
-between `home_campus_id` and `campus_id`.
+**One person, one row** is enforced: no email or Slack id may appear on two
+live rows (primary or secondary). Where a person has **two portal profiles**,
+neither is deleted or archived — the row links one and `needs_review` names
+the other for an admin.
 
-## Activation
+## Loading the data — nothing personal in git
 
-Nothing new. The existing flow already goes: Admin saves a `pending_invites`
-row → "Send invite" calls `invite-user`, which creates the auth user →
-`handle_new_user()` creates the profile → the person signs in.
+The corrections file (names, personal emails) stays local. At apply time:
 
-- An `after insert` trigger on `profiles` links the directory row by email (or
-  through `slack_people.profile_id`, the hand-set link for a Slack account
-  whose email is not the Mosaic login — Chris Duran, 9 Oct).
-- A `before insert/update` trigger on the directory does the same in reverse,
-  for a row added after the profile exists.
-- **Status is derived, never stored**: `staff_directory_v.status` is
-  `active` once `auth.users.last_sign_in_at` is set, otherwise
-  `not activated`, with `activation` saying where in between:
-  `invite_saved` (pending_invites row) → `invite_sent` (profile, never signed
-  in) → `signed_in`; or `no_invite` (nobody has added them yet).
+```sh
+psql "$DB" -f supabase/migrations/20261125_staff_directory.sql
+python3 scripts/directory_corrections_sql.py corrections.json | psql "$DB"
+SLACK_BOT_TOKEN=xoxb-… python3 scripts/slack_users_sql.py --corrections corrections.json | psql "$DB"
+psql "$DB" -f supabase/seed/20261125_staff_directory_seed.sql
+# go-live, separately and deliberately:
+psql "$DB" -f supabase/migrations/20261126_golive_all_campus_access.sql
+```
 
-The seed has a final, **commented-out** step that would create a
-`pending_invites` row for every directory person without one — Hannita's
-"everybody in Slack needs an account". It is left off because it picks a role
-(`staff`) for people nobody has assigned one to. Hannita's call.
+Both scripts print SQL to stdout and write nothing else; `--inline` prints a
+form the Supabase SQL editor accepts (no psql variables). Their output carries
+people's data — don't commit it. Each load replaces the previous load from the
+same source.
+
+`slack_users_sql.py` needs `users:read` and `users:read.email`. It skips bots,
+Slackbot, deactivated accounts and guests — unless a guest's Slack id or email
+is in the corrections.
+
+**Precedence:** corrections > Slack > profiles / pending invites. Rows marked
+`remove: true` are never seeded, and their emails keep every other source from
+seeding them too. The seed is idempotent; on a re-run, rows a person or an
+admin has since edited (`source` `self` / `admin`) only have blanks filled.
+
+## Activation and invites
+
+Nothing new: `pending_invites` is still "invite saved, no email sent", and
+"Send invite" still calls `invite-user`. `staff_directory_v.activation` is
+derived, never stored: `signed_in` → `invite_sent` (profile, never signed in)
+→ `invite_saved` (a `pending_invites` row for any of their emails) →
+`no_invite`.
+
+**The seed's last step is now on** (Hannita, 26 Nov): everyone in the
+directory without a portal account gets a **saved** invite, role `staff`.
+Nothing is emailed; an admin presses Send invite.
 
 ## Who can see and change it
 
-- Read: anyone with a live portal profile (not Houses-only accounts).
-  Through `staff_directory_list()`, because the view reads `auth.users`.
-- Write: admins (`is_admin()`, the check every portal table uses).
-- Self: a person may update **their own** `primary_campus_id` and `ministry`.
-  RLS cannot restrict columns, so `staff_directory_keep_privileged` puts every
-  other column back for a non-admin — the same pattern as
-  `profiles_keep_privileged`.
+- **Admins** read and write everything (`is_admin()`).
+- **Each person** reads their own raw row, and may change only
+  `primary_campus_id` and `ministries` on it. RLS cannot restrict columns, so
+  the write trigger puts every other column back for a non-admin — the
+  `profiles_keep_privileged` pattern.
+- **Colleagues** read each other through `staff_directory_list()`, which
+  leaves out secondary emails, secondary Slack ids and the review note for
+  anyone but an admin or the person themselves. Secondary emails are often
+  personal addresses.
 
-## The `who_is` lookup
+## The portal (option B, Hannita 26 Nov)
+
+- **Admin → Users is the directory.** No separate tab. Every directory person
+  is a row, plus any portal account or saved invite the directory does not
+  know yet ("Not in directory"), so nothing that used to be listed drops off.
+  Status pill (Active / Invite sent / Invite saved / No invite), campus +
+  location + overseen, ministry chips, title and nicknames, emails, Slack.
+  **Send invite** and **Remove** on saved invites (the old "Invite pending"
+  section, folded in); **Save invite** on people with none. A status filter
+  sits beside the role filter.
+- **Clicking a person** opens every directory field, editable by an admin,
+  with **Account & permissions** leading to the existing per-user page.
+- **Profile → "You in the directory"** (everyone reaches Profile; the
+  Settings page is admin-only): ministries as toggles; primary campus is the
+  existing **Home campus** picker — one control, saving it writes both, and
+  the `staff_directory_follow_home_campus` trigger covers saves made
+  anywhere else. Everything else is read-only, and says an admin sets it.
+- If the directory cannot be read (e.g. before the migration is applied),
+  Users says so in a banner and lists accounts and saved invites as before.
+
+## Go-live permission step
+
+Two people must see every campus in the portal (Hannita, 26 Nov). That is a
+permission, so it is a separate migration and not a directory field. Checked
+read-only on 26 Nov: an admin sees every campus (RLS `is_admin()`; the
+portal's `campusesFor()`), **unless** `campus_ids` is non-empty, which narrows
+even an admin. Both people are already `admin` with `campus_ids` null, so the
+step changes nothing today; it clears a narrowing list for an admin, or sets
+every active campus for a non-admin (without raising them to admin). Who it
+applies to is read from the corrections rows that carry `_access`, so no name
+is written in the file.
+
+## `who_is`
 
 ```sql
-select * from who_is('U4H2P85MG');
--- name, email, campus, campus_slug, ministry, teams, role, status, activation, matched_by
+select * from who_is('U…');                       -- by Slack id (primary or secondary)
+select * from who_is(null, 'someone@mosaic.org');   -- by any of their emails
+-- name, email, emails_secondary, nicknames, title, campus, campus_slug, location,
+-- oversees_all, campuses_overseen[], ministries[], teams, role, status, activation, matched_by
 ```
 
-`SECURITY DEFINER`, executable by `service_role` only (what the connectors and
-the Chief of Staff app use). Matches the Slack id; failing that, the email
-`slack_people` has for that id (a second Slack account). **No row means "not in
-the directory"** — the caller falls back to Los Angeles and says it did not
-know who was asking, rather than guessing from a display name.
+`SECURITY DEFINER`, `service_role` only. No row means "not in the directory".
 
-## The default this changes
+## Not decided — and not changed here
 
-Today, in the Metrics, CCB, Typeform, Calendar and Houses connectors and Tiff's
-instructions: **"Los Angeles unless somebody names another campus"** (Hannita,
-22 Sep). Metrics already moved part-way on 24 Nov ("OUR is the asker's own
-campus").
+**The campus default for the agents** ("the asker's own campus, LA fallback"
+vs today's "Los Angeles unless a campus is named", Hannita 22 Sep). Open as of
+26 Nov. No connector instructions or Tiff text are touched by this branch;
+`who_is()` only makes the fields available.
 
-Proposed: **the asker's own campus and ministry, from `who_is`; Los Angeles
-only when the directory does not know them.** A campus named in the question
-still wins, and so does any workflow that declares its own scope (the RSVP
-tracker is all-campus/LA+NYC by Paola's design and is untouched). Carlos
-oversees every campus, so his "our" stays all campuses — the directory can
-carry that as `ministry = 'Campus leadership'`/role admin, but the rule itself
-lives in the instructions, not the data.
+## Open
 
-This is a change to a rule Hannita set, in instruction text that lives in
-`mosaic-mcp-connectors` (each connector's `SERVER_INSTRUCTIONS`) and in Tiff's
-org-wide box (`mosaicprojectmanagement/docs/claude-tag-instructions.txt`, near
-its size cap). It is **not** made by this migration — only proposed — and
-needs her yes before any of those are edited.
-
-## Portal Settings (spec)
-
-A **"You in the directory"** card on Settings, under the existing Home campus
-picker:
-
-- Name, email, Slack (linked / not linked), role (read-only, "set by an admin").
-- **Campus** — the existing Home campus picker. It already writes
-  `profiles.home_campus_id`; the `staff_directory_follow_home_campus` trigger
-  copies it across, so there is still one control, not two.
-- **Ministry** — a select over the agreed list (below), writing
-  `staff_directory.ministry` via the self-update policy.
-- **Teams** — read-only chips from `teams`, captioned "from the Metrics
-  reminders — ask Paola to change".
-- One line explaining why: "Tiff and the other assistants use this to know
-  what you're probably asking about."
-
-**Admin → Users**: a Directory tab listing `staff_directory_list()` with the
-status pill (Active / Invite sent / Invite saved / No invite), the
-`needs_review` note, and a "Create invite" button that writes a
-`pending_invites` row — the existing mechanism, not a new one.
-
-Both are specs; no UI is in this branch.
-
-## Open questions
-
-1. **Ministry vocabulary.** The seed proposes one from a word map over
-   `reminder_routing` labels: Kids, Worship, Houses & Groups, Young Adults,
-   Next Steps, Outreach, Women, Online, Gatherings, Events, Campus leadership
-   (+ Creative / Operations from Slack titles). It describes what somebody
-   *reports numbers for*, which is not always their ministry — Carlos comes
-   out as "Women" because his only routing row is Girls events. The list is a
-   design/wording decision (Loyda/Hannita) before it becomes a select.
-2. **`slack_people` is not "everybody in Slack".** It holds 22 accounts, seeded
-   from #buildings. A full Slack `users.list` sync is needed before the
-   directory can claim to cover the workspace.
-3. **Pending-invite creation** (above): which role for people nobody has
-   assigned one.
-4. Duplicate people: two Adan Castillo Slack accounts, two Alan de la Peña
-   profiles, Austin's second profile (ASJ), and test/shared accounts
-   (Hannita Castro (TEST), Facilities Beta, Mosaic Admin — not seeded).
+1. A field for a **location overseen** (one person oversees one Mexico
+   location): no column yet; the seed puts it in `needs_review`.
+2. Saved invites that already exist for people the corrections remove are
+   left as they are — Admin → Users lists them with a Remove button.
+3. A shared account the corrections list as a person gets a row and a saved
+   invite like anyone else; remove it there if that is not wanted.

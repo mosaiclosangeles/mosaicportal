@@ -300,6 +300,32 @@ html.dark .pu-chip-main{background:var(--fill);border-color:var(--gathering)}
 .pu-addcampus{font-size:12.5px;color:var(--text2);border:1px dashed var(--hairline);border-radius:999px;padding:3px 9px;background:none;cursor:pointer;font-family:inherit}
 html.dark .pu-chip,html.dark .pu-addcampus{background:var(--fill);border-color:var(--separator);color:var(--text2)}
 html.dark .pa-pill{background:var(--fill);color:var(--text2)}
+/* ---- the staff directory (Admin → Users, and "You in the directory") ----
+   One row per person, whether or not they have signed in. The pill says how
+   far along they are; it is read off staff_directory_v.activation, never
+   stored, so it cannot drift from the account it describes. */
+.sd-pill{font-size:11px;font-weight:600;letter-spacing:.03em;padding:3px 9px;border-radius:999px;white-space:nowrap;display:inline-block;border:1px solid transparent}
+.sd-pill.active{background:var(--session-t);color:var(--session-d)}
+.sd-pill.sent{background:var(--gathering-t);color:var(--gathering-d)}
+.sd-pill.saved{background:var(--amber-t);color:var(--amber-d)}
+.sd-pill.none{background:var(--fill);color:var(--text2);border-color:var(--hairline)}
+.sd-pill.nodir{background:none;color:var(--text2);border:1px dashed var(--hairline)}
+html.dark .sd-pill.active,html.dark .sd-pill.sent,html.dark .sd-pill.saved{background:var(--fill)}
+.sd-tags{display:flex;flex-wrap:wrap;gap:4px}
+.sd-tag{font-size:11.5px;padding:2px 8px;border-radius:999px;background:var(--fill);border:1px solid var(--hairline);white-space:nowrap}
+.sd-sub{font-size:12px;color:var(--text2);margin-top:2px;line-height:1.4}
+.sd-mail{font-size:12.5px;word-break:break-all}
+.sd-mail2{font-size:11.5px;color:var(--text2);word-break:break-all}
+.sd-review{font-size:11.5px;color:var(--amber-d);margin-top:3px;max-width:320px}
+.sd-toggle{font-size:12px;padding:4px 10px;border-radius:999px;border:1px solid var(--hairline);background:var(--surface,#fff);color:var(--text2);cursor:pointer;font-family:inherit;letter-spacing:inherit}
+.sd-toggle[aria-pressed="true"]{background:var(--text);border-color:var(--text);color:var(--surface,#fff)}
+.sd-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px 14px}
+.sd-grid .full{grid-column:1/-1}
+@media(max-width:640px){.sd-grid{grid-template-columns:1fr}}
+.sd-ro{font-size:13.5px;padding:2px 0}
+#pfDir .kv{gap:14px}
+.sd-checks{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:13px}
+.sd-checks label{display:inline-flex;align-items:center;gap:5px;cursor:pointer}
 html.dark .pu-check:hover{background:var(--fill)}
 .ap-seg{display:inline-flex;gap:2px;background:var(--fill);border-radius:9px;padding:3px}
 .ap-seg button{border:0;background:none;font-family:inherit;letter-spacing:inherit;font-size:12.5px;padding:6px 12px;border-radius:6px;color:var(--text2);cursor:pointer;display:inline-flex;align-items:center;gap:6px}
@@ -2574,7 +2600,7 @@ function campusSortIndex(name){
   const onlineIdx=CAMPUS_ORDER.indexOf('Mosaic Online');
   return onlineIdx>=0?onlineIdx-0.5:CAMPUS_ORDER.length;
 }
-const ADMIN={notice:null,profs:null,campuses:null,pending:null,err:null,fb:null,fbErr:null,q:'',role:'all',loading:false,tab:'users',apps:null,appPerms:null,appDefaults:null,campusOpen:new Set(),showInactiveCampuses:false,campusUsersOpen:new Set(),regions:null};
+const ADMIN={notice:null,profs:null,campuses:null,pending:null,err:null,fb:null,fbErr:null,q:'',role:'all',loading:false,tab:'users',apps:null,appPerms:null,appDefaults:null,campusOpen:new Set(),showInactiveCampuses:false,campusUsersOpen:new Set(),regions:null,status:'all',dir:null,dirErr:null,ministries:[]};
 const ROLE_LIST=['admin','staff','campus_pastor','leader','volunteer'];
 const SECTION_LABEL=id=>{const s=SECTIONS.find(x=>x.id===id);return s?s.label:id;};
 function adminName(p){const n=p.display_name||p.full_name||'—';return n.includes('@')?prettyNameFromEmail(n):n;}
@@ -2584,7 +2610,7 @@ async function loadAdmin(){
      each, and which of them a role gets by default. Roles & permissions reads
      these so the table describes what the database actually says, rather than
      a list kept in step by hand. */
-  const [r1,r2,r3,r4,r5,r6,r7,r8,r9]=await Promise.all([
+  const [r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11]=await Promise.all([
     sb.from('profiles').select('id,display_name,full_name,role,campus_id,avatar_url,app_access,campus_ids,archived_at'),
     sb.from('campuses').select('id,name,parent_campus_id,active,region_id,timezone,language'),
     sb.from('pending_invites').select('id,email,name,role,campus_id,created_at').order('created_at'),
@@ -2599,8 +2625,18 @@ async function loadAdmin(){
     // Gathering times per location — admin-write only, joined to a location by id.
     sb.from('campus_service_times').select('id,campus_id,location_id,gathering_type,service_label,sort_order,active').eq('active',true).order('sort_order'),
     // Regions group campuses for reporting — ordered closest-to-LA first (see campus_regions).
-    sb.from('campus_regions').select('id,name,sort_order').order('sort_order')
+    sb.from('campus_regions').select('id,name,sort_order').order('sort_order'),
+    // The staff directory — everyone, signed in or not (docs/staff-directory.md).
+    // Read through staff_directory_list() because the view reads auth.users.
+    sb.rpc('staff_directory_list'),
+    sb.from('staff_ministries').select('name,sort_order,active').order('sort_order')
   ]);
+  /* A directory that failed to load leaves DIR null, and the list falls back
+     to accounts and saved invites only and says so — never an empty
+     directory that reads as "nobody is on staff". */
+  ADMIN.dir=(r10&&!r10.error&&Array.isArray(r10.data))?r10.data:null;
+  ADMIN.dirErr=(r10&&r10.error&&r10.error.message)||null;
+  ADMIN.ministries=(r11&&r11.data)||[];
   ADMIN.apps=r4.data||[];
   ADMIN.appPerms=r5.data||[];
   ADMIN.appDefaults=r6.data||[];
@@ -2864,46 +2900,23 @@ function pageAdmin(){
     '<button class="btn-primary" data-newuser="1">New user</button></div>'+tabs+paNoticeHTML();
   if(!ADMIN.profs&&!ADMIN.err){loadAdmin();return head+'<div class="empty">Loading users…</div>';}
   if(ADMIN.err)return head+'<div class="banner">'+ic('info')+'<div>Couldn\'t load users — '+esc(ADMIN.err)+'</div></div>';
-  const rank={admin:0,staff:1,campus_pastor:2,leader:3,volunteer:4};
-  let rows=ADMIN.profs.slice().sort((a,b)=>(rank[a.role]??9)-(rank[b.role]??9)||adminName(a).localeCompare(adminName(b)));
-  const q=ADMIN.q.trim().toLowerCase();
-  if(ADMIN.role!=='all')rows=rows.filter(p=>p.role===ADMIN.role);
-  if(q)rows=rows.filter(p=>adminName(p).toLowerCase().includes(q)||(p.full_name||'').toLowerCase().includes(q));
-  const archived=rows.filter(p=>p.archived_at);
-  rows=rows.filter(p=>!p.archived_at);
-  const activeTotal=ADMIN.profs.filter(p=>!p.archived_at).length;
-  const roleSel=p=>'<select class="pa-role" data-id="'+esc(p.id)+'">'+ROLE_LIST.map(r=>'<option value="'+r+'"'+(r===p.role?' selected':'')+'>'+roleLabel(r)+'</option>').join('')+'</select>';
-  const campusSel=p=>p.role==='admin'?'<span style="color:var(--text2)">All campuses</span>'
-    :'<select class="pa-campus" data-id="'+esc(p.id)+'"><option value="">Select a campus</option>'+
-      ADMIN.campuses.map(c=>'<option value="'+esc(c.id)+'"'+(c.id===p.campus_id?' selected':'')+'>'+esc(c.name)+'</option>').join('')+'</select>';
+  const archived=ADMIN.profs.filter(p=>p.archived_at).filter(p=>!ADMIN.q.trim()||adminName(p).toLowerCase().includes(ADMIN.q.trim().toLowerCase()));
+  let rows=dirFilter(dirRows());
+  const total=dirRows().length;
+  const statusSel='<select id="paStatus"><option value="all">Every status</option>'+
+    Object.keys(DIR_STATUS).map(k=>'<option value="'+k+'"'+(ADMIN.status===k?' selected':'')+'>'+DIR_STATUS[k].label+'</option>').join('')+'</select>';
   return head+
-    '<div class="pa-bar"><input id="paSearch" type="text" placeholder="Search by name…" value="'+esc(ADMIN.q)+'">'+
+    '<div class="pa-bar" style="flex-wrap:wrap"><input id="paSearch" type="text" placeholder="Search name, email, ministry…" value="'+esc(ADMIN.q)+'">'+
     '<select id="paRole"><option value="all"'+(ADMIN.role==='all'?' selected':'')+'>All roles</option>'+
-      ROLE_LIST.map(r=>'<option value="'+r+'"'+(ADMIN.role===r?' selected':'')+'>'+roleLabel(r)+'</option>').join('')+'</select>'+
-    '<span style="margin-left:auto;font-size:12.5px;color:var(--text2)">'+rows.length+' of '+activeTotal+' users</span></div>'+
+      ROLE_LIST.map(r=>'<option value="'+r+'"'+(ADMIN.role===r?' selected':'')+'>'+roleLabel(r)+'</option>').join('')+'</select>'+statusSel+
+    '<span style="margin-left:auto;font-size:12.5px;color:var(--text2)">'+rows.length+' of '+total+' people</span></div>'+
+    (ADMIN.dir===null
+      ?'<div class="banner">'+ic('info')+'<div>The staff directory did not load'+(ADMIN.dirErr?' — '+esc(ADMIN.dirErr):'')+
+        '. Showing portal accounts and saved invites only, so anyone who has neither is missing from this list.</div></div>':'')+
     '<div id="paNote" class="banner" style="display:none"></div>'+
-    '<div class="pa-card"><table class="pa-table"><thead><tr><th>Name</th><th>Role</th><th>Primary campus</th><th style="text-align:center">Roles &amp; permissions</th></tr></thead><tbody>'+
-    (rows.length?rows.map(p=>'<tr>'+
-      '<td><button class="pa-name" data-user="'+esc(p.id)+'" title="Open '+esc(adminName(p))+'">'+
-      '<span class="pa-av">'+avatarHtml(p.avatar_url,adminName(p))+'</span><span class="nm">'+esc(adminName(p))+'</span></button>'+
-      (ME.email&&p.full_name===ME.email?' <span style="color:var(--text2);font-size:11.5px">(you)</span>':'')+'</td>'+
-      '<td>'+roleSel(p)+'</td><td>'+campusSel(p)+'</td>'+
-      '<td style="text-align:center"><button class="pa-perm" data-user="'+esc(p.id)+'" title="Edit permissions for '+esc(adminName(p))+'">'+permSummary(p)+'</button></td></tr>').join('')
-      :'<tr><td colspan="4" style="color:var(--text2)">No users match.</td></tr>')+
+    '<div class="pa-card" style="overflow-x:auto"><table class="pa-table sd-table"><thead><tr><th>Person</th><th>Status</th><th>Campus</th><th>Ministries</th><th>Email &amp; Slack</th><th>Role</th><th></th></tr></thead><tbody>'+
+    (rows.length?rows.map(dirRowHTML).join(''):'<tr><td colspan="7" style="color:var(--text2)">Nobody matches.</td></tr>')+
     '</tbody></table></div>'+
-    ((ADMIN.pending||[]).length?
-      '<div class="pu-sec" style="margin-top:26px">Invite pending</div>'+
-      '<p style="font-size:12.5px;color:var(--text2);margin:4px 0 10px;max-width:620px;line-height:1.5">Accounts prepared but not announced yet — no email has gone out. Send each invite whenever you\'re ready, or open one to edit it.</p>'+
-      '<div class="pa-card"><table class="pa-table"><tbody>'+
-      ADMIN.pending.map(v=>'<tr>'+
-        '<td><button class="pa-name" data-pinv="'+esc(v.id)+'" title="Edit this pending invite">'+
-        '<span class="pa-av">'+avatarHtml(null,v.name||v.email)+'</span><span class="nm">'+esc(v.name||v.email)+'</span></button>'+
-        ' <span style="font-size:11px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;color:var(--milestone-d,#8a6d00);border:1px solid var(--hairline);border-radius:999px;padding:3px 9px;white-space:nowrap">Invite pending</span></td>'+
-        '<td style="color:var(--text2)">'+esc(v.email)+'</td>'+
-        '<td style="color:var(--text2)">'+roleLabel(v.role)+(v.role!=='admin'&&v.campus_id?' · '+esc(campusName(v.campus_id)):'')+'</td>'+
-        '<td style="text-align:right;white-space:nowrap"><button class="btn-primary" data-pinvsend="'+esc(v.id)+'" style="padding:6px 12px;font-size:12px">Send invite</button> '+
-        '<button class="gate-ghost" data-pinvdel="'+esc(v.id)+'" style="margin:0;padding:6px 12px;font-size:12px">Remove</button></td></tr>').join('')+
-      '</tbody></table></div>':'')+
     (archived.length?
       '<div class="pu-sec" style="margin-top:26px">Archived users</div>'+
       '<p style="font-size:12.5px;color:var(--text2);margin:4px 0 10px;max-width:620px;line-height:1.5">No longer on staff. They can\'t sign in, but their account and history are kept — open one to restore access.</p>'+
@@ -2915,7 +2928,236 @@ function pageAdmin(){
         '<td style="color:var(--text2)">Archived '+esc(new Date(p.archived_at).toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'}))+'</td>'+
         '<td></td></tr>').join('')+
       '</tbody></table></div>':'')+
-    '<p style="font-size:12.5px;color:var(--text2);margin-top:14px;max-width:620px;line-height:1.5">Changing a role or campus here applies everywhere the Mosaic account is used — the portal, Metrics, and anything added later. Campus applies to staff, leaders and volunteers; admins see all campuses.</p>';
+    '<p style="font-size:12.5px;color:var(--text2);margin-top:14px;max-width:660px;line-height:1.5">Everyone on staff is listed, whether or not they have signed in. '+
+    'A saved invite has sent no email — <b>Send invite</b> sends it. Campus here is where somebody works, for the assistants; '+
+    'what they may <i>see</i> is set on their account (open them, then <b>Account &amp; permissions</b>). Changing a role applies everywhere the Mosaic account is used.</p>';
+}
+/* ---- THE STAFF DIRECTORY, AS THE USERS LIST ----
+   Hannita, 26 Nov (option B): no separate Directory tab — Admin → Users IS
+   the directory. Everyone is a row: a directory person (with or without an
+   account), plus any portal account or saved invite the directory does not
+   know yet, so nothing that used to be on this page drops off it. */
+const DIR_STATUS={
+  signed_in:{label:'Active',cls:'active'},
+  invite_sent:{label:'Invite sent',cls:'sent'},
+  invite_saved:{label:'Invite saved',cls:'saved'},
+  no_invite:{label:'No invite',cls:'none'},
+  not_in_directory:{label:'Not in directory',cls:'nodir'}
+};
+function dirPill(k){const st=DIR_STATUS[k]||DIR_STATUS.no_invite;return '<span class="sd-pill '+st.cls+'" data-status="'+k+'">'+st.label+'</span>';}
+function dirEmails(d){return [d.email,...(d.emails_secondary||[])].filter(Boolean).map(e=>String(e).toLowerCase());}
+function dirRows(){
+  const dir=ADMIN.dir||[], profs=(ADMIN.profs||[]).filter(p=>!p.archived_at), pend=ADMIN.pending||[];
+  const linked=new Set(dir.map(d=>d.profile_id).filter(Boolean));
+  const known=new Set(); dir.forEach(d=>dirEmails(d).forEach(e=>known.add(e)));
+  const out=dir.map(d=>{
+    const prof=profs.find(p=>p.id===d.profile_id)||null;
+    const pv=pend.find(v=>v.id===d.pending_invite_id)||pend.find(v=>dirEmails(d).includes(String(v.email).toLowerCase()))||null;
+    return {kind:'dir',key:'d:'+d.id,name:d.name||d.email||'—',d,prof,pend:pv,status:d.activation||'no_invite',role:(prof&&prof.role)||d.role||null};
+  });
+  profs.filter(p=>!linked.has(p.id)&&!known.has(String(p.full_name||'').toLowerCase()))
+    .forEach(p=>out.push({kind:'prof',key:'p:'+p.id,name:adminName(p),d:null,prof:p,pend:null,status:'not_in_directory',role:p.role}));
+  pend.filter(v=>!known.has(String(v.email).toLowerCase()))
+    .forEach(v=>out.push({kind:'pend',key:'i:'+v.id,name:v.name||v.email,d:null,prof:null,pend:v,status:'invite_saved',role:v.role}));
+  const rank={signed_in:0,invite_sent:1,invite_saved:2,no_invite:3,not_in_directory:4};
+  return out.sort((a,b)=>String(a.name).localeCompare(String(b.name))||(rank[a.status]-rank[b.status]));
+}
+function dirFilter(rows){
+  const q=ADMIN.q.trim().toLowerCase();
+  return rows.filter(r=>{
+    if(ADMIN.role!=='all'&&r.role!==ADMIN.role)return false;
+    if(ADMIN.status!=='all'&&r.status!==ADMIN.status)return false;
+    if(!q)return true;
+    const d=r.d||{};
+    const hay=[r.name,d.title,d.campus,d.location,...(d.nicknames||[]),...(d.ministries||[]),...dirEmails(d),
+      r.prof&&r.prof.full_name,r.pend&&r.pend.email].filter(Boolean).join(' ').toLowerCase();
+    return hay.includes(q);
+  });
+}
+function dirCampusCell(d){
+  if(!d)return '<span style="color:var(--text2)">—</span>';
+  const over=d.oversees_all?'all campuses':(d.campuses_overseen||[]).join(', ');
+  return (d.campus?esc(d.campus):'<span style="color:var(--text2)">No campus</span>')+
+    (d.location?'<div class="sd-sub">'+esc(d.location)+'</div>':'')+
+    (over?'<div class="sd-sub">Oversees '+esc(over)+'</div>':'');
+}
+function dirTags(list){
+  return (list&&list.length)?'<div class="sd-tags">'+list.map(m=>'<span class="sd-tag">'+esc(m)+'</span>').join('')+'</div>'
+    :'<span style="color:var(--text2)">—</span>';
+}
+function dirRowHTML(r){
+  const d=r.d, p=r.prof, v=r.pend;
+  const open=r.kind==='dir'?'data-dir="'+esc(d.id)+'"':r.kind==='prof'?'data-user="'+esc(p.id)+'"':'data-pinv="'+esc(v.id)+'"';
+  const sub=d?[(d.nicknames||[]).join(', '),d.title].filter(Boolean).join(' · '):(r.kind==='prof'?'Portal account — not in the directory yet':'Saved invite — not in the directory yet');
+  const mail=d?'<div class="sd-mail">'+esc(d.email||'—')+'</div>'+(d.emails_secondary||[]).map(e=>'<div class="sd-mail2">'+esc(e)+'</div>').join('')
+            :'<div class="sd-mail">'+esc((v&&v.email)||(p&&String(p.full_name||'').includes('@')?p.full_name:'')||'—')+'</div>';
+  const slack=d?(d.slack_user_id?'<div class="sd-sub">Slack linked</div>':'<div class="sd-sub">Not on Slack</div>'):'';
+  const role=p?'<select class="pa-role" data-id="'+esc(p.id)+'">'+ROLE_LIST.map(x=>'<option value="'+x+'"'+(x===p.role?' selected':'')+'>'+roleLabel(x)+'</option>').join('')+'</select>'
+           :'<span style="color:var(--text2)">'+esc(r.role?roleLabel(r.role):'—')+'</span>';
+  const act=v&&(r.status==='invite_saved')
+      ?'<button class="btn-primary" data-pinvsend="'+esc(v.id)+'" style="padding:6px 12px;font-size:12px">Send invite</button> '+
+       '<button class="gate-ghost" data-pinvdel="'+esc(v.id)+'" style="margin:0;padding:6px 12px;font-size:12px">Remove</button>'
+    :(r.status==='no_invite'&&d&&d.email)
+      ?'<button class="gate-ghost" data-dirinvite="'+esc(d.id)+'" style="margin:0;padding:6px 12px;font-size:12px">Save invite</button>'
+    :p?'<button class="pa-perm" data-user="'+esc(p.id)+'" title="Account &amp; permissions for '+esc(r.name)+'">'+permSummary(p)+'</button>':'';
+  return '<tr data-row="'+esc(r.key)+'">'+
+    '<td><button class="pa-name" '+open+' title="Open '+esc(r.name)+'">'+
+      '<span class="pa-av">'+avatarHtml(p&&p.avatar_url,r.name)+'</span><span class="nm">'+esc(r.name)+'</span></button>'+
+      (sub?'<div class="sd-sub">'+esc(sub)+'</div>':'')+
+      (d&&d.needs_review?'<div class="sd-review">'+esc(d.needs_review)+'</div>':'')+'</td>'+
+    '<td>'+dirPill(r.status)+'</td>'+
+    '<td>'+dirCampusCell(d)+'</td>'+
+    '<td>'+dirTags(d&&d.ministries)+'</td>'+
+    '<td>'+mail+slack+'</td>'+
+    '<td>'+role+'</td>'+
+    '<td style="text-align:right;white-space:nowrap">'+act+'</td></tr>';
+}
+/* Save an invite for a directory person with none — the same pending_invites
+   row "Save for later" writes, role 'staff' (Hannita, 26 Nov). No email. */
+async function dirSaveInvite(id){
+  const d=(ADMIN.dir||[]).find(x=>x.id===id);if(!d||!d.email)return;
+  const {error}=await sb.from('pending_invites').upsert({email:d.email,name:d.name,role:'staff',campus_id:d.campus_id||null},{onConflict:'email'});
+  if(error){paNote("Couldn't save the invite — "+(error.message||'please try again.'),true);return;}
+  ADMIN.profs=null;paNote('Invite saved for '+d.email+' — no email sent. Press Send invite when you\'re ready.');
+}
+/* One person, every field, editable by an admin. Reads the raw row (an
+   admin may) rather than the view, because the view fills a missing campus
+   in from the profile and saving that back would make a guess look chosen. */
+async function dirDrawer(id){
+  const v=(ADMIN.dir||[]).find(x=>x.id===id)||{};
+  openDrawer('<div class="dcard-body"><div class="empty">Loading…</div></div>',v.name||'Person');
+  const {data:raw,error}=await sb.from('staff_directory').select('*').eq('id',id).single();
+  const d=raw||{};
+  if(error||!raw){document.getElementById('drawerBody').innerHTML='<div class="dcard-body"><div class="empty">Couldn\'t load this person — '+esc((error&&error.message)||'not found')+'</div></div>';return;}
+  const cams=(ADMIN.campuses||[]);
+  const camOpts=sel=>'<option value="">— none —</option>'+cams.map(c=>'<option value="'+esc(c.id)+'"'+(c.id===sel?' selected':'')+'>'+esc(c.name)+'</option>').join('');
+  const locOpts=(cid,sel)=>'<option value="">— none —</option>'+(ADMIN.campusLocations||[]).filter(l=>l.campus_id===cid)
+      .map(l=>'<option value="'+esc(l.id)+'"'+(l.id===sel?' selected':'')+'>'+esc(l.location)+'</option>').join('');
+  const mins=(ADMIN.ministries||[]).filter(m=>m.active!==false||(d.ministries||[]).includes(m.name));
+  const list=a=>(a||[]).join(', ');
+  const st=v.activation||'no_invite';
+  const pv=(ADMIN.pending||[]).find(x=>x.id===v.pending_invite_id);
+  document.getElementById('drawerBody').innerHTML=
+    '<div class="dcard-head"><h2>'+esc(d.full_name||'')+'</h2><div class="sub">'+dirPill(st)+
+      (v.last_sign_in_at?' &nbsp;Last signed in '+esc(relDays(v.last_sign_in_at)):'')+'</div></div>'+
+    '<div class="dcard-body"><div class="sd-grid">'+
+      '<div><label class="pa-lbl">Name</label><input id="sdName" class="pa-in" value="'+esc(d.full_name||'')+'"></div>'+
+      '<div><label class="pa-lbl">Nicknames</label><input id="sdNick" class="pa-in" placeholder="e.g. initials" value="'+esc(list(d.nicknames))+'"></div>'+
+      '<div class="full"><label class="pa-lbl">Title</label><input id="sdTitle" class="pa-in" value="'+esc(d.title||'')+'"></div>'+
+      '<div><label class="pa-lbl">Primary email</label><input id="sdEmail" class="pa-in" type="email" value="'+esc(d.email||'')+'"></div>'+
+      '<div><label class="pa-lbl">Other emails</label><input id="sdEmails2" class="pa-in" placeholder="comma-separated" value="'+esc(list(d.emails_secondary))+'"></div>'+
+      '<div><label class="pa-lbl">Slack id</label><input id="sdSlack" class="pa-in" placeholder="Not on Slack" value="'+esc(d.slack_user_id||'')+'"></div>'+
+      '<div><label class="pa-lbl">Other Slack accounts</label><input id="sdSlack2" class="pa-in" placeholder="comma-separated" value="'+esc(list(d.slack_ids_secondary))+'"></div>'+
+      '<div><label class="pa-lbl">Primary campus</label><select id="sdCampus" class="pa-in">'+camOpts(d.primary_campus_id)+'</select></div>'+
+      '<div><label class="pa-lbl">Location</label><select id="sdLoc" class="pa-in">'+locOpts(d.primary_campus_id,d.location_id)+'</select></div>'+
+      '<div class="full"><label class="pa-lbl">Campuses overseen</label><div class="sd-checks">'+
+        '<label><input type="checkbox" id="sdAll"'+(d.oversees_all?' checked':'')+'> All campuses</label>'+
+        cams.map(c=>'<label><input type="checkbox" data-sdover="'+esc(c.id)+'"'+((d.campus_ids_overseen||[]).includes(c.id)?' checked':'')+'> '+esc(c.name)+'</label>').join('')+
+      '</div></div>'+
+      '<div class="full"><label class="pa-lbl">Ministries</label><div class="sd-tags" id="sdMins">'+
+        mins.map(m=>'<button type="button" class="sd-toggle" data-sdmin="'+esc(m.name)+'" aria-pressed="'+((d.ministries||[]).includes(m.name)?'true':'false')+'">'+esc(m.name)+'</button>').join('')+
+      '</div><div style="display:flex;gap:6px;margin-top:8px"><input id="sdNewMin" class="pa-in" placeholder="Add a ministry to the list" style="max-width:240px;padding:6px 9px;font-size:13px">'+
+        '<button type="button" class="gate-ghost" id="sdAddMin" style="margin:0;padding:6px 12px;font-size:12px">Add</button></div></div>'+
+      (d.teams&&d.teams.length?'<div class="full"><label class="pa-lbl">Teams (from the Metrics reminders)</label><div class="sd-ro">'+esc(d.teams.join(', '))+'</div></div>':'')+
+      '<div class="full"><label class="pa-lbl">Needs review</label><textarea id="sdReview" class="pa-in" rows="2" placeholder="Nothing to look at">'+esc(d.needs_review||'')+'</textarea></div>'+
+    '</div></div>'+
+    '<div class="dcard-foot"><button class="btn-primary" id="sdSave">Save</button>'+
+      (pv?'<button class="btn-primary" data-pinvsend="'+esc(pv.id)+'">Send invite</button>':'')+
+      (st==='no_invite'&&d.email?'<button class="gate-ghost" data-dirinvite="'+esc(d.id)+'" style="margin:0">Save invite — no email</button>':'')+
+      (d.profile_id?'<button class="gate-ghost" data-user="'+esc(d.profile_id)+'" style="margin:0">Account &amp; permissions</button>':'')+
+    '</div><div id="sdNote" class="dnote"></div>';
+  const note=(m,k)=>{const n=document.getElementById('sdNote');if(n){n.textContent=m;n.className='dnote show '+(k||'warn');}};
+  const camSel=document.getElementById('sdCampus');
+  camSel.addEventListener('change',()=>{document.getElementById('sdLoc').innerHTML=locOpts(camSel.value||null,null);});
+  document.getElementById('sdMins').addEventListener('click',e=>{const b=e.target.closest('[data-sdmin]');if(!b)return;
+    b.setAttribute('aria-pressed',b.getAttribute('aria-pressed')==='true'?'false':'true');});
+  document.getElementById('sdAddMin').addEventListener('click',async()=>{
+    const name=document.getElementById('sdNewMin').value.trim();if(!name)return;
+    if((ADMIN.ministries||[]).some(m=>m.name.toLowerCase()===name.toLowerCase())){note('“'+name+'” is already on the list.');return;}
+    const {error:e2}=await sb.from('staff_ministries').insert({name});
+    if(e2){note("Couldn't add it — "+(e2.message||'try again.'),'err');return;}
+    ADMIN.ministries=(ADMIN.ministries||[]).concat([{name,active:true,sort_order:999}]);
+    const b=document.createElement('button');b.type='button';b.className='sd-toggle';b.dataset.sdmin=name;b.setAttribute('aria-pressed','true');b.textContent=name;
+    document.getElementById('sdMins').appendChild(b);document.getElementById('sdNewMin').value='';
+    note('Added “'+name+'” to the ministry list for everyone.','ok');
+  });
+  const split=v2=>v2.split(/[,\n]/).map(x=>x.trim()).filter(Boolean);
+  document.getElementById('sdSave').addEventListener('click',async()=>{
+    const email=document.getElementById('sdEmail').value.trim().toLowerCase(), slack=document.getElementById('sdSlack').value.trim();
+    if(!email&&!slack){note('A person needs an email or a Slack id.');return;}
+    if(email&&!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){note('That primary email does not look right.');return;}
+    const patch={
+      full_name:document.getElementById('sdName').value.trim()||d.full_name,
+      nicknames:split(document.getElementById('sdNick').value),
+      title:document.getElementById('sdTitle').value.trim()||null,
+      email:email||null,
+      emails_secondary:split(document.getElementById('sdEmails2').value.toLowerCase()),
+      slack_user_id:slack||null,
+      slack_ids_secondary:split(document.getElementById('sdSlack2').value),
+      primary_campus_id:camSel.value||null,
+      location_id:document.getElementById('sdLoc').value||null,
+      oversees_all:document.getElementById('sdAll').checked,
+      campus_ids_overseen:[...document.querySelectorAll('[data-sdover]')].filter(x=>x.checked).map(x=>x.dataset.sdover),
+      ministries:[...document.querySelectorAll('#sdMins [data-sdmin]')].filter(x=>x.getAttribute('aria-pressed')==='true').map(x=>x.dataset.sdmin),
+      needs_review:document.getElementById('sdReview').value.trim()||null,
+      source:'admin'
+    };
+    const btn=document.getElementById('sdSave');btn.disabled=true;btn.textContent='Saving…';
+    const {error:e3}=await sb.from('staff_directory').update(patch).eq('id',id);
+    btn.disabled=false;btn.textContent='Save';
+    // Only after the database says yes (CLAUDE.md: never a tick over a failed write).
+    if(e3){note("Couldn't save — "+(e3.message||'please try again.'),'err');return;}
+    note('Saved.','ok');
+    ADMIN.profs=null;
+    setTimeout(()=>{closeDrawer();if(S.section==='admin')render();paNote('Saved '+patch.full_name+'.');},700);
+  });
+}
+/* ---- YOU IN THE DIRECTORY (Profile) ----
+   Each person may change two things about their own row: their primary
+   campus and their ministries (Hannita, 26 Nov). Everything else is shown and
+   says who sets it. The campus is the Home campus picker above — one control,
+   not two: saving it writes both, and the database trigger keeps them in step
+   for anyone saving it elsewhere. */
+async function dirSelfCard(){
+  const host=document.getElementById('pfDir');if(!host)return;
+  const {data,error}=await sb.rpc('staff_directory_list');
+  if(!document.getElementById('pfDir'))return;
+  const me=(!error&&Array.isArray(data))?data.find(x=>x.profile_id===ME.id):null;
+  if(error||!Array.isArray(data)){host.innerHTML='<p class="sd-sub">The staff directory could not be read'+(error&&error.message?' — '+esc(error.message):'')+'.</p>';return;}
+  if(!me){host.innerHTML='<p class="sd-sub" style="margin:0">You are not in the staff directory yet. An admin adds people from Admin → Users.</p>';return;}
+  ME.dir=me;
+  const {data:mins}=await sb.from('staff_ministries').select('name,sort_order,active').order('sort_order');
+  const vocab=(mins||[]).filter(m=>m.active!==false||(me.ministries||[]).includes(m.name));
+  const ro=(k,v)=>'<div class="kv"><span>'+k+'</span><span>'+v+'</span></div>';
+  const over=me.oversees_all?'All campuses':(me.campuses_overseen||[]).join(', ');
+  host.innerHTML=
+    ro('Primary campus','<span data-self="campus">'+esc(me.campus||'—')+'</span>')+
+    '<p class="sd-sub" style="margin:2px 0 10px">Change it with <b>Home campus</b> above — they are the same thing.'+
+      /* They can disagree until the first save: the directory was seeded from
+         Hannita's list, the home campus from whatever was picked before. Say so
+         rather than show two answers side by side. */
+      (homeCampusId()&&me.campus_id&&homeCampusId()!==me.campus_id?' Right now Home campus says '+esc(homeCampusName()||'something else')+'; saving it will set this too.':'')+'</p>'+
+    '<div style="padding:8px 0 12px;border-bottom:1px solid var(--separator)"><div style="font-size:13px;color:var(--text2);margin-bottom:8px">Ministries</div><div class="sd-tags" id="dsMins">'+
+      vocab.map(m=>'<button type="button" class="sd-toggle" data-dsmin="'+esc(m.name)+'" aria-pressed="'+((me.ministries||[]).includes(m.name)?'true':'false')+'">'+esc(m.name)+'</button>').join('')+
+    '</div><button class="btn-primary" id="dsSave" style="margin-top:10px;padding:7px 13px;font-size:12.5px">Save ministries</button></div>'+
+    ro('Location',esc(me.location||'—'))+
+    ro('Also oversees',esc(over||'—'))+
+    ro('Title',esc(me.title||'—'))+
+    ro('Nicknames',esc((me.nicknames||[]).join(', ')||'—'))+
+    ro('Emails','<span style="text-align:right;overflow-wrap:anywhere">'+[me.email,...(me.emails_secondary||[])].filter(Boolean).map(esc).join('<br>')+'</span>')+
+    ro('Slack',me.slack_user_id?'Linked':'Not linked')+
+    '<p class="sd-sub" style="margin:10px 0 0">Location, title, emails, nicknames and Slack are set by an admin — ask in Admin if one is wrong. '+
+    'Tiff and the other assistants use this to know what you are probably asking about.</p>';
+  document.getElementById('dsMins').addEventListener('click',e=>{const b=e.target.closest('[data-dsmin]');if(!b)return;
+    b.setAttribute('aria-pressed',b.getAttribute('aria-pressed')==='true'?'false':'true');});
+  document.getElementById('dsSave').addEventListener('click',async()=>{
+    const ministries=[...document.querySelectorAll('#dsMins [data-dsmin]')].filter(x=>x.getAttribute('aria-pressed')==='true').map(x=>x.dataset.dsmin);
+    const n=document.getElementById('pfNote');
+    // Only the ministries — the database would put anything else back anyway.
+    const {error:e2}=await sb.from('staff_directory').update({ministries}).eq('id',me.id);
+    if(e2){n.textContent="Couldn't save your ministries — "+(e2.message||'try again.');return;}
+    me.ministries=ministries;n.textContent='Ministries saved.';
+  });
 }
 /* The rail calls Metrics 'numbers'; the permission tables call it 'metrics'.
    Everything else matches. Without this the Metrics row would quietly show no
@@ -4443,6 +4685,8 @@ function render(){
   }));
   const pr=document.getElementById('paRole');
   if(pr)pr.addEventListener('change',()=>{ADMIN.role=pr.value;render();});
+  const pst=document.getElementById('paStatus');
+  if(pst)pst.addEventListener('change',()=>{ADMIN.status=pst.value;render();});
   const rs=document.getElementById('roleSel');
   if(rs) rs.addEventListener('change',e=>{S.role=e.target.value;
     if(!allowedSections().includes(S.section))S.section='home'; render();});
@@ -4729,7 +4973,7 @@ document.addEventListener('click',e=>{
   /* Both sides of the merge added to this list — [data-mp] is the Metrics rail,
      [data-newmenu]/[data-newthing] the New menu. Every one of them has to be
      here or its buttons are simply dead. */
-  const t=e.target.closest('[data-go],[data-view],[data-nav],[data-filter],[data-ev],[data-day],[data-task],[data-new],[data-pick],[data-everyone],[data-tl],[data-back],[data-logout],[data-preview],[data-previewexit],[data-previewgo],[data-pickertoggle],[data-pickerrole],[data-profile],[data-fb],[data-newuser],[data-gp],[data-fp],[data-mp],[data-user],[data-pinv],[data-pinvsend],[data-pinvdel],[data-adtab],[data-theme],[data-newcampus],[data-editcampus],[data-addloc],[data-deactivateloc],[data-addtime],[data-rmtime],[data-toggleinactivecampus],[data-toggleusers],[data-newmenu],[data-newthing],[data-cardlist],[data-cardback],[data-closeout]');
+  const t=e.target.closest('[data-go],[data-view],[data-nav],[data-filter],[data-ev],[data-day],[data-task],[data-new],[data-pick],[data-everyone],[data-tl],[data-back],[data-logout],[data-preview],[data-previewexit],[data-previewgo],[data-pickertoggle],[data-pickerrole],[data-profile],[data-fb],[data-newuser],[data-gp],[data-fp],[data-mp],[data-user],[data-dir],[data-dirinvite],[data-pinv],[data-pinvsend],[data-pinvdel],[data-adtab],[data-theme],[data-newcampus],[data-editcampus],[data-addloc],[data-deactivateloc],[data-addtime],[data-rmtime],[data-toggleinactivecampus],[data-toggleusers],[data-newmenu],[data-newthing],[data-cardlist],[data-cardback],[data-closeout]');
   if(!t) return;
   /* The New menu on Home. It has to come before data-new below, and be its own
      attribute: data-new is the Calendars drawer, and one of these buttons
@@ -4853,7 +5097,9 @@ document.addEventListener('click',e=>{
   // event's details the next time somebody opens that form.
   if(t.dataset.fp!==undefined){ S.facPath=t.dataset.fp; if(S.navBook)delete S.navBook.facilities; S.section='facilities'; render(); return; }
   if(t.dataset.mp!==undefined){ S.numPath=t.dataset.mp; if(S.navBook)delete S.navBook.numbers; S.section='numbers'; render(); return; }
-  if(t.dataset.user){ S.from='admin'; S.adminUserId=t.dataset.user; S.section='admin-user'; render(); return; }
+  if(t.dataset.user){ closeDrawer(); S.from='admin'; S.adminUserId=t.dataset.user; S.section='admin-user'; render(); return; }
+  if(t.dataset.dir){ dirDrawer(t.dataset.dir); return; }
+  if(t.dataset.dirinvite){ t.disabled=true; dirSaveInvite(t.dataset.dirinvite).then(()=>{closeDrawer();}); return; }
   if(t.dataset.pinv){ paInviteDrawer(t.dataset.pinv); return; }
   if(t.dataset.pinvsend){
     const v=(ADMIN.pending||[]).find(x=>x.id===t.dataset.pinvsend);if(!v)return;
@@ -4862,7 +5108,7 @@ document.addEventListener('click',e=>{
     paSendInvite(v).catch(ex=>String((ex&&ex.message)||ex)).then(errMsg=>{
       if(errMsg){t.disabled=false;t.textContent='Send invite';paNote("Couldn't send to "+v.email+' — '+errMsg,true);return;}
       paNote('Invite sent to '+v.email+'.');
-      ADMIN.profs=null;if(S.section==='admin')render();
+      closeDrawer();ADMIN.profs=null;if(S.section==='admin')render();
     });
     return;
   }
@@ -5180,6 +5426,7 @@ async function profilePage(){
   const eyebrow='letter-spacing:.13em;text-transform:uppercase;color:var(--text2);font-size:11px;font-weight:700';
   host.innerHTML=
     '<div class="pf-grid">'+
+      '<div class="pf-side">'+
       '<div class="pa-card pf-main">'+
         '<div class="pf-cardsec" style="'+eyebrow+'">Your account</div>'+
         '<div class="pf-av"><span class="ring" id="pfRing">'+avatarHtml(ME.avatar_url,ME.name)+'</span>'+
@@ -5203,6 +5450,11 @@ async function profilePage(){
         '<button class="btn-primary" id="pfSaveName" style="margin-top:14px">Save changes</button>'+
         '<p style="font-size:12.5px;color:var(--text2);margin:14px 0 0;line-height:1.5">Role and campus are set by an administrator. Your home campus is yours — it fills in the campus when you submit attendance, add something to the board, or ask for a room.</p>'+
       '</div>'+
+      '<div class="pa-card pf-main">'+
+        '<div class="pf-cardsec" style="'+eyebrow+'">You in the directory</div>'+
+        '<div id="pfDir"><div class="empty">Loading…</div></div>'+
+      '</div>'+
+      '</div>'+
       '<div class="pf-side">'+
         '<div class="pa-card">'+
           '<div class="pf-cardsec" style="'+eyebrow+'">Password</div>'+
@@ -5219,6 +5471,7 @@ async function profilePage(){
       '</div>'+
     '</div>'+
     '<div id="pfNote" style="font-size:12.5px;margin-top:14px;color:var(--text2)"></div>';
+  dirSelfCard();
   /* photo upload — stored at avatars/<your user id>/<file>, which is the only
      folder the storage policy lets you write to. */
   const fileIn=document.getElementById('pfPhotoIn');
@@ -5263,6 +5516,14 @@ async function profilePage(){
     if(error){n.textContent="Couldn't save — "+(error.message||'try again.');return;}
     ME.name=v;
     if(home!==undefined)ME.home_campus_id=home;
+    /* The directory's primary campus IS this choice. The database trigger
+       copies it too; writing it here as well means the card below is right
+       the moment this returns, not after a reload. Only that one field. */
+    if(home&&ME.dir&&ME.dir.id&&ME.dir.campus_id!==home){
+      const {error:de}=await sb.from('staff_directory').update({primary_campus_id:home}).eq('id',ME.dir.id);
+      if(!de){const c=CAMPUSES.find(x=>x.id===home);ME.dir.campus_id=home;
+        const el=document.querySelector('[data-self="campus"]');if(el&&c)el.textContent=c.name;}
+    }
     ADMIN.profs=null;
     n.textContent='Saved.';
     // The account menu carries the home campus, and Home's attendance card is
