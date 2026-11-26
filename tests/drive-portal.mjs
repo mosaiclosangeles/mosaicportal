@@ -929,6 +929,164 @@ await step('a chip click filters them off again',async()=>{
 await p.screenshot({path:'portal-calendar.png'});
 await p.close();
 
+console.log('--- the staff directory is Admin → Users ---');
+/* Hannita, 26 Nov (option B): no Directory tab — Users lists everyone, with
+   how far along they are, and a person opens to every field. */
+p=await open('/');
+const openUsers=async()=>{
+  await p.evaluate(()=>{ME.role='admin';ME.preview=false;ADMIN.tab='users';ADMIN.q='';ADMIN.role='all';ADMIN.status='all';
+    ADMIN.profs=null;ADMIN.err=null;S.section='admin';render();});
+  await p.waitForSelector('.sd-table tbody tr[data-row]',{timeout:8000});
+};
+await step('everyone is a row, each with the status it is actually in',async()=>{
+  await openUsers();
+  const rows=await p.$$eval('.sd-table tbody tr[data-row]',trs=>trs.map(tr=>({
+    key:tr.dataset.row,name:tr.querySelector('.nm').textContent,status:tr.querySelector('.sd-pill').dataset.status,
+    pill:tr.querySelector('.sd-pill').textContent,txt:tr.innerText,
+    send:!!tr.querySelector('[data-pinvsend]'),save:!!tr.querySelector('[data-dirinvite]')})));
+  console.log('       '+rows.map(r=>r.key+'='+r.pill).join(' | '));
+  const by=Object.fromEntries(rows.map(r=>[r.key,r]));
+  const want={'d:d-me':'signed_in','d:d-ivy':'invite_sent','d:d-sam':'invite_saved','d:d-nora':'no_invite','d:d-hal':'no_invite',
+              'd:d-old':'archived','p:u-solo':'not_in_directory','p:u-ivy2':'not_in_directory','i:pi-orphan':'invite_saved'};
+  for(const [k,st] of Object.entries(want)){
+    if(!by[k])throw new Error(k+' is missing from the list');
+    if(by[k].status!==st)throw new Error(k+' reads '+by[k].status+', expected '+st);
+  }
+  if(rows.length!==Object.keys(want).length)throw new Error('expected '+Object.keys(want).length+' rows, got '+rows.length+': '+rows.map(r=>r.key));
+  if(rows.filter(r=>r.name==='Sam Saved').length>1)throw new Error('a saved invite shows twice');
+  // Send invite only where an invite is saved; Save invite only where there is none.
+  const sends=rows.filter(r=>r.send).map(r=>r.key).sort().join(',');
+  if(sends!=='d:d-sam,i:pi-orphan')throw new Error('Send invite is on: '+sends);
+  const saves=rows.filter(r=>r.save).map(r=>r.key).sort().join(',');
+  if(saves!=='d:d-hal,d:d-nora')throw new Error('Save invite is on: '+saves);
+  if(!await p.$('.sd-table tr[data-row="i:pi-orphan"] [data-pinvdel]'))throw new Error('a saved invite lost its Remove button');
+  // Review finding 5: ex-staff are Archived, never offered an invite.
+  if(by['d:d-old'].pill!=='Archived')throw new Error('an archived account reads '+by['d:d-old'].pill);
+  // Review finding 6: a person's second account is listed, and says what it is.
+  if(!/second portal account/i.test(by['p:u-ivy2'].txt))throw new Error('a second account is not called one: '+by['p:u-ivy2'].txt);
+  // ...and the archived account is not listed a second time under Archived users.
+  const archivedSection=await p.$$eval('.pa-table:not(.sd-table) .nm',n=>n.map(x=>x.textContent));
+  if(archivedSection.includes('Old Archived'))throw new Error('an archived person is listed twice');
+});
+await step('a row carries campus, location, ministries, emails and Slack',async()=>{
+  const me=await p.$eval('.sd-table tr[data-row="d:d-me"]',tr=>tr.innerText);
+  const sam=await p.$eval('.sd-table tr[data-row="d:d-sam"]',tr=>({txt:tr.innerText,tags:[...tr.querySelectorAll('.sd-tag')].map(x=>x.textContent)}));
+  const nora=await p.$eval('.sd-table tr[data-row="d:d-nora"]',tr=>tr.innerText);
+  const meMail=await p.evaluate(()=>ME.email);
+  for(const bit of ['Mexico','Polanco','Oversees Los Angeles','Systems',meMail,'me.second@example.org','Slack linked','HC','Systems lead'])
+    if(!me.includes(bit))throw new Error('the admin row is missing "'+bit+'"');
+  if(sam.tags.join(',')!=='Production,Creative')throw new Error('ministry chips read '+sam.tags.join(','));
+  if(!sam.txt.includes('sam.home@example.org'))throw new Error('a secondary email is not shown');
+  if(!nora.includes('Not on Slack'))throw new Error('a person with no Slack id does not say so');
+  if(!nora.includes('Oversees all campuses'))throw new Error('oversees-all is not shown');
+  if(!nora.includes('from Slack only'))throw new Error('the needs-review note is not shown to the admin');
+});
+await step('the status filter narrows to one status',async()=>{
+  await p.selectOption('#paStatus','invite_saved');
+  const names=await p.$$eval('.sd-table tbody tr[data-row] .nm',n=>n.map(x=>x.textContent).sort());
+  if(names.join(',')!=='Otto Orphan,Sam Saved')throw new Error('filtered to '+names.join(','));
+  await p.selectOption('#paStatus','all');
+});
+await step('a person opens to every field, and an admin save writes them',async()=>{
+  await p.evaluate(()=>{window.__writes=[];});
+  await p.click('.sd-table tr[data-row="d:d-sam"] [data-dir]');
+  await p.waitForSelector('#sdSave',{timeout:6000});
+  const f=await p.evaluate(()=>({name:sdName.value,email:sdEmail.value,e2:sdEmails2.value,slack:sdSlack.value,title:sdTitle.value,
+    campus:sdCampus.value,on:[...document.querySelectorAll('#sdMins [aria-pressed="true"]')].map(b=>b.dataset.sdmin),
+    send:!!document.querySelector('#drawerBody [data-pinvsend]')}));
+  console.log('       '+JSON.stringify(f));
+  if(f.name!=='Sam Saved'||f.email!=='sam@example.org'||f.e2!=='sam.home@example.org'||f.slack!=='USAM'||f.title!=='Producer'||f.campus!=='c2')
+    throw new Error('the drawer did not load the person: '+JSON.stringify(f));
+  if(f.on.join(',')!=='Production,Creative')throw new Error('ministries pre-ticked: '+f.on.join(','));
+  if(!f.send)throw new Error('a saved invite has no Send invite in the drawer');
+  await p.fill('#sdTitle','Senior producer');
+  await p.click('#sdMins [data-sdmin="Kids"]');
+  await p.click('#sdSave');
+  await p.waitForFunction(()=>window.__writes.some(w=>w.table==='staff_directory'),{timeout:4000});
+  const w=await p.evaluate(()=>window.__writes.find(w=>w.table==='staff_directory'));
+  if(w.where.id!=='d-sam')throw new Error('saved against '+JSON.stringify(w.where));
+  if(w.patch.title!=='Senior producer')throw new Error('title not saved');
+  if(w.patch.ministries.slice().sort().join(',')!=='Creative,Kids,Production')throw new Error('ministries saved as '+w.patch.ministries);
+  if(w.patch.source!=='admin')throw new Error('an admin edit is not marked as one');
+  if(w.patch.emails_secondary.join(',')!=='sam.home@example.org')throw new Error('secondary emails lost on save');
+  await p.evaluate(()=>closeDrawer());
+});
+await step('Save invite goes through the server check, and sends nothing',async()=>{
+  await openUsers();
+  await p.evaluate(()=>{window.__writes=[];window.__invoked=[];const inv=sb.functions.invoke;sb.functions.invoke=(n,o)=>{window.__invoked.push(n);return inv(n,o);};});
+  await p.click('.sd-table tr[data-row="d:d-nora"] [data-dirinvite]');
+  await p.waitForFunction(()=>window.__writes.length>0,{timeout:4000});
+  const r=await p.evaluate(()=>({w:window.__writes,inv:window.__invoked}));
+  if(r.w.length!==1||r.w[0].table!=='rpc:staff_directory_save_invite'||r.w[0].patch.p_id!=='d-nora')
+    throw new Error('Save invite wrote '+JSON.stringify(r.w));
+  if(r.inv.includes('invite-user'))throw new Error('saving an invite sent one');
+  await p.waitForFunction(()=>/Invite saved/.test(document.querySelector('#paNote')?.textContent||''),{timeout:4000});
+});
+await step('Save invite is refused for someone who already has an account',async()=>{
+  /* Review finding 5: the email already has an auth account (here a Houses
+     login). The server says so; the page passes that on and saves nothing. */
+  await openUsers();
+  await p.evaluate(()=>{window.__writes=[];});
+  await p.click('.sd-table tr[data-row="d:d-hal"] [data-dirinvite]');
+  await p.waitForFunction(()=>/already has an account/i.test(document.querySelector('#paNote')?.textContent||''),{timeout:4000});
+  const w=await p.evaluate(()=>window.__writes);
+  if(w.some(x=>x.table==='pending_invites'))throw new Error('a pending invite was written directly: '+JSON.stringify(w));
+});
+await step('a directory that fails to load says so, and keeps accounts and invites',async()=>{
+  await p.evaluate(()=>{window.__dirFail=true;});
+  await openUsers();
+  const r=await p.evaluate(()=>({banner:[...document.querySelectorAll('#main .banner')].map(b=>b.textContent).join(' '),
+    names:[...document.querySelectorAll('.sd-table tbody tr[data-row] .nm')].map(x=>x.textContent).sort()}));
+  await p.evaluate(()=>{window.__dirFail=false;});
+  if(!/did not load/.test(r.banner))throw new Error('no banner saying the directory is missing');
+  for(const n of [await p.evaluate(()=>ME.name),'Ivy Sent','Solo Account','Sam Saved','Otto Orphan'])
+    if(!r.names.includes(n))throw new Error(n+' vanished when the directory failed: '+r.names.join(','));
+});
+await p.close();
+
+console.log('--- you in the directory (Profile) ---');
+p=await open('/');
+await step('the self card shows everything and lets you change only campus and ministries',async()=>{
+  await p.evaluate(()=>{S.section='profile';render();});
+  await p.waitForSelector('#pfDir #dsSave',{timeout:8000});
+  const r=await p.evaluate(()=>{const h=document.getElementById('pfDir');return {
+    txt:h.innerText, inputs:h.querySelectorAll('input,select,textarea').length,
+    toggles:[...h.querySelectorAll('[data-dsmin]')].map(b=>b.dataset.dsmin+':'+b.getAttribute('aria-pressed'))};});
+  console.log('       '+r.toggles.join(' '));
+  for(const bit of ['Mexico','Polanco','Systems lead','HC','me.second@example.org','Los Angeles','Linked'])
+    if(!r.txt.includes(bit))throw new Error('the self card is missing "'+bit+'"');
+  if(r.inputs!==0)throw new Error('the self card offers '+r.inputs+' editable inputs; only the ministry toggles should be');
+  if(!r.toggles.includes('Systems:true'))throw new Error('own ministry not pre-ticked');
+  if(!await p.$('#pfHome'))throw new Error('the Home campus picker is gone');
+});
+await step('saving ministries writes only ministries, to your own row',async()=>{
+  await p.evaluate(()=>{window.__writes=[];});
+  await p.click('#pfDir [data-dsmin="Worship"]');
+  await p.click('#dsSave');
+  await p.waitForFunction(()=>window.__writes.length>0,{timeout:4000});
+  const w=await p.evaluate(()=>window.__writes);
+  if(w.length!==1)throw new Error('expected one write, got '+JSON.stringify(w));
+  if(w[0].table!=='staff_directory'||w[0].where.id!=='d-me')throw new Error('wrote to '+JSON.stringify(w[0]));
+  if(Object.keys(w[0].patch).join(',')!=='ministries')throw new Error('the self card wrote '+Object.keys(w[0].patch).join(','));
+  if(w[0].patch.ministries.join(',')!=='Worship,Systems')throw new Error('ministries saved as '+w[0].patch.ministries);
+});
+await step('a new home campus moves your directory campus, and nothing else',async()=>{
+  await p.evaluate(()=>{window.__writes=[];});
+  await p.selectOption('#pfHome','c1');
+  await p.click('#pfSaveName');
+  await p.waitForFunction(()=>window.__writes.some(w=>w.table==='staff_directory'),{timeout:4000});
+  const w=await p.evaluate(()=>window.__writes);
+  const dir=w.filter(x=>x.table==='staff_directory');
+  if(dir.length!==1||Object.keys(dir[0].patch).join(',')!=='primary_campus_id'||dir[0].patch.primary_campus_id!=='c1'||dir[0].where.id!=='d-me')
+    throw new Error('directory writes: '+JSON.stringify(dir));
+  const prof=w.find(x=>x.table==='profiles');
+  if(!prof||prof.patch.home_campus_id!=='c1')throw new Error('the home campus itself was not saved');
+  if('campus_id' in prof.patch||'role' in prof.patch)throw new Error('the profile save touched a permission field');
+  const shown=await p.$eval('[data-self="campus"]',x=>x.textContent);
+  if(shown!=='Los Angeles')throw new Error('the card still reads '+shown);
+});
+await p.close();
+
 console.log(errs.length?'\nJS errors:\n  '+errs.join('\n  '):'\nJS errors: none');
 console.log(bad?bad+' FAILED':'all good');
 await b.close();
